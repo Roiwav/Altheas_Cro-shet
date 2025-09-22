@@ -1,26 +1,35 @@
-// server.js (CommonJS)
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const dotenv = require("dotenv");
+// server.js
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
 
-// Load environment variables
+import cartRoutes from "./routes/cartRoutes.js";
+import authRoutes from "./routes/authRoutes.js"; // your existing auth routes
+import userRoutes from "./routes/userRoutes.js"; // your existing user routes
+
 dotenv.config();
-
-const cartRoutes = require("./routes/cartRoutes");
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
-
 const app = express();
 
 // Middleware
 app.use(express.json({ limit: "5mb" }));
-app.use(
-  cors({
-    origin: "http://localhost:5173", // frontend URL
-    credentials: true,
-  })
-);
+
+const allowedOrigins = [
+  'http://localhost:5173', // Frontend dev server
+  process.env.FRONTEND_URL // Deployed frontend URL from environment variables
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 // API routes
 app.use("/api/v1/cart", cartRoutes);
@@ -29,12 +38,9 @@ app.use("/api/v1/users", userRoutes);
 
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log(" MongoDB Connected"))
+  .catch((err) => console.error(" MongoDB connection error:", err));
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
