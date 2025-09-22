@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import Footer from "./Footer";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,10 +22,13 @@ export default function Layout() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} scrollToSection={scrollToSection} aboutRef={aboutRef} contactRef={contactRef} />
       <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isAuthPage={isAuthPage} />
-      <Outlet context={{ aboutRef, contactRef }} />
+      <main className="flex-grow">
+        <Outlet context={{ aboutRef, contactRef }} />
+      </main>
+      <Footer />
     </div>
   );
 }
