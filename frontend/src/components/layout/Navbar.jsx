@@ -1,18 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from '../../context/useUser';
-import { useDarkMode } from '../../context/DarkModeContext.jsx';
-import { ShoppingCart, User, LogOut, Menu, X, Moon, Sun } from 'lucide-react';
-import { toast } from 'react-toastify';
+// src/components/layout/Navbar.jsx
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useUser } from "../../context/useUser";
+import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import { useCart } from "../../context/CartContext.jsx";
+import { ShoppingCart, User, Menu, X, Moon, Sun } from "lucide-react";
 
 export default function Navbar({ sidebarOpen, setSidebarOpen }) {
   const { user, isAuthenticated, logout } = useUser();
   const { darkMode, toggleDarkMode } = useDarkMode();
+
+  // ✅ Only call useCart once
+  const { cartItems, clearCart, saveCartForUser } = useCart();
+
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // ✅ Calculate total quantity in cart
+  const totalQuantity = Array.isArray(cartItems)
+    ? cartItems.reduce((sum, item) => sum + item.qty, 0)
+    : 0;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -21,44 +31,50 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      if (isScrolled !== scrolled) {
-        setScrolled(isScrolled);
-      }
+      setScrolled(window.scrollY > 10);
     };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [scrolled]);
+  const handleLogout = async () => {
+    try {
+      // save current cart to server for this user before logging out
+      const uid = user?._id || user?.id;
+      if (uid) {
+        await saveCartForUser(uid);
+      }
+    } catch (err) {
+      console.error("Failed saving cart on logout:", err);
+    }
 
-  const handleLogout = () => {
-    logout();
+    logout();    // clear auth session
+    clearCart(); // clear local cart (localStorage)
     setIsOpen(false);
-    toast.success('Successfully logged out');
-    navigate('/');
+    navigate("/");
   };
 
   const navLinks = [
-    { name: 'Home', path: '/home' },
-    { name: 'Shop', path: '/shop' },
-    { name: 'Gallery', path: '/gallery' },
-    { name: 'FAQ', path: '/faq' },
-    { name: 'Orders', path: '/orders' },
+    { name: "Home", path: "/home" },
+    { name: "Shop", path: "/shop" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "FAQ", path: "/faq" },
+    { name: "Orders", path: "/orders" },
   ];
 
   return (
-    <header 
+    <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        scrolled 
-          ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md' 
-          : 'bg-transparent'
+        scrolled
+          ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md"
+          : "bg-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -82,8 +98,6 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
             </button>
           </div>
 
-
-
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
@@ -92,8 +106,8 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
                 to={link.path}
                 className={`px-3 py-2 text-sm font-medium ${
                   location.pathname === link.path
-                    ? 'text-pink-600 dark:text-pink-400'
-                    : 'text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400'
+                    ? "text-pink-600 dark:text-pink-400"
+                    : "text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
                 }`}
               >
                 {link.name}
@@ -103,6 +117,7 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none"
@@ -111,14 +126,21 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
+            {/* Cart */}
             <Link
               to="/checkout"
-              className="p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
+              className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
               aria-label="Shopping Cart"
             >
               <ShoppingCart size={20} />
+              {totalQuantity > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
+                  {totalQuantity}
+                </span>
+              )}
             </Link>
 
+            {/* User Menu */}
             {isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -127,7 +149,9 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
                   aria-label="User menu"
                 >
                   <User size={20} />
-                  <span className="hidden md:inline">{user?.name || 'Account'}</span>
+                  <span className="hidden md:inline">
+                    {user?.name || "Account"}
+                  </span>
                 </button>
 
                 {isOpen && (
@@ -170,4 +194,3 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
     </header>
   );
 }
-

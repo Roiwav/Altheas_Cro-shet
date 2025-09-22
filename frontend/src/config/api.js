@@ -36,7 +36,6 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
-
 // Example API methods
 export const productAPI = {
   // Get all products

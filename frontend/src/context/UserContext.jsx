@@ -1,95 +1,104 @@
 // src/context/UserContext.jsx
-import React, { useState, useEffect, createContext } from "react";
+import React, { createContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-const API_URL = "http://localhost:5001/api/auth";
-
-// ✅ Create the context here
 // eslint-disable-next-line react-refresh/only-export-components
 export const UserContext = createContext();
 
-// ✅ Provider component that wraps your app
+/**
+ * Provider responsibility:
+ * - restore from localStorage (or sessionStorage)
+ * - login(userObj, token, remember = true)
+ * - logout()
+ * - updateUser()
+ */
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Check if user is logged in on initial load
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
+  // Try to initialize from localStorage or sessionStorage synchronously
+  const initialLocalUser = localStorage.getItem("user");
+  const initialLocalToken = localStorage.getItem("token");
+  const initialSessionUser = sessionStorage.getItem("user");
+  const initialSessionToken = sessionStorage.getItem("token");
 
-  const checkAuthStatus = async () => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
+  const [user, setUser] = useState(() => {
+    if (initialLocalUser) return JSON.parse(initialLocalUser);
+    if (initialSessionUser) return JSON.parse(initialSessionUser);
+    return null;
+  });
 
-    if (!token || !savedUser) {
-      setLoading(false);
-      return;
-    }
+  const [token, setToken] = useState(() => {
+    if (initialLocalToken) return initialLocalToken;
+    if (initialSessionToken) return initialSessionToken;
+    return null;
+  });
 
-    try {
-      const response = await fetch(`${API_URL}/user`, {
-        headers: {
-          "x-auth-token": token,
-        },
-      });
+  // eslint-disable-next-line no-unused-vars
+  const [isLoading, setIsLoading] = useState(false); // set to false because we restore synchronously
 
-      if (response.ok) {
-        const userData = await response.json();
-        const storedUser = JSON.parse(savedUser);
-        setUser({
-          ...storedUser,
-          ...userData,
-          token,
-        });
-      } else {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-    } catch (error) {
-      console.error("Auth check error:", error);
+  // login(userObject, token, remember = true)
+  const login = (userObj, authToken, remember = true) => {
+    setUser(userObj);
+    setToken(authToken);
+
+    // store in localStorage (persistent) if remember === true
+    if (remember) {
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("token", authToken);
+      // remove any sessionStorage copy
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+    } else {
+      // store in sessionStorage only (cleared when tab closes)
+      sessionStorage.setItem("user", JSON.stringify(userObj));
+      sessionStorage.setItem("token", authToken);
+      localStorage.removeItem("user");
       localStorage.removeItem("token");
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const login = (userData) => {
-    const { token, ...userInfo } = userData;
-    setUser(userData);
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(userInfo));
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
     setUser(null);
+    setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    toast.success("Logged out");
     navigate("/login");
-    toast.success("Successfully logged out");
+    // Force a full page reload to clearly show the reload and fully reset state
+    setTimeout(() => {
+      window.location.reload();
+    }, 0);
   };
 
-  const updateUser = (updatedData) => {
-    setUser((prev) => ({
-      ...prev,
-      ...updatedData,
-    }));
+  const updateUser = (updatedFields) => {
+    setUser((prev) => {
+      const updated = { ...(prev || {}), ...updatedFields };
+      // Persist updated user wherever it was stored
+      if (localStorage.getItem("token")) {
+        localStorage.setItem("user", JSON.stringify(updated));
+      } else if (sessionStorage.getItem("token")) {
+        sessionStorage.setItem("user", JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   return (
     <UserContext.Provider
       value={{
         user,
+        token,
         isAuthenticated: !!user,
-        isLoading: loading,
+        isLoading,
         login,
         logout,
         updateUser,
       }}
     >
-      {!loading && children}
+      {children}
     </UserContext.Provider>
   );
 };

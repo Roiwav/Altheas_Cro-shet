@@ -3,7 +3,6 @@ import { DarkModeContext } from './DarkModeContext';
 import { getInitialDarkMode, applyDarkMode } from './darkModeUtils';
 
 // Custom hook to use dark mode
-// eslint-disable-next-line react-refresh/only-export-components
 export const useDarkMode = () => {
   const context = useContext(DarkModeContext);
   if (!context) {

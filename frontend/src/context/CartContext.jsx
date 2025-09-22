@@ -1,157 +1,200 @@
-import { useState, useEffect } from "react";
-import { CartContext } from "./cart-context";
+// context/CartContext.jsx
+import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useUser } from "./useUser";
+
+export const CartContext = createContext();
+export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);  // State to store cart items
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));  // User information (from localStorage)
+  const { user, isAuthenticated } = useUser() || {
+    user: null,
+    isAuthenticated: false,
+  };
 
-  const backendURL = "http://localhost/croshet_db";  // Backend URL for API calls
-
-  // Fetch cart items when the user is logged in
-  useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser?.id) {
-      fetchCart(storedUser.id);  // Fetch cart data if user exists
-    }
-  }, []); // Runs only on initial load
-
-  // Fetch the cart items from the backend
-  const fetchCart = async (userId) => {
+  const [cartItems, setCartItems] = useState(() => {
     try {
-      const localUserId = userId || JSON.parse(localStorage.getItem('user'))?.id;
-      const res = await fetch(`${backendURL}/get-cart.php?user_id=${localUserId}`); // API call to fetch cart
+      const stored = localStorage.getItem("cart");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [region, setRegion] = useState("");
+  const [city, setCity] = useState("");
+  const [shippingFee, setShippingFee] = useState(0);
+
+  const prevUserRef = useRef(null);
+  const API_BASE = "http://localhost:5001/api/v1/cart";
+
+  const getId = (product) => product?.id || product?.productId;
+
+  // Save cart to backend
+  const saveCartForUser = async () => {
+    const userId = user?.id;
+    if (!userId) {
+      console.log("Not logged in, skipping backend save.");
+      return null;
+    }
+    try {
+      // ✅ Updated mapping to ensure all fields are present and have default values
+      const sanitizedItems = cartItems.map(item => {
+        const productId = item.productId || item._id || item.id;
+        const title = item.title || item.name;
+        const price = item.price || 0;
+        const image = item.image || "default-image.jpg";
+        const qty = item.qty || 1; // ✅ Ensure qty is never 0 or undefined
+
+        return { productId, title, price, image, qty };
+      });
+      
+      const res = await fetch(`${API_BASE}/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: sanitizedItems, region, city, shippingFee }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
-      if (data.status === 'success') {
-        setCartItems(data.cart);  // Set the cart data from backend
-      } else {
-        console.error("Fetch cart failed:", data.message);  // Log error if fetch fails
-      }
+      console.log("✅ Cart updated on backend:", data);
+      return data;
     } catch (err) {
-      console.error("Fetch cart error:", err);  // Log network errors
+      console.error("❌ Failed saving cart to backend:", err);
     }
   };
 
-  // Add product to the cart
-  const addToCart = async (product, quantity = 1) => {
-    if (!user?.id) return;
-
+  // Load cart from backend
+  const loadCartForUser = async (userId) => {
+    if (!userId) {
+      console.log("Not logged in, skipping backend load.");
+      return { items: [] };
+    }
     try {
-      const response = await fetch(`${backendURL}/add-to-cart.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,  // User ID for cart association
-          product_id: product.id,  // Product ID
-          quantity,  // Quantity to add to cart
-        }),
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        await fetchCart(user.id);  // Refresh cart data after adding product
-      } else {
-        console.error(`Error: ${data.message}`);  // Log error if adding to cart fails
-      }
+      const res = await fetch(`${API_BASE}/${userId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRegion(data.region || "");
+      setCity(data.city || "");
+      setShippingFee(data.shippingFee || 0);
+      return data;
     } catch (err) {
-      console.error("Add to cart error:", err);  // Log errors if the fetch fails
+      console.error("❌ Failed loading cart from backend:", err);
+      return { items: [] };
     }
   };
 
-  // Update the quantity of a cart item
-  const updateQuantity = async (productId, qty) => {
-    if (!user?.id || qty < 0) return;
+  const mergeCarts = (serverItems = [], localItems = []) => {
+    const map = new Map();
+    const addItem = (item) => {
+      const id = getId(item);
+      if (!id) return;
+      const qty = item.qty ?? item.quantity ?? 1;
+      const existing = map.get(id);
+      if (existing) existing.qty += qty;
+      else map.set(id, { ...item, qty });
+    };
 
-    try {
-      const response = await fetch(`${backendURL}/update-cart.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,  // User ID for cart association
-          product_id: productId,  // Product ID
-          quantity: qty,  // New quantity
-        }),
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        await fetchCart(user.id);  // Refresh cart after updating quantity
-      } else {
-        console.error(`Error: ${data.message}`);  // Log error if quantity update fails
-      }
-    } catch (err) {
-      console.error("Update cart error:", err);  // Log fetch errors
-    }
+    serverItems.forEach(addItem);
+    localItems.forEach(addItem);
+    return Array.from(map.values());
   };
 
-  // Remove an item from the cart
-  const removeFromCart = async (productId) => {
-    if (!user?.id) return;
+  const addToCart = (product, quantity = 1) => {
+    const id = getId(product);
+    if (!id) return;
 
-    try {
-      const response = await fetch(`${backendURL}/delete-from-cart.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,  // User ID for cart association
-          product_ids: [productId],  // Product ID to remove
-        }),
-      });
+    const newCart = cartItems.find((p) => getId(p) === id)
+      ? cartItems.map((p) =>
+          getId(p) === id ? { ...p, qty: (p.qty || 0) + quantity } : p
+        )
+      : [...cartItems, { ...product, qty: quantity }];
 
-      const data = await response.json();
-      if (data.status === 'success') {
-        await fetchCart(user.id);  // Refresh cart after removal
-      } else {
-        console.error(`Error: ${data.message}`);  // Log error if removal fails
-      }
-    } catch (err) {
-      console.error("Remove from cart error:", err);  // Log errors if the fetch fails
+    setCartItems(newCart);
+  };
+  
+  const updateQuantity = (productId, newQty) => {
+    const quantity = Math.max(0, newQty); 
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
     }
+    
+    setCartItems(currentItems => {
+        return currentItems.map(item =>
+            getId(item) === productId ? { ...item, qty: quantity } : item
+        );
+    });
+};
+
+  const removeFromCart = (productId) => {
+    setCartItems(cartItems.filter((item) => getId(item) !== productId));
   };
 
-  // Clear all items from the cart
-  const clearCart = async () => {
-    if (!user?.id) return;
-
-    const allIds = cartItems.map((item) => item.id);  // Get all product IDs in the cart
-    try {
-      const response = await fetch(`${backendURL}/delete-from-cart.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,  // User ID for cart association
-          product_ids: allIds,  // Array of all product IDs to clear the cart
-        }),
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        setCartItems([]);  // Clear the cart state locally
-      } else {
-        console.error(`Error: ${data.message}`);  // Log error if clearing fails
-      }
-    } catch (err) {
-      console.error("Clear cart error:", err);  // Log errors if the fetch fails
-    }
+  const clearCart = () => {
+    setCartItems([]);
+    localStorage.removeItem("cart");
   };
 
-  // Calculate the total quantity of items in the cart
-  const totalQuantity = cartItems.reduce((sum, item) => sum + item.qty, 0);
+  const totalQuantity = cartItems.reduce((sum, it) => sum + (it.qty || 0), 0);
+  const totalPrice = cartItems.reduce(
+    (sum, it) => sum + (it.qty || 0) * (it.price || 0),
+    0
+  );
+
+  useEffect(() => {
+    localStorage.setItem("cart", JSON.stringify(cartItems));
+    if (isAuthenticated) {
+      const timeoutId = setTimeout(() => {
+        saveCartForUser();
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [cartItems, isAuthenticated, user, region, city, shippingFee]);
+
+  useEffect(() => {
+    const prevId = prevUserRef.current?.id;
+    const currId = user?.id;
+
+    if (!prevId && currId) {
+      (async () => {
+        console.log(`➡️ User logged in (${currId}), loading and merging carts...`);
+        const serverCart = await loadCartForUser(currId);
+        const merged = mergeCarts(serverCart.items || [], cartItems);
+        setCartItems(merged);
+        console.log("✔️ Merged cart updated successfully.");
+      })();
+    }
+
+    if (prevId && !currId) {
+      console.log("➡️ User logged out, clearing local cart.");
+      setCartItems([]);
+      localStorage.removeItem("cart");
+    }
+
+    prevUserRef.current = user;
+  }, [user]);
 
   return (
     <CartContext.Provider
       value={{
-        cartItems,  // Provide cart items
-        setCartItems,  // Allow setting cart items from outside the context
-        addToCart,  // Add product to cart
-        updateQuantity,  // Update quantity in the cart
-        removeFromCart,  // Remove product from cart
-        clearCart,  // Clear all items from cart
-        refreshCart: fetchCart,  // Trigger a manual refresh of the cart
-        totalQuantity,  // Total quantity of items in cart
-        setUser,  // Allow logout or user update
+        cartItems,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+        totalQuantity,
+        totalPrice,
+        region,
+        setRegion,
+        city,
+        setCity,
+        shippingFee,
+        setShippingFee,
       }}
     >
-      {children}  {/* Render children components */}
+      {children}
     </CartContext.Provider>
   );
 };
