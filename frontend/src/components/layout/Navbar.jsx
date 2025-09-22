@@ -70,7 +70,6 @@ export default function Navbar({
     { name: "Shop", path: "/shop" },
     { name: "Gallery", path: "/gallery" },
     { name: "FAQ", path: "/faq" },
-    { name: "Orders", path: "/orders" },
   ];
 
   return (
@@ -97,7 +96,7 @@ export default function Navbar({
             {/* Logo - Adjust padding to account for sidebar */}
             <div className="flex-shrink-0 lg:pl-16">
               <Link to="/" className="flex items-center">
-                <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                <span className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
                   Althea Cro-shet
                 </span>
               </Link>
@@ -123,17 +122,6 @@ export default function Navbar({
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none transition-opacity
-                ${sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"}
-                lg:opacity-0 lg:pointer-events-none`}
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
             {/* Cart */}
             {!isAuthPage && (
               <Link
