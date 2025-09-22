@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, HelpCircle, ShoppingBag, Truck, CreditCard, Ref
 
 const FAQPage = () => {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [search, setSearch] = useState(''); // Add search state
 
   const toggleAccordion = (index) => {
     setActiveIndex(activeIndex === index ? null : index);
@@ -16,11 +17,11 @@ const FAQPage = () => {
       questions: [
         {
           question: 'How long does shipping take?',
-          answer: 'Processing time is 3-5 business days. Shipping typically takes 5-7 business days within the Philippines. International shipping may take 10-20 business days depending on the destination.'
+          answer: 'Processing time is 3-5 business days. Shipping typically takes 5-7 business days within the Philippines.'
         },
         {
           question: 'Do you offer international shipping?',
-          answer: 'Yes, we ship worldwide! International shipping rates and delivery times vary by country. You\'ll see the exact shipping cost at checkout.'
+          answer: 'We are currently shipping to certain locations in the Philippines. We do not offer international shipping at this time.'
         },
         {
           question: 'How can I track my order?',
@@ -35,12 +36,12 @@ const FAQPage = () => {
       questions: [
         {
           question: 'What payment methods do you accept?',
-          answer: 'We accept all major credit/debit cards, GCash, PayPal, and bank transfers for Philippine customers. All transactions are secure and encrypted.'
+          answer: 'As of now, we only accept payments through GCash and Cash on Delivery (COD). All transactions are secure and encrypted.'
         },
         {
           question: 'Do you offer payment plans?',
           showInMobile: false,
-          answer: 'Yes! We offer installment plans through our payment partners. Select "Pay in Installments" at checkout to see available options.'
+          answer: 'Unfortunately, No.                 '
         },
         {
           question: 'Are there any hidden fees?',
@@ -88,12 +89,26 @@ const FAQPage = () => {
     }
   ];
 
+  // Filtered categories based on search
+  const filteredCategories = faqCategories
+    .map((category) => {
+      const filteredQuestions = category.questions.filter(
+        (q) =>
+          q.question.toLowerCase().includes(search.toLowerCase()) ||
+          q.answer.toLowerCase().includes(search.toLowerCase())
+      );
+      return filteredQuestions.length
+        ? { ...category, questions: filteredQuestions }
+        : null;
+    })
+    .filter(Boolean);
+
   const contactMethods = [
     {
       icon: <Mail className="w-6 h-6 text-pink-600" />,
       title: 'Email Us',
       description: 'We usually respond within 24 hours',
-      contact: 'altheacrochet@gnail.com',
+      contact: 'altheacrochet@gmail.com',
       link: 'mailto:hello@altheascrochet.com'
     },
     {
@@ -129,6 +144,8 @@ const FAQPage = () => {
             <input
               type="text"
               placeholder="Search questions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)} // Add onChange
               className="w-full px-6 py-4 pl-12 text-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
             <svg
@@ -149,46 +166,53 @@ const FAQPage = () => {
 
         {/* FAQ Categories */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
-          {faqCategories.map((category, categoryIndex) => (
-            <div key={category.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
-                {category.icon}
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{category.title}</h2>
-              </div>
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {category.questions.map((item, index) => {
-                  const questionIndex = faqCategories
-                    .slice(0, categoryIndex)
-                    .reduce((acc, cat) => acc + cat.questions.length, 0) + index;
-                  
-                  return (
-                    <div key={index} className="p-6">
-                      <button
-                        className="flex justify-between items-center w-full text-left"
-                        onClick={() => toggleAccordion(questionIndex)}
-                      >
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          {item.question}
-                        </h3>
-                        {activeIndex === questionIndex ? (
-                          <ChevronUp className="w-5 h-5 text-pink-600" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-pink-600" />
-                        )}
-                      </button>
-                      <div
-                        className={`mt-2 text-gray-600 dark:text-gray-300 overflow-hidden transition-all duration-300 ${
-                          activeIndex === questionIndex ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
-                        }`}
-                      >
-                        <p className="pt-2">{item.answer}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {filteredCategories.length === 0 ? (
+            <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-12">
+              No questions found.
             </div>
-          ))}
+          ) : (
+            filteredCategories.map((category, categoryIndex) => (
+              <div key={category.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
+                  {category.icon}
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{category.title}</h2>
+                </div>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {category.questions.map((item, index) => {
+                    // Calculate the global question index for accordion
+                    const questionIndex = faqCategories
+                      .slice(0, faqCategories.findIndex(cat => cat.id === category.id))
+                      .reduce((acc, cat) => acc + cat.questions.length, 0) + index;
+
+                    return (
+                      <div key={index} className="p-6">
+                        <button
+                          className="flex justify-between items-center w-full text-left"
+                          onClick={() => toggleAccordion(questionIndex)}
+                        >
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                            {item.question}
+                          </h3>
+                          {activeIndex === questionIndex ? (
+                            <ChevronUp className="w-5 h-5 text-pink-600" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-pink-600" />
+                          )}
+                        </button>
+                        <div
+                          className={`mt-2 text-gray-600 dark:text-gray-300 overflow-hidden transition-all duration-300 ${
+                            activeIndex === questionIndex ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                          }`}
+                        >
+                          <p className="pt-2">{item.answer}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Contact Section */}
