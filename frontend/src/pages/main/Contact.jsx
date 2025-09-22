@@ -54,8 +54,7 @@ export default function ContactPage() {
       customer_email: formData.email, // Used in your EmailJS template to set the recipient
       subject: formData.subject,
       message: formData.message,
-    };
-
+    }
     try {
       // Use Promise.all to send both emails concurrently
       await Promise.all([

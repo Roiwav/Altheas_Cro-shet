@@ -1,12 +1,11 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
 const User = require("../models/User");
 
 const router = express.Router();
 
 // =============================
-// REGISTER
+// REGISTER (Auto Login)
 // =============================
 router.post("/register", async (req, res) => {
   try {
@@ -28,20 +27,23 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
+    // Create new user (password will be hashed by pre("save") in schema)
     const user = await User.create({
       fullName,
       username,
       email,
-      password: hashedPassword,
+      password,
+    });
+
+    // 🔑 Auto login: generate JWT immediately
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
+      expiresIn: "7d",
     });
 
     res.status(201).json({
       message: "User registered successfully",
-      user: { id: user._id, fullName: user.fullName, email: user.email },
+      token,
+      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -61,31 +63,46 @@ router.post("/register", async (req, res) => {
 // =============================
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, identifier, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    if (!password) {
+      return res.status(400).json({ message: "Email/Username and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    // Determine login identifier
+    let loginId = (email || identifier || username || "").trim();
+    if (!loginId) {
+      return res.status(400).json({ message: "Email/Username and password are required" });
+    }
+
+    // Normalize email to lowercase when it looks like an email
+    const looksLikeEmail = loginId.includes("@");
+    if (looksLikeEmail) loginId = loginId.toLowerCase();
+
+    // Find by email or username depending on the identifier
+    const query = looksLikeEmail
+      ? { email: loginId }
+      : { username: loginId };
+
+    const user = await User.findOne(query);
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email/username or password" });
     }
 
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Compare password using schema method
+    const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email/username or password" });
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
       expiresIn: "7d",
     });
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email },
+      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
     });
   } catch (err) {
     console.error("Login error:", err);
