@@ -1,159 +1,126 @@
-import { useState } from 'react';
-import { Star, MessageSquare, Smile, User } from 'lucide-react';
-import { useTestimonials } from '../../TestimonialsContext.jsx';
+import React, { useState } from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Navbar from '../../components/layout/Navbar'; // Assuming you have a Navbar
+import { useTestimonials } from '../../context/TestimonialsContext';
+import { Star, MessageSquare, Smile, User, Loader2 } from 'lucide-react';
 
 const FeedbackPage = () => {
-  const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState('');
-  const [author, setAuthor] = useState('');
-  const [submitted, setSubmitted] = useState(false);
   const { addTestimonial } = useTestimonials();
+  const [formData, setFormData] = useState({
+    quote: '',
+    author: '',
+    rating: 0,
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    addTestimonial({
-      quote: feedback,
-      author: author || 'Anonymous',
-      rating: rating,
-    });
-    setSubmitted(true);
-    setFeedback('');
-    setAuthor('');
-    setRating(0);
+  const { quote, author, rating } = formData;
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-              <Smile className="h-8 w-8 text-green-600 dark:text-green-300" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Thank You!</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              We appreciate your feedback. It helps us improve our products and services.
-            </p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-300"
-            >
-              Submit Another Feedback
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleRatingClick = (newRating) => {
+    setFormData({ ...formData, rating: newRating });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const result = await addTestimonial({
+      quote,
+      author,
+      rating: Number(rating),
+    });
+
+    if (result.success) {
+      // Clear form on successful submission
+      setFormData({ quote: '', author: '', rating: 0 });
+    }
+    setIsSubmitting(false);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">Share Your Feedback</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            We'd love to hear your thoughts about Althea Crochet
-          </p>
-        </div>
+    <>
+      <Navbar />
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Leave a Feedback</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">We'd love to hear what you think about our products!</p>
 
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                How would you rate your experience?
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="quote" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Feedback / Testimonial
               </label>
-              <div className="flex justify-center space-x-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    className={`p-2 rounded-full transition-colors duration-200 ${
-                      rating >= star 
-                        ? 'text-yellow-400' 
-                        : 'text-gray-300 dark:text-gray-600 hover:text-yellow-400'
-                    }`}
-                  >
-                    <Star 
-                      className={`h-8 w-8 ${rating >= star ? 'fill-current' : ''}`} 
-                    size={32} 
-                    fill={rating >= star ? 'currentColor' : 'none'}
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    preserveAspectRatio="xMidYMid meet"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-                <span>Not satisfied</span>
-                <span>Very satisfied</span>
-              </div>
+              <textarea
+                id="quote"
+                name="quote"
+                rows="4"
+                value={quote}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                placeholder="Your feedback..."
+              />
             </div>
 
-            <div className="mb-8">
-              <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your feedback
+            <div>
+              <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Your Name
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <textarea
-                  id="feedback"
-                  name="feedback"
-                  rows={6}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                  placeholder="What did you like or what could we improve?"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  required
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <MessageSquare className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-              </div>
+              <input
+                id="author"
+                name="author"
+                type="text"
+                value={author}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                placeholder="John Doe"
+              />
             </div>
 
-            <div className="mb-8">
-              <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Name (Optional)
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Rating
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <input
-                  type="text"
-                  id="author"
-                  name="author"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                  placeholder="Let us know who you are"
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                {[...Array(5)].map((_, index) => {
+                  const starValue = index + 1;
+                  return (
+                    <Star
+                      key={starValue}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 cursor-pointer transition-all duration-150 ease-in-out ${
+                        starValue <= (hoverRating || rating)
+                          ? 'text-yellow-400 fill-yellow-400 transform scale-110'
+                          : 'text-gray-300 dark:text-gray-600 hover:text-yellow-300'
+                      }`}
+                      onClick={() => handleRatingClick(starValue)}
+                      onMouseEnter={() => setHoverRating(starValue)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      aria-label={`Rate ${starValue} out of 5`}
+                    />
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Your feedback helps us improve our services.
-              </div>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-300 flex items-center"
-                disabled={!feedback.trim() || rating === 0}
-              >
-                <MessageSquare className="h-5 w-5 mr-2" />
-                Submit Feedback
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            </button>
           </form>
         </div>
       </div>
-    </div>
+      <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} />
+    </>
   );
 };
 

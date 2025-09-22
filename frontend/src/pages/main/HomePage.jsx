@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
-import { useTestimonials } from '../../TestimonialsContext.jsx';
+import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 
 function HomePage() {
   return (

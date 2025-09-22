@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import App from "./App.jsx";
 import { CartProvider } from "./context/CartContext.jsx";
-import { TestimonialsProvider } from "./TestimonialsContext.jsx";
+import { TestimonialsProvider } from "./context/TestimonialsContext.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
 import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext.jsx";
 import "./index.css";

@@ -1,48 +1,56 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const TestimonialsContext = createContext();
 
 export const useTestimonials = () => useContext(TestimonialsContext);
 
-const initialTestimonials = [
-  {
-    quote: "These crochet flowers are absolutely stunning! The quality is exceptional and they look so real.",
-    author: "Maria S.",
-    rating: 5
-  },
-  {
-    quote: "I ordered a custom piece and it exceeded all my expectations. The attention to detail is incredible.",
-    author: "John D.",
-    rating: 5
-  },
-  {
-    quote: "The perfect gift that lasts forever. My mom loved her crochet bouquet on Mother's Day!",
-    author: "Sarah M.",
-    rating: 5
-  }
-];
+// The backend API URL. Adjust if your backend runs on a different port.
+const API_URL = 'http://localhost:5001/api/v1/testimonials';
 
 export const TestimonialsProvider = ({ children }) => {
-  const [testimonials, setTestimonials] = useState(() => {
+  const [testimonials, setTestimonials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchTestimonials = useCallback(async () => {
     try {
-      const localData = localStorage.getItem('testimonials');
-      return localData ? JSON.parse(localData) : initialTestimonials;
-    } catch (error) {
-      console.error("Could not parse testimonials from localStorage", error);
-      return initialTestimonials;
+      setLoading(true);
+      const response = await fetch(API_URL);
+      if (!response.ok) throw new Error('Failed to fetch testimonials');
+      const data = await response.json();
+      setTestimonials(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('testimonials', JSON.stringify(testimonials));
-  }, [testimonials]);
+    fetchTestimonials();
+  }, [fetchTestimonials]);
 
-  const addTestimonial = (testimonial) => {
-    setTestimonials(prevTestimonials => [testimonial, ...prevTestimonials]);
+  const addTestimonial = async (testimonialData) => {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testimonialData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.msg || 'Failed to submit testimonial.');
+    }
+
+    const newTestimonial = await response.json();
+    // Add the new testimonial to the top of the list for an instant UI update
+    setTestimonials(prevTestimonials => [newTestimonial, ...prevTestimonials]);
   };
 
   return (
-    <TestimonialsContext.Provider value={{ testimonials, addTestimonial }}>
+    <TestimonialsContext.Provider value={{ testimonials, addTestimonial, loading, error }}>
       {children}
     </TestimonialsContext.Provider>
   );
