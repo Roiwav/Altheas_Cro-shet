@@ -1,23 +1,50 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Star, MessageSquare } from 'lucide-react';
-import { useTestimonials } from '../../context/TestimonialsContext';
+import { Star, MessageSquare, Smile, User } from 'lucide-react';
+import { useTestimonials } from '../../TestimonialsContext.jsx';
 
 const FeedbackPage = () => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
+  const [author, setAuthor] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const { addTestimonial } = useTestimonials();
-  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     addTestimonial({
       quote: feedback,
-      author: 'A Happy Customer', // This could be dynamic if you add a name field
+      author: author || 'Anonymous',
       rating: rating,
     });
-    navigate('/'); // Navigate to homepage to see the new testimonial
+    setSubmitted(true);
+    setFeedback('');
+    setAuthor('');
+    setRating(0);
   };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+              <Smile className="h-8 w-8 text-green-600 dark:text-green-300" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Thank You!</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
+              We appreciate your feedback. It helps us improve our products and services.
+            </p>
+            <button
+              onClick={() => setSubmitted(false)}
+              className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-300"
+            >
+              Submit Another Feedback
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">
@@ -90,6 +117,26 @@ const FeedbackPage = () => {
               </div>
             </div>
 
+            <div className="mb-8">
+              <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Your Name (Optional)
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <input
+                  type="text"
+                  id="author"
+                  name="author"
+                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                  placeholder="Let us know who you are"
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 Your feedback helps us improve our services.
@@ -97,7 +144,7 @@ const FeedbackPage = () => {
               <button
                 type="submit"
                 className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-300 flex items-center"
-                disabled={!feedback || rating === 0}
+                disabled={!feedback.trim() || rating === 0}
               >
                 <MessageSquare className="h-5 w-5 mr-2" />
                 Submit Feedback
