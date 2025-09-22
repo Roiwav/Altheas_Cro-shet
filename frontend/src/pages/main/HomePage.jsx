@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
-import Navbar from '../../components/layout/Navbar';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 
 function HomePage() {
+  const { aboutRef, contactRef } = useOutletContext() || {};
+
   return (
     <div className="space-y-0">
-      <Navbar />
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
         {/* Background Pattern */}
@@ -67,7 +67,7 @@ function HomePage() {
       </section>
 
       {/* Value Proposition */}
-      <section className="py-20 bg-white dark:bg-gray-900">
+      <section ref={aboutRef} className="py-20 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Our Crochet?</h2>
@@ -219,7 +219,7 @@ function HomePage() {
       </section>
 
       {/* Newsletter */}
-      <section className="py-20 bg-gradient-to-r from-pink-500 to-purple-600">
+      <section ref={contactRef} className="py-20 bg-gradient-to-r from-pink-500 to-purple-600">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Stay Updated</h2>
           <p className="text-xl text-pink-100 mb-8">
@@ -263,7 +263,7 @@ function HomePage() {
 }
 
 function Testimonials() {
-  const { testimonials = [] } = useTestimonials();
+  const { testimonials = [] } = useTestimonials() || {};
   const [isPaused, setIsPaused] = useState(false);
 
   // We'll show up to 10 of the most recent testimonials to keep the DOM from getting too large.

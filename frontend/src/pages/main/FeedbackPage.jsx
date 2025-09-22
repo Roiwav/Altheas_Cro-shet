@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Navbar from '../../components/layout/Navbar'; // Assuming you have a Navbar
 import { useTestimonials } from '../../context/TestimonialsContext';
 import { Star, MessageSquare, Smile, User, Loader2 } from 'lucide-react';
 
@@ -45,8 +44,7 @@ const FeedbackPage = () => {
 
   return (
     <>
-      <Navbar />
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen lg:pl-20 pt-16 flex items-center justify-center p-4">
         <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Leave a Feedback</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">We'd love to hear what you think about our products!</p>

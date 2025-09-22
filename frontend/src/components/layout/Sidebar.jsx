@@ -96,8 +96,8 @@ export default function Sidebar({ isOpen, setIsOpen, scrollToSection, aboutRef, 
       {/* Sidebar */}
       <div
         className={`fixed left-0 top-0 h-screen z-50 transition-all duration-300 ease-in-out
-          ${sidebarOpen || isHovered ? "w-72" : "w-20"}
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
+          ${isHovered || sidebarOpen ? 'w-72' : 'w-20'}
           bg-white dark:bg-gray-900 shadow-lg`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -194,14 +194,6 @@ export default function Sidebar({ isOpen, setIsOpen, scrollToSection, aboutRef, 
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-30 lg:hidden p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:scale-105 transition-transform duration-200"
-      >
-        <Menu size={20} className="text-gray-600 dark:text-gray-400" />
-      </button>
     </div>
   );
 }

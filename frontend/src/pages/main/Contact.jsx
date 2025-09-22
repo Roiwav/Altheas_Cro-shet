@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
-import Navbar from "../../components/layout/Navbar";
-import Footer from "../../components/layout/Footer";
 import { MapPin, Phone, Mail, Clock, Facebook, Instagram, Send, MessageCircle, Star } from "lucide-react";
 
 // Social media logos (fallback to icons if images not available)
@@ -73,18 +71,13 @@ export default function ContactPage() {
     setTimeout(() => setSubmitStatus(null), 3000);
   };
 
-  // Add sidebar state for Navbar (if needed)
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   useEffect(() => {
     // Initialize EmailJS with your User ID (Public Key)
     emailjs.init("YXAWeRbfmChLSofYa");
   }, []);
 
   return (
-    <>
-      <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} /> {/* <-- Insert Navbar here */}
-      <div className="bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 py-20 px-6 pb-0 transition-colors duration-300">
+    <div className="bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 pt-24 lg:pt-32 px-6 pb-0 transition-colors duration-300">
         {/* Hero Section */}
         <section className="relative pt-16 pb-20 overflow-hidden">
           {/* Background Elements */}
@@ -358,11 +351,6 @@ export default function ContactPage() {
             </div>
           </div>
         </section>
-
-        <div className="mt-20">
-          <Footer />
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
