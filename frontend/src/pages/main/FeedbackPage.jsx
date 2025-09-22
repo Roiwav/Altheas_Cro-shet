@@ -1,43 +1,23 @@
 import { useState } from 'react';
-import { Star, MessageSquare, Smile, Frown, Meh } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Star, MessageSquare } from 'lucide-react';
+import { useTestimonials } from '../../context/TestimonialsContext';
 
 const FeedbackPage = () => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const { addTestimonial } = useTestimonials();
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you would typically send the feedback to your backend
-    console.log({ rating, feedback });
-    setSubmitted(true);
-    setFeedback('');
-    setRating(0);
+    addTestimonial({
+      quote: feedback,
+      author: 'A Happy Customer', // This could be dynamic if you add a name field
+      rating: rating,
+    });
+    navigate('/'); // Navigate to homepage to see the new testimonial
   };
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-              <Smile className="h-8 w-8 text-green-600 dark:text-green-300" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Thank You!</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              We appreciate your feedback. It helps us improve our products and services.
-            </p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-300"
-            >
-              Submit Another Feedback
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 sm:px-6 lg:px-8">

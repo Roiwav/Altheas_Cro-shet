@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
+import { Flower, ArrowRight, Smartphone, Sparkles, Heart, Star, CheckCircle, ShoppingBagIcon } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
+import { useTestimonials } from '../../context/TestimonialsContext';
 
 function HomePage() {
+  const { testimonials } = useTestimonials();
   return (
     <div className="space-y-0">
       <Navbar />
@@ -215,23 +217,7 @@ function HomePage() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                quote: "These crochet flowers are absolutely stunning! The quality is exceptional and they look so real.",
-                author: "Maria S.",
-                rating: 5
-              },
-              {
-                quote: "I ordered a custom piece and it exceeded all my expectations. The attention to detail is incredible.",
-                author: "John D.",
-                rating: 5
-              },
-              {
-                quote: "The perfect gift that lasts forever. My mom loved her crochet bouquet on Mother's Day!",
-                author: "Sarah M.",
-                rating: 5
-              }
-            ].map((testimonial, index) => (
+            {testimonials.slice(0, 3).map((testimonial, index) => (
               <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg">
                 <div className="flex mb-4">
                   {[...Array(5)].map((_, i) => (
