@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import Navbar from "../../components/layout/Navbar";
 import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
 import { useCart } from "../../context/CartContext.jsx";
@@ -47,8 +46,7 @@ const placeholderImage =
 
 export default function ShopPage() {
   const navigate = useNavigate();
-  // ✅ Get the setter functions from useCart
-  const { addToCart, totalQuantity, saveCartForUser, setRegion, setCity, setShippingFee } = useCart();
+  const { addToCart, saveCartForUser, setRegion, setCity, setShippingFee } = useCart();
 
   const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
@@ -113,12 +111,8 @@ export default function ShopPage() {
 
   return (
     <>
-      {/* Navbar */}
-      <div className="fixed top-0 w-full z-50 shadow-md bg-white">
-        <Navbar totalQuantity={totalQuantity} />
-      </div>
-
-      <main className="pt-24 px-6 md:px-20 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen">
+      {/* The Navbar and Sidebar are now provided by the main Layout component */}
+      <main className="bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen lg:pl-20 pt-16 px-6 md:px-20">
         {/* View & Pagination */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
           <div className="flex gap-3 mb-4 sm:mb-0">

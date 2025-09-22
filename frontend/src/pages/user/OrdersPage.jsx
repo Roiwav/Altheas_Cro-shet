@@ -116,7 +116,7 @@ const OrdersPage = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+      <div className="bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center min-h-screen lg:pl-20 pt-16">
         <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
         <p className="text-lg text-gray-600 dark:text-gray-300">Loading your orders...</p>
       </div>
@@ -125,8 +125,8 @@ const OrdersPage = () => {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md">
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen lg:pl-20 pt-16 flex items-center justify-center p-4">
+        <div className="max-w-4xl mx-auto bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-6 rounded-md">
           <div className="flex">
             <div className="flex-shrink-0">
               <XCircle className="h-5 w-5 text-red-500" />
@@ -153,8 +153,8 @@ const OrdersPage = () => {
 
   if (orders.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-12">
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen lg:pl-20 pt-16 flex items-center justify-center p-4">
+        <div className="text-center">
           <ShoppingBag className="mx-auto h-16 w-16 text-gray-400" />
           <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No orders yet</h3>
           <p className="mt-1 text-gray-500 dark:text-gray-400">
@@ -175,8 +175,8 @@ const OrdersPage = () => {
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen lg:pl-20 pt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Order History</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

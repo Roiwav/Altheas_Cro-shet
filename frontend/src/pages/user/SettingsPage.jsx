@@ -252,7 +252,8 @@ export default function SettingsPage() {
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
   return (
-    <div className="container mx-auto max-w-5xl py-10">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10">
+      <div className="container mx-auto max-w-5xl">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Account Settings</h1>
 
       {/* Tabs */}
@@ -478,6 +479,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

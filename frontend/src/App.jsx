@@ -1,10 +1,10 @@
 // src/App.jsx
-import { useState, useEffect, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar';
+import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
 import AdminPage from './pages/admin/AdminPage';
 import HomePage from './pages/main/HomePage';
+import { useEffect, useState } from 'react';
 import ARPage from './pages/ar/ARPage';
 import ARViewerPage from './pages/ar/ARViewerPage';
 import AboutUs from './pages/main/AboutUs';
@@ -28,12 +28,7 @@ import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import { useDarkMode } from './context/DarkModeContext.jsx';
 
 export default function App() {
-  const { darkMode } = useDarkMode();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const homeRef = useRef(null);
-  const aboutRef = useRef(null);
-  const contactRef = useRef(null);
 
   // Simulate loading time
   useEffect(() => {
@@ -43,154 +38,46 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const scrollToSection = (ref) => {
-    if (ref.current) {
-      window.scrollTo({
-        top: ref.current.offsetTop - 80, // adjust offset for header
-        behavior: 'smooth',
-      });
-    }
-  };
-
   if (loading) {
     return <Loader />;
   }
 
-  // Landing page with scroll sections
-  const LandingPage = () => (
-    <div className="space-y-0">
-      <div ref={homeRef}>
-        <HomePage
-          onAboutClick={() => scrollToSection(aboutRef)}
-          onContactClick={() => scrollToSection(contactRef)}
-        />
-      </div>
-
-      <div ref={aboutRef}>
-        <AboutUs noNavbar={true} />
-      </div>
-
-      <div ref={contactRef}>
-        <Contact noNavbar={true} />
-      </div>
-    </div>
-  );
-
-  // Regular page layout
-  const PageLayout = ({ children }) => (
-    <div className="container mx-auto px-4 py-16">{children}</div>
-  );
-
   return (
-    <div
-      className={`min-h-screen flex flex-col ${
-        darkMode ? 'dark bg-gray-900' : 'bg-white'
-      }`}
-    >
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        scrollToSection={scrollToSection}
-        homeRef={homeRef}
-        aboutRef={aboutRef}
-        contactRef={contactRef}
-      />
-
-      <div
-        className={`flex-1 min-h-screen transition-all duration-300
-        ${sidebarOpen ? 'pl-72' : 'pl-20'}
-        bg-gradient-to-br from-gray-50 via-white to-pink-50 
-        dark:from-gray-900 dark:via-gray-800 dark:to-gray-900`}
-      >
-        <Routes>
-          {/* Home and Landing Page */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<LandingPage />} />
-
-          {/* Individual Pages */}
-          <Route path="/ar" element={<ARPage />} />
-          <Route path="/view-ar" element={<ARViewerPage />} />
-          <Route
-            path="/about"
-            element={
-              <PageLayout>
-                <AboutUs />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="/contact"
-            element={
-              <PageLayout>
-                <Contact />
-              </PageLayout>
-            }
-          />
-
-          {/* Other Routes */}
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/gallery" element={<GalleryPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/data-policy" element={<DataPolicy />} />
-          <Route path="/service-terms" element={<ServiceTerm />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route
-            path="/settings"
-            element={
-              <PageLayout>
-                <SettingsPage />
-              </PageLayout>
-            }
-          />
-
-          {/* Static Pages */}
-          <Route
-            path="/shipping-returns"
-            element={
-              <PageLayout>
-                <h1 className="text-3xl font-bold mb-8">Shipping & Returns</h1>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Coming soon...
-                </p>
-              </PageLayout>
-            }
-          />
-
-          <Route
-            path="/terms"
-            element={
-              <PageLayout>
-                <h1 className="text-3xl font-bold mb-8">Terms & Conditions</h1>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Coming soon...
-                </p>
-              </PageLayout>
-            }
-          />
-
-          <Route
-            path="/privacy"
-            element={
-              <PageLayout>
-                <h1 className="text-3xl font-bold mb-8">Privacy Policy</h1>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Coming soon...
-                </p>
-              </PageLayout>
-            }
-          />
-        </Routes>
-      </div>
-    </div>
+    <Routes>
+      <Route element={<Layout />}>
+        {/* Main Pages */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/ar" element={<ARPage />} />
+        <Route path="/view-ar" element={<ARViewerPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/data-policy" element={<DataPolicy />} />
+        <Route path="/service-terms" element={<ServiceTerm />} />
+        
+        {/* Auth Pages */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        
+        {/* User-specific Pages */}
+        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        
+        {/* Admin */}
+        <Route path="/admin" element={<AdminPage />} />
+        
+        {/* Catch-all for 404 Not Found */}
+      </Route>
+    </Routes>
   );
 }

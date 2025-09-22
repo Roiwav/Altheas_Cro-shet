@@ -6,8 +6,12 @@ import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
 import { ShoppingCart, User, Menu, X, Moon, Sun } from "lucide-react";
 
-export default function Navbar({ sidebarOpen, setSidebarOpen }) {
-  const { user, isAuthenticated, logout } = useUser();
+export default function Navbar({
+  sidebarOpen,
+  setSidebarOpen = () => {},
+  isAuthPage = false,
+}) {
+  const { user, isAuthenticated, logout, isAuthenticating } = useUser();
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   // ✅ Only call useCart once
@@ -78,28 +82,30 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 pl-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link to="/" className="flex items-center">
-              <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
-                Althea Cro-shet
-              </span>
-            </Link>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 focus:outline-none"
-            >
-              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+        <div className="flex justify-between items-center h-16">
+          {/* Left & Center Group */}
+          <div className="flex items-center">
+            {/* Mobile menu button */}
+            <div className="lg:hidden mr-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 focus:outline-none"
+              >
+                {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+            {/* Logo - Adjust padding to account for sidebar */}
+            <div className="flex-shrink-0 lg:pl-16">
+              <Link to="/" className="flex items-center">
+                <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                  Althea Cro-shet
+                </span>
+              </Link>
+            </div>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -120,28 +126,32 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none"
+              className={`p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none transition-opacity
+                ${sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"}
+                lg:opacity-0 lg:pointer-events-none`}
               aria-label="Toggle dark mode"
             >
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
             {/* Cart */}
-            <Link
-              to="/checkout"
-              className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
-              aria-label="Shopping Cart"
-            >
-              <ShoppingCart size={20} />
-              {totalQuantity > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
-                  {totalQuantity}
-                </span>
-              )}
-            </Link>
+            {!isAuthPage && (
+              <Link
+                to="/checkout"
+                className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
+                aria-label="Shopping Cart"
+              >
+                <ShoppingCart size={20} />
+                {totalQuantity > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
+                    {totalQuantity}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {/* User Menu */}
-            {isAuthenticated ? (
+            {isAuthenticating ? null : isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsOpen(!isOpen)}
@@ -158,31 +168,31 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }) {
                   <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
                     <Link
                       to="/dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="block text-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                       onClick={() => setIsOpen(false)}
                     >
                       Dashboard
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="block w-full text-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       Sign out
                     </button>
                   </div>
                 )}
               </div>
-            ) : (
+            ) : !isAuthPage && (
               <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-sm font-medium text-pink-600 hover:text-white hover:bg-pink-600 dark:text-pink-400 dark:hover:bg-pink-700 rounded-md transition-colors border border-pink-600 dark:border-pink-400"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-pink-600 hover:text-white hover:bg-pink-600 dark:text-pink-400 dark:hover:bg-pink-700 rounded-md transition-colors border border-pink-600 dark:border-pink-400"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/signup"
-                  className="px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"
                 >
                   Sign Up
                 </Link>

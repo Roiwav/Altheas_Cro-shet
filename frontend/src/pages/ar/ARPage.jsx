@@ -59,45 +59,36 @@ const ARPage = () => {
   }, [flowerType, color]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header with navigation and actions */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link 
-              to="/" 
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-all duration-200 text-gray-700 dark:text-gray-200 hover:text-pink-500 dark:hover:text-pink-400"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Back to Home</span>
-            </Link>
-            
-            <h1 className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 lg:pl-20 pt-16">
+      {/* The Navbar and Sidebar are now provided by the main Layout component */}
+      <main className="container mx-auto px-4 py-6">
+        {/* Page Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
               Flower Customizer
             </h1>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleUndo}
-                disabled={history.length === 0}
-                className={`p-2 rounded-full ${history.length > 0 ? 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'} transition-colors`}
-                title="Undo"
-              >
-                <Undo className="w-5 h-5" />
-              </button>
-            </div>
+            <p className="text-gray-500 dark:text-gray-400">Create and visualize your perfect crochet flower in AR.</p>
           </div>
-          
-          {isSaved && (
-            <div className="mt-2 py-1.5 px-4 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm flex items-center justify-center space-x-2">
-              <Check className="w-4 h-4" />
-              <span>Your design has been saved!</span>
-            </div>
-          )}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleUndo}
+              disabled={history.length === 0}
+              className={`p-2 rounded-full ${history.length > 0 ? 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'} transition-colors`}
+              title="Undo"
+            >
+              <Undo className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-6">
+        {isSaved && (
+          <div className="mb-4 py-1.5 px-4 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm flex items-center justify-center space-x-2">
+            <Check className="w-4 h-4" />
+            <span>Your design has been saved!</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main AR Viewer */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
