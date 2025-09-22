@@ -1,40 +1,51 @@
-// controllers/cartController.js
-const Cart = require("../models/Cart");
+import Cart from "../models/Cart.js";
+import mongoose from "mongoose";
 
-// Get a user's cart
-exports.getCart = async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-    const cart = await Cart.findOne({ userId });
-    
-    // ... (rest of the code is the same)
-  } catch (error) {
-    console.error("Error fetching cart:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
-  }
-};
-
-// Update or create a user's cart
-exports.updateCart = async (req, res, next) => {
+// GET cart by userId
+export const getCart = async (req, res) => {
     try {
         const { userId } = req.params;
-        const { items, region, city, shippingFee } = req.body;
+        // ✅ UPDATED: Validate userId to be a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+        
+        let cart = await Cart.findOne({ userId });
+        if (!cart) cart = { userId, items: [], region: "", city: "", shippingFee: 0 }; // return empty cart with default shipping info
+        res.status(200).json(cart);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
 
-        const cart = await Cart.findOneAndUpdate(
+// POST/PUT cart for user
+export const saveCart = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        // ✅ UPDATED: Get username and shipping info from body
+        const { username, items, region, city, shippingFee } = req.body; 
+
+        if (!userId || !Array.isArray(items) || !username) {
+            return res.status(400).json({ message: "Invalid input" });
+        }
+        
+        // ✅ UPDATED: Validate userId to be a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        // Upsert: update if exists, otherwise create
+        const updatedCart = await Cart.findOneAndUpdate(
             { userId },
-            { items, region, city, shippingFee },
-            { new: true, upsert: true, runValidators: true }
+            // ✅ UPDATED: Pass all fields to be updated/created
+            { username, items, region, city, shippingFee }, 
+            { new: true, upsert: true } // create if not exists
         );
 
-        res.status(200).json({
-            message: "Cart updated successfully.",
-            cart,
-        });
-    } catch (error) {
-        // ✅ The fix: Log the error in a way that will always show up.
-        console.log("Error details:", error);
-        
-        // This part is what sends the 500 status to the frontend.
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
+        res.status(200).json(updatedCart);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
     }
 };
