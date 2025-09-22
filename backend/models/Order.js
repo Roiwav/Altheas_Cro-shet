@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema({
   userId: { type: String, required: true }, // link to logged-in user
@@ -18,4 +18,4 @@ const OrderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("Order", OrderSchema);
+module.exports = mongoose.model("Order", OrderSchema);

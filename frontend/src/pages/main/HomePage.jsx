@@ -1,7 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
+import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 
 function HomePage() {
   return (
@@ -213,39 +214,7 @@ function HomePage() {
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Loved by Customers</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto mb-8"></div>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                quote: "These crochet flowers are absolutely stunning! The quality is exceptional and they look so real.",
-                author: "Maria S.",
-                rating: 5
-              },
-              {
-                quote: "I ordered a custom piece and it exceeded all my expectations. The attention to detail is incredible.",
-                author: "John D.",
-                rating: 5
-              },
-              {
-                quote: "The perfect gift that lasts forever. My mom loved her crochet bouquet on Mother's Day!",
-                author: "Sarah M.",
-                rating: 5
-              }
-            ].map((testimonial, index) => (
-              <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg">
-                <div className="flex mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400 fill-current' : 'text-gray-300 dark:text-gray-500'}`} 
-                    />
-                  ))}
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 italic mb-6">"{testimonial.quote}"</p>
-                <p className="font-medium text-gray-900 dark:text-white">— {testimonial.author}</p>
-              </div>
-            ))}
-          </div>
+          <Testimonials />
         </div>
       </section>
 
@@ -290,6 +259,74 @@ function HomePage() {
         </div>
       </section>
     </div>
+  );
+}
+
+function Testimonials() {
+  const { testimonials = [] } = useTestimonials();
+  const [isPaused, setIsPaused] = useState(false);
+
+  // We'll show up to 10 of the most recent testimonials to keep the DOM from getting too large.
+  const testimonialsToDisplay = testimonials.slice(0, 10);
+
+  if (testimonialsToDisplay.length === 0) {
+    return (
+      <div className="text-center text-gray-500 dark:text-gray-400">
+        No testimonials yet. Be the first to leave a review!
+      </div>
+    );
+  }
+
+  // For a seamless loop, we need to duplicate the testimonials.
+  const extendedTestimonials = [...testimonialsToDisplay, ...testimonialsToDisplay];
+  // Adjust animation speed based on the number of items
+  const animationDuration = `${testimonialsToDisplay.length * 8}s`;
+
+  return (
+    <>
+      {/* 
+        This style block is for demonstration. In a real project,
+        you would move these keyframes to your global CSS file (e.g., index.css).
+      */}
+      <style>
+        {`
+          @keyframes scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+          }
+        `}
+      </style>
+      <div 
+        className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
+      >
+        <div 
+          className="flex w-max"
+          style={{ 
+            animation: `scroll ${animationDuration} linear infinite`,
+            animationPlayState: isPaused ? 'paused' : 'running' 
+          }}
+        >
+          {extendedTestimonials.map((testimonial, index) => (
+            <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg mx-4 w-[350px] md:w-[400px] flex-shrink-0">
+              <div className="flex mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400 fill-current' : 'text-gray-300 dark:text-gray-500'}`}
+                  />
+                ))}
+              </div>
+              <p className="text-gray-600 dark:text-gray-300 italic mb-6 h-24 overflow-y-auto">"{testimonial.quote}"</p>
+              <p className="font-medium text-gray-900 dark:text-white">— {testimonial.author}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
