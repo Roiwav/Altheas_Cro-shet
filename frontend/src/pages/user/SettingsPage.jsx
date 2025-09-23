@@ -13,50 +13,13 @@ import {
   Palette,
 } from "lucide-react";
 
-// In-line contexts for single-file component
-const UserContext = createContext(null);
-const DarkModeContext = createContext(null);
+import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import { UserContext } from "../../context/UserContext.jsx";
 
-const useUser = () => useContext(UserContext);
-const useDarkMode = () => useContext(DarkModeContext);
-
-// Mock data and API functions for single-file component
-const mockUser = {
-  fullName: "",
-  username: "",
-  email: "",
-  avatar: "",
-  addresses: [
-    { id: "1", label: "Home", line1: "", line2: "", city: "", state: "", postalCode: "", country: "Philippines", isDefault: true },
-    { id: "2", label: "Work", line1: "", line2: "", city: "", state: "", postalCode: "", country: "Philippines", isDefault: false },
-  ],
-  preferences: {
-    newsletter: true,
-  },
-};
-
-const mockApiRequest = async (path, options) => {
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  // The previous mock check for a hardcoded password has been removed to allow testing.
-  // In a real application, you would implement proper password validation here.
-  return { user: mockUser };
-};
 
 export default function SettingsPage() {
-  const { user, updateUser } = { user: mockUser, updateUser: () => {} }; // Using mock context
-  const [darkMode, setDarkMode] = useState(false);
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
-
-  // This useEffect hook is the fix for dark mode.
-  // It checks the darkMode state and adds or removes the 'dark' class
-  // on the document's root element (<html>).
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+  const { user, token, updateUser } = useContext(UserContext);
+  const { darkMode, toggleDarkMode } = useDarkMode();
 
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -75,6 +38,7 @@ export default function SettingsPage() {
   const [prefsPassword, setPrefsPassword] = useState("");
 
   const [activeAddressId, setActiveAddressId] = useState(null);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -84,7 +48,9 @@ export default function SettingsPage() {
         email: user.email || "",
         avatar: user.avatar || "",
       });
-      const userAddresses = Array.isArray(user.addresses) ? user.addresses : [];
+      // Ensure every address has a unique ID for local state management.
+      const userAddresses = (Array.isArray(user.addresses) ? user.addresses : [])
+        .map(addr => ({ ...addr, id: addr.id || crypto.randomUUID() }));
       setAddresses(userAddresses);
 
       const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
@@ -135,47 +101,29 @@ export default function SettingsPage() {
       toast.error("Please enter your account password to save changes.");
       return;
     }
-    if (!profile.fullName || !profile.username || !profile.email) {
-      toast.error("Full name, username, and email are required.");
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
       return;
-    }
-    const prevUsername = user?.username || "";
-    const usernameChanged = prevUsername !== profile.username;
-    if (usernameChanged) {
-      const lastChange = user?.lastUsernameChangeAt ? new Date(user.lastUsernameChangeAt) : null;
-      if (lastChange) {
-        const MS_PER_DAY = 24 * 60 * 60 * 1000;
-        const daysSince = (Date.now() - lastChange.getTime()) / MS_PER_DAY;
-        if (daysSince < 7) {
-          const daysLeft = Math.ceil(7 - daysSince);
-          toast.error(`You can change your username again in ${daysLeft} day(s).`);
-          return;
-        }
-      }
     }
 
     try {
-      const payload = {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
         username: profile.username,
         avatar: profile.avatar,
         password: profilePassword,
-      };
-      const data = await mockApiRequest("/users/me/profile", {
-        method: "PATCH",
-        body: payload,
+        }),
       });
 
-      if (data?.user) {
-        updateUser(data.user);
-      } else {
-        updateUser({
-          fullName: user?.fullName || profile.fullName,
-          username: profile.username,
-          email: user?.email || profile.email,
-          avatar: profile.avatar,
-          ...(usernameChanged ? { lastUsernameChangeAt: new Date().toISOString() } : {}),
-        });
-      }
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update profile");
+
+      const data = await res.json();
+      updateUser(data.user);
       setProfilePassword("");
       toast.success("Profile updated");
     } catch (err) {
@@ -188,6 +136,7 @@ export default function SettingsPage() {
     const newAddress = { id, label: "New Address", line1: "", line2: "", city: "", state: "", postalCode: "", country: "", isDefault: addresses.length === 0 };
     setAddresses((arr) => [...arr, newAddress]);
     setActiveAddressId(id);
+    setIsEditingAddress(true);
   };
 
   const updateAddress = (id, field, value) => {
@@ -195,21 +144,25 @@ export default function SettingsPage() {
   };
 
   const removeAddress = (id) => {
-    const newAddresses = addresses.filter((a) => a.id !== id);
-    setAddresses(newAddresses);
+    let newAddresses = addresses.filter((a) => a.id !== id);
+
     if (newAddresses.length > 0) {
       // If the removed address was the active one, set the first one as active
       if (activeAddressId === id) {
         setActiveAddressId(newAddresses[0].id);
+        // If we are removing the active address, don't stay in edit mode for the new active one
+        setIsEditingAddress(false);
       }
+
       // If the default address was removed and another one exists, set the new first one as default
       const defaultExists = newAddresses.some(addr => addr.isDefault);
       if (!defaultExists) {
-        setAddresses(newAddresses.map((a, i) => i === 0 ? { ...a, isDefault: true } : a));
+        newAddresses = newAddresses.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
       }
     } else {
       setActiveAddressId(null);
     }
+    setAddresses(newAddresses);
   };
 
   const setDefaultAddress = (id) => {
@@ -221,17 +174,34 @@ export default function SettingsPage() {
       toast.error("Please enter your account password to save changes.");
       return;
     }
-    try {
-      const data = await mockApiRequest("/users/me/addresses", {
-        method: "PUT",
-        body: { addresses, password: addressesPassword },
-      });
-      if (data?.user) {
-        updateUser(data.user);
-      } else {
-        updateUser({ ...user, addresses });
+
+    // Validate that all addresses have the required fields filled out.
+    for (const addr of addresses) {
+      // Based on the error, line1, city, state, and postalCode are required.
+      // It's good practice to require a label and country as well.
+      if (!addr.label || !addr.line1 || !addr.city || !addr.state || !addr.postalCode || !addr.country) {
+        toast.error(`Please fill all required fields for address: "${addr.label || 'New Address'}"`);
+        setActiveAddressId(addr.id); // Switch to the incomplete address
+        return;
       }
+    }
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ addresses, password: addressesPassword }),
+      });
+
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to save addresses");
+
+      const data = await res.json();
+      updateUser(data.user);
       setAddressesPassword("");
+      setIsEditingAddress(false); // Hide form on successful save
       toast.success("Addresses saved");
     } catch (err) {
       toast.error(err.message || "Failed to save addresses");
@@ -247,14 +217,22 @@ export default function SettingsPage() {
       toast.error("Passwords do not match");
       return;
     }
+    if (!token) {
+      toast.error("You must be logged in to change your password.");
+      return;
+    }
     try {
-      await mockApiRequest("/auth/change-password", {
+      const res = await fetch("http://localhost:5001/api/v1/auth/change-password", {
         method: "POST",
-        body: {
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
           currentPassword: security.currentPassword,
           newPassword: security.newPassword,
-        },
+        }),
       });
+
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to change password");
+
       toast.success("Password changed");
       setSecurity({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
@@ -267,16 +245,21 @@ export default function SettingsPage() {
       toast.error("Please enter your account password to save changes.");
       return;
     }
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
+      return;
+    }
     try {
-      const data = await mockApiRequest("/users/me/preferences", {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
         method: "PATCH",
-        body: { preferences: prefs, password: prefsPassword },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferences: prefs, password: prefsPassword }),
       });
-      if (data?.user) {
-        updateUser(data.user);
-      } else {
-        updateUser({ preferences: prefs });
-      }
+
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to save preferences");
+
+      const data = await res.json();
+      updateUser(data.user);
       setPrefsPassword("");
       toast.success("Preferences saved");
     } catch (err) {
@@ -400,9 +383,12 @@ export default function SettingsPage() {
             <div className="flex flex-col md:flex-row items-center gap-4">
               <Field label="Saved Addresses">
                 <select
-                  className="w-full md:w-auto px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full md:w-64 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                   value={activeAddressId === null ? "" : activeAddressId}
-                  onChange={(e) => setActiveAddressId(e.target.value)}
+                  onChange={(e) => {
+                    setActiveAddressId(e.target.value);
+                    setIsEditingAddress(false); // Hide form when switching addresses
+                  }}
                 >
                   {addresses.length === 0 && (
                     <option disabled value="">
@@ -416,8 +402,13 @@ export default function SettingsPage() {
                   ))}
                 </select>
               </Field>
+              {activeAddress && !isEditingAddress && (
+                <button onClick={() => setIsEditingAddress(true)} className="text-pink-600 dark:text-pink-400 hover:underline text-sm font-medium">
+                  Edit
+                </button>
+              )}
             </div>
-            {activeAddress && (
+            {activeAddress && isEditingAddress && (
               <div className="space-y-4">
                 <div key={activeAddress.id} className={`p-4 rounded-xl border ${activeAddress.isDefault ? "border-pink-500" : "border-gray-200 dark:border-gray-700"}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifyToken } = require("../middleware/authMiddleware.js");
 
 const router = express.Router();
 
@@ -128,6 +129,38 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
+// =============================
+// CHANGE PASSWORD
+// =============================
+router.post("/change-password", verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect current password" });
+    }
+
+    user.password = newPassword; // The 'pre-save' hook in User.js will hash it
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("Change Password error:", err);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });

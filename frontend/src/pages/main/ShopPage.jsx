@@ -46,7 +46,15 @@ const placeholderImage =
 
 export default function ShopPage() {
   const navigate = useNavigate();
-  const { addToCart, totalQuantity, saveCartForUser } = useCart();
+  const {
+    addToCart,
+    totalQuantity,
+    region,
+    city,
+    setRegion,
+    setCity,
+    setShippingFee,
+  } = useCart();
 
   const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
@@ -99,10 +107,8 @@ export default function ShopPage() {
   const handleAddToCart = async (product) => {
     if (!product) return;
     try {
+      // addToCart already handles saving the cart to the backend
       await addToCart(product, 1);
-      if (saveCartForUser) {
-        await saveCartForUser(); // ensure backend sync
-      }
       toast.success(`${product.name} added to cart!`);
       setSelectedProduct(null);
     } catch (err) {
@@ -114,8 +120,10 @@ export default function ShopPage() {
   // Handle Buy Now
   const handleBuyNow = (product) => {
     if (!product) return;
-    const shippingFee = shippingFees[city] || 0;
-    navigate("/checkout", { state: { product, region, city, shippingFee } });
+    const shippingFee = shippingFees[localCity] || 0;
+    // Pass all necessary info in the product object for the checkout page
+    const productForCheckout = { ...product, shippingFee, region: localRegion, city: localCity };
+    navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
 
@@ -294,8 +302,8 @@ export default function ShopPage() {
                       className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                       value={localRegion} // ✅ Use local state
                       onChange={(e) => {
-                        setRegion(e.target.value);
-                        setCity(regions[e.target.value][0]);
+                        setLocalRegion(e.target.value);
+                        setLocalCity(regions[e.target.value][0]);
                       }}
                     >
                       {Object.keys(regions).map((r) => (
@@ -310,14 +318,14 @@ export default function ShopPage() {
                       value={localCity} // ✅ Use local state
                       onChange={(e) => setLocalCity(e.target.value)} // ✅ Update local state
                     >
-                      {regions[region].map((c) => (
+                      {regions[localRegion].map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
                   </div>
                   <div className="flex justify-between pt-2">
                     <span className="text-gray-600 dark:text-gray-400">Shipping Fee:</span>
-                    <span className="text-gray-900 dark:text-white font-semibold">₱{shippingFees[localCity] || 0}</span> {/* ✅ Use local state */}
+                    <span className="text-gray-900 dark:text-white font-semibold">{currencyFormatter.format(shippingFees[localCity] || 0)}</span>
                   </div>
                 </div>
 

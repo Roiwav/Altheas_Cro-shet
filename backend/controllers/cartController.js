@@ -1,8 +1,8 @@
-import Cart from "../models/Cart.js";
-import mongoose from "mongoose";
+const Cart = require("../models/Cart.js");
+const mongoose = require("mongoose");
 
 // GET cart by userId
-export const getCart = async (req, res) => {
+const getCart = async (req, res) => {
     try {
         const { userId } = req.params;
         // ✅ UPDATED: Validate userId to be a valid ObjectId
@@ -20,7 +20,7 @@ export const getCart = async (req, res) => {
 };
 
 // POST/PUT cart for user
-export const saveCart = async (req, res) => {
+const saveCart = async (req, res) => {
     try {
         const { userId } = req.params;
         // ✅ UPDATED: Get username and shipping info from body
@@ -48,4 +48,9 @@ export const saveCart = async (req, res) => {
         console.error(err);
         res.status(500).json({ message: "Server error" });
     }
+};
+
+module.exports = {
+    getCart,
+    saveCart,
 };
