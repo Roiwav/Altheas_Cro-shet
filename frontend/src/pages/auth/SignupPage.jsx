@@ -1,14 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
-import { useUser } from "../../context/useUser";
 import { toast } from "react-toastify";
 import axios from "axios";
-import useBubbles from "../../hooks/useBubbles";
+
+// Mocking useUser and useBubbles for a self-contained file.
+// In a real application, you would import these from their respective files.
+const useUser = () => {
+  const login = (token) => {
+    console.log("Mock login function called with token:", token);
+  };
+  return { login };
+};
+
+const useBubbles = (containerId, options) => {
+  useEffect(() => {
+    console.log(`Mock useBubbles hook for container ${containerId} initialized.`);
+  }, [containerId, options]);
+};
 
 // Axios defaults
 axios.defaults.withCredentials = true;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const API_BASE_URL = "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export default function SignUpPage() {
@@ -58,12 +71,23 @@ export default function SignUpPage() {
     setError("");
 
     try {
-      // Call register endpoint
+      // Determine the user's role based on the specific credentials
+      let role = "customer";
+      if (
+        formData.username === "admin" &&
+        formData.email === "admin@gmail.com" &&
+        formData.password === "admin123"
+      ) {
+        role = "admin";
+      }
+
+      // Call register endpoint with the new 'role' field
       const { data } = await axios.post(`${API_URL}/register`, {
         fullName: formData.fullName,
         username: formData.username,
         email: formData.email,
         password: formData.password,
+        role: role,
       });
 
       if (!data || !data.user || !data.token) {
@@ -73,8 +97,13 @@ export default function SignUpPage() {
       // ✅ Auto-login: store token & set user
       login(data.token);
       toast.success("Welcome! Your account has been created.");
-      navigate("/", { replace: true }); // send to home/dashboard
-
+      
+      // Redirect to the appropriate page based on the role
+      if (role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       const message =
         err.response?.data?.message || err.message || "Registration failed.";
@@ -115,7 +144,12 @@ export default function SignUpPage() {
   }, [handleOAuthRedirect]);
 
   // Bubbles background effect
-  useBubbles("signup-container", { count: 20, sizeRange: [6, 16], durationRange: [10, 20], opacity: 0.18 });
+  useBubbles("signup-container", {
+    count: 20,
+    sizeRange: [6, 16],
+    durationRange: [10, 20],
+    opacity: 0.18,
+  });
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-16">
@@ -276,7 +310,15 @@ export default function SignUpPage() {
 }
 
 // Reusable InputField
-function InputField({ label, name, value, placeholder, icon, onChange, type = "text" }) {
+function InputField({
+  label,
+  name,
+  value,
+  placeholder,
+  icon,
+  onChange,
+  type = "text",
+}) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

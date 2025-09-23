@@ -1,3 +1,4 @@
+// src/routes/userRoutes.js
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -21,6 +22,7 @@ function parseDataUrl(dataUrl) {
 }
 
 // PATCH /api/v1/users/me/profile
+// Updates a user's profile information.
 router.patch("/me/profile", auth, async (req, res) => {
   try {
     const { username, avatar, password } = req.body || {};
@@ -99,6 +101,8 @@ router.patch("/me/profile", auth, async (req, res) => {
         username: user.username,
         email: user.email,
         avatar: user.avatar || "",
+        addresses: user.addresses, // Added addresses to the response
+        preferences: user.preferences, // Added preferences to the response
         lastUsernameChangeAt: user.lastUsernameChangeAt,
       },
     });
@@ -107,5 +111,75 @@ router.patch("/me/profile", auth, async (req, res) => {
     return res.status(500).json({ message: "Server error, please try again later" });
   }
 });
+
+// PUT /api/v1/users/me/addresses
+// Updates a user's address list.
+router.put("/me/addresses", auth, async (req, res) => {
+  try {
+    const { addresses, password } = req.body || {};
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required to update addresses" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const valid = await user.matchPassword(password);
+    if (!valid) return res.status(400).json({ message: "Invalid account password" });
+
+    if (!Array.isArray(addresses)) {
+      return res.status(400).json({ message: "Addresses must be an array" });
+    }
+
+    // This is the key change: update the entire array at once.
+    // This is a more atomic and reliable way to handle nested array updates.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { addresses: addresses } }
+    );
+
+    // Re-fetch the user to get the latest state from the database
+    const updatedUser = await User.findById(user._id).select("-password -__v");
+
+    return res.json({
+      message: "Addresses updated successfully",
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error("Address update error:", err);
+    return res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
+// PATCH /api/v1/users/me/preferences
+// Updates user preferences
+router.patch('/me/preferences', auth, async (req, res) => {
+  try {
+    const { preferences, password } = req.body || {};
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required to update preferences" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const valid = await user.matchPassword(password);
+    if (!valid) return res.status(400).json({ message: "Invalid account password" });
+
+    // Merge the new preferences with existing ones
+    user.preferences = { ...user.preferences, ...preferences };
+
+    await user.save();
+
+    const updatedUser = await User.findById(user._id).select("-password -__v");
+    res.json({ message: "Preferences updated successfully", user: updatedUser });
+  } catch (err) {
+    console.error("Preferences update error:", err);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
 
 module.exports = router;

@@ -1,4 +1,4 @@
-// server.js (CommonJS)
+// server.js
 const express = require("express");
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,8 +7,11 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 
 const setupChangeStream = require('./testimonialChangeStream.js');
+const cartRoutes = require("./routes/cartRoutes.js");
+const authRoutes = require("./routes/authRoutes.js");
+const userRoutes = require("./routes/userRoutes.js");
+const orderRoutes = require("./routes/orderRoutes.js");
 
-// Load environment variables
 dotenv.config();
 
 const cartRoutes = require("./routes/cartRoutes");
@@ -31,17 +34,13 @@ const io = new Server(server, {
 
 // Middleware
 app.use(express.json({ limit: "5mb" }));
-app.use(
-  cors({
-    origin: "http://localhost:5173", // frontend URL
-    credentials: true,
-  })
-);
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 
 // API routes
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/v1/testimonials", testimonialRoutes);
 // MongoDB connection
 mongoose
@@ -55,3 +54,5 @@ mongoose
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

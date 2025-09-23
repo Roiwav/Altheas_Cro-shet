@@ -1,5 +1,22 @@
+// src/models/User.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+
+const AddressSchema = new mongoose.Schema({
+  label: { type: String, trim: true },
+  line1: { type: String, required: true, trim: true },
+  line2: { type: String, trim: true },
+  city: { type: String, required: true, trim: true },
+  state: { type: String, required: true, trim: true },
+  postalCode: { type: String, required: true, trim: true },
+  country: { type: String, required: true, trim: true },
+  isDefault: { type: Boolean, default: false }
+}, { _id: false });
+
+const PreferencesSchema = new mongoose.Schema({
+  newsletter: { type: Boolean, default: true }
+}, { _id: false });
+
 
 const userSchema = new mongoose.Schema(
   {
@@ -8,6 +25,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     avatar: { type: String, default: "" },
+    addresses: [AddressSchema],
+    preferences: PreferencesSchema,
     lastUsernameChangeAt: { type: Date },
   },
   { timestamps: true }

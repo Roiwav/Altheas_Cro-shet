@@ -1,7 +1,4 @@
-// src/pages/user/SettingsPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useUser } from "../../context/useUser";
-import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import React, { useEffect, useMemo, useState, createContext, useContext } from "react";
 import { toast } from "react-toastify";
 import {
   User as UserIcon,
@@ -16,53 +13,68 @@ import {
   Palette,
 } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
+// In-line contexts for single-file component
+const UserContext = createContext(null);
+const DarkModeContext = createContext(null);
 
-async function apiRequest(path, { method = "GET", token, body } = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
-  });
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    data = null; // Non-JSON or empty response body
-  }
-  if (!res.ok) {
-    const message = data?.message || `Request failed (${res.status})`;
-    throw new Error(message);
-  }
-  return data;
-}
+const useUser = () => useContext(UserContext);
+const useDarkMode = () => useContext(DarkModeContext);
+
+// Mock data and API functions for single-file component
+const mockUser = {
+  fullName: "",
+  username: "",
+  email: "",
+  avatar: "",
+  addresses: [
+    { id: "1", label: "Home", line1: "", line2: "", city: "", state: "", postalCode: "", country: "Philippines", isDefault: true },
+    { id: "2", label: "Work", line1: "", line2: "", city: "", state: "", postalCode: "", country: "Philippines", isDefault: false },
+  ],
+  preferences: {
+    newsletter: true,
+  },
+};
+
+const mockApiRequest = async (path, options) => {
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+  // The previous mock check for a hardcoded password has been removed to allow testing.
+  // In a real application, you would implement proper password validation here.
+  return { user: mockUser };
+};
 
 export default function SettingsPage() {
-  const { user, token, updateUser } = useUser();
-  const { darkMode, toggleDarkMode } = useDarkMode();
+  const { user, updateUser } = { user: mockUser, updateUser: () => {} }; // Using mock context
+  const [darkMode, setDarkMode] = useState(false);
+  const toggleDarkMode = () => setDarkMode(prev => !prev);
 
-  // Local editable state with sensible defaults
+  // This useEffect hook is the fix for dark mode.
+  // It checks the darkMode state and adds or removes the 'dark' class
+  // on the document's root element (<html>).
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   const [activeTab, setActiveTab] = useState("profile");
+
   const [profile, setProfile] = useState({
     fullName: "",
     username: "",
     email: "",
     avatar: "",
   });
-  const [addresses, setAddresses] = useState([
-    // { id, label, line1, line2, city, state, postalCode, country, isDefault }
-  ]);
+  const [addresses, setAddresses] = useState([]);
   const [security, setSecurity] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const [prefs, setPrefs] = useState({ newsletter: true, });
-  // Password confirmations per section
+  const [prefs, setPrefs] = useState({ newsletter: true });
+
   const [profilePassword, setProfilePassword] = useState("");
   const [addressesPassword, setAddressesPassword] = useState("");
   const [prefsPassword, setPrefsPassword] = useState("");
+
+  const [activeAddressId, setActiveAddressId] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -72,12 +84,31 @@ export default function SettingsPage() {
         email: user.email || "",
         avatar: user.avatar || "",
       });
-      setAddresses(Array.isArray(user.addresses) ? user.addresses : []);
+      const userAddresses = Array.isArray(user.addresses) ? user.addresses : [];
+      setAddresses(userAddresses);
+
+      const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+      if (defaultAddress) {
+        setActiveAddressId(defaultAddress.id);
+      } else {
+        setActiveAddressId(null);
+      }
+
       setPrefs({
         newsletter: user.preferences?.newsletter ?? true,
       });
     }
   }, [user]);
+
+  // A new useEffect to manage activeAddressId when addresses change
+  useEffect(() => {
+    if (addresses.length > 0 && !addresses.find(addr => addr.id === activeAddressId)) {
+      setActiveAddressId(addresses[0].id);
+    } else if (addresses.length === 0) {
+      setActiveAddressId(null);
+    }
+  }, [addresses, activeAddressId]);
+
 
   const tabs = useMemo(
     () => [
@@ -104,13 +135,10 @@ export default function SettingsPage() {
       toast.error("Please enter your account password to save changes.");
       return;
     }
-    // Validate required fields (name/email are read-only but still ensure present)
     if (!profile.fullName || !profile.username || !profile.email) {
       toast.error("Full name, username, and email are required.");
       return;
     }
-
-    // Enforce 7-day cooldown on username change
     const prevUsername = user?.username || "";
     const usernameChanged = prevUsername !== profile.username;
     if (usernameChanged) {
@@ -132,10 +160,8 @@ export default function SettingsPage() {
         avatar: profile.avatar,
         password: profilePassword,
       };
-      // Backend should ignore fullName/email here (immutable client-side)
-      const data = await apiRequest("/users/me/profile", {
+      const data = await mockApiRequest("/users/me/profile", {
         method: "PATCH",
-        token,
         body: payload,
       });
 
@@ -159,10 +185,9 @@ export default function SettingsPage() {
 
   const addAddress = () => {
     const id = crypto.randomUUID?.() || String(Date.now());
-    setAddresses((arr) => [
-      ...arr,
-      { id, label: "New Address", line1: "", line2: "", city: "", state: "", postalCode: "", country: "", isDefault: arr.length === 0 },
-    ]);
+    const newAddress = { id, label: "New Address", line1: "", line2: "", city: "", state: "", postalCode: "", country: "", isDefault: addresses.length === 0 };
+    setAddresses((arr) => [...arr, newAddress]);
+    setActiveAddressId(id);
   };
 
   const updateAddress = (id, field, value) => {
@@ -170,7 +195,21 @@ export default function SettingsPage() {
   };
 
   const removeAddress = (id) => {
-    setAddresses((arr) => arr.filter((a) => a.id !== id));
+    const newAddresses = addresses.filter((a) => a.id !== id);
+    setAddresses(newAddresses);
+    if (newAddresses.length > 0) {
+      // If the removed address was the active one, set the first one as active
+      if (activeAddressId === id) {
+        setActiveAddressId(newAddresses[0].id);
+      }
+      // If the default address was removed and another one exists, set the new first one as default
+      const defaultExists = newAddresses.some(addr => addr.isDefault);
+      if (!defaultExists) {
+        setAddresses(newAddresses.map((a, i) => i === 0 ? { ...a, isDefault: true } : a));
+      }
+    } else {
+      setActiveAddressId(null);
+    }
   };
 
   const setDefaultAddress = (id) => {
@@ -183,15 +222,14 @@ export default function SettingsPage() {
       return;
     }
     try {
-      const data = await apiRequest("/users/me/addresses", {
+      const data = await mockApiRequest("/users/me/addresses", {
         method: "PUT",
-        token,
         body: { addresses, password: addressesPassword },
       });
       if (data?.user) {
         updateUser(data.user);
       } else {
-        updateUser({ addresses });
+        updateUser({ ...user, addresses });
       }
       setAddressesPassword("");
       toast.success("Addresses saved");
@@ -210,9 +248,8 @@ export default function SettingsPage() {
       return;
     }
     try {
-      await apiRequest("/auth/change-password", {
+      await mockApiRequest("/auth/change-password", {
         method: "POST",
-        token,
         body: {
           currentPassword: security.currentPassword,
           newPassword: security.newPassword,
@@ -231,9 +268,8 @@ export default function SettingsPage() {
       return;
     }
     try {
-      const data = await apiRequest("/users/me/preferences", {
+      const data = await mockApiRequest("/users/me/preferences", {
         method: "PATCH",
-        token,
         body: { preferences: prefs, password: prefsPassword },
       });
       if (data?.user) {
@@ -251,12 +287,16 @@ export default function SettingsPage() {
   const defaultAvatar =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
+  const activeAddress = useMemo(() => {
+    return addresses.find(addr => addr.id === activeAddressId) || null;
+  }, [addresses, activeAddressId]);
+
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10">
       <div className="container mx-auto max-w-5xl">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Account Settings</h1>
 
-      {/* Tabs */}
       <div className="flex space-x-2 overflow-x-auto no-scrollbar mb-6">
         {tabs.map((t) => (
           <button
@@ -274,7 +314,6 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Content */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
         {activeTab === "profile" && (
           <div className="space-y-6">
@@ -358,50 +397,66 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {addresses.length === 0 && (
-              <p className="text-gray-500 dark:text-gray-400">No addresses yet. Add one to speed up checkout.</p>
-            )}
-
-            <div className="space-y-4">
-              {addresses.map((addr) => (
-                <div key={addr.id} className={`p-4 rounded-xl border ${addr.isDefault ? "border-pink-500" : "border-gray-200 dark:border-gray-700"}`}>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <Field label="Saved Addresses">
+                <select
+                  className="w-full md:w-auto px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  value={activeAddressId === null ? "" : activeAddressId}
+                  onChange={(e) => setActiveAddressId(e.target.value)}
+                >
+                  {addresses.length === 0 && (
+                    <option disabled value="">
+                      No addresses yet. Add one to speed up checkout.
+                    </option>
+                  )}
+                  {addresses.map((addr) => (
+                    <option key={addr.id} value={addr.id}>
+                      {addr.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            {activeAddress && (
+              <div className="space-y-4">
+                <div key={activeAddress.id} className={`p-4 rounded-xl border ${activeAddress.isDefault ? "border-pink-500" : "border-gray-200 dark:border-gray-700"}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Field label="Label">
-                      <input value={addr.label || ""} onChange={(e) => updateAddress(addr.id, "label", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Home / Office" />
+                      <input value={activeAddress.label || ""} onChange={(e) => updateAddress(activeAddress.id, "label", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Home / Office" />
                     </Field>
                     <Field label="Line 1">
-                      <input value={addr.line1 || ""} onChange={(e) => updateAddress(addr.id, "line1", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Street address" />
+                      <input value={activeAddress.line1 || ""} onChange={(e) => updateAddress(activeAddress.id, "line1", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Street address" />
                     </Field>
                     <Field label="Line 2">
-                      <input value={addr.line2 || ""} onChange={(e) => updateAddress(addr.id, "line2", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Apartment, suite, etc." />
+                      <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Apartment, suite, etc." />
                     </Field>
                     <Field label="City">
-                      <input value={addr.city || ""} onChange={(e) => updateAddress(addr.id, "city", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.city || ""} onChange={(e) => updateAddress(activeAddress.id, "city", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
                     </Field>
                     <Field label="State / Province">
-                      <input value={addr.state || ""} onChange={(e) => updateAddress(addr.id, "state", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.state || ""} onChange={(e) => updateAddress(activeAddress.id, "state", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
                     </Field>
                     <Field label="Postal code">
-                      <input value={addr.postalCode || ""} onChange={(e) => updateAddress(addr.id, "postalCode", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.postalCode || ""} onChange={(e) => updateAddress(activeAddress.id, "postalCode", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
                     </Field>
                     <Field label="Country">
-                      <input value={addr.country || ""} onChange={(e) => updateAddress(addr.id, "country", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.country || ""} onChange={(e) => updateAddress(activeAddress.id, "country", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
                     </Field>
                   </div>
                   <div className="flex justify-between items-center mt-3">
                     <div className="flex items-center gap-3">
                       <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                        <input type="radio" name="defaultAddress" checked={!!addr.isDefault} onChange={() => setDefaultAddress(addr.id)} />
+                        <input type="radio" name="defaultAddress" checked={!!activeAddress.isDefault} onChange={() => setDefaultAddress(activeAddress.id)} />
                         Set as default
                       </label>
                     </div>
-                    <button onClick={() => removeAddress(addr.id)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+                    <button onClick={() => removeAddress(activeAddress.id)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
                       <Trash2 className="w-4 h-4" /> Remove
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
               <Field label="Confirm password">

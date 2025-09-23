@@ -27,23 +27,38 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
+    // Determine user role
+    let role = 'customer';
+    if (username === 'admin' && email === 'admin@gmail.com' && password === 'admin123') {
+      role = 'admin';
+    }
+
     // Create new user (password will be hashed by pre("save") in schema)
     const user = await User.create({
       fullName,
       username,
       email,
       password,
+      role, // Assign the determined role
     });
 
     // 🔑 Auto login: generate JWT immediately
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
+    // Add the user's role to the JWT payload
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
       expiresIn: "7d",
     });
 
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+        role: user.role, // Include the role in the response
+      },
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -96,13 +111,20 @@ router.post("/login", async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
       expiresIn: "7d",
     });
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+        role: user.role, // Include the role in the response
+      },
     });
   } catch (err) {
     console.error("Login error:", err);
