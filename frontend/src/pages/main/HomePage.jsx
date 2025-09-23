@@ -1,11 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
+import emailjs from '@emailjs/browser';
+import { toast } from 'react-toastify';
 
 function HomePage() {
   const { aboutRef, contactRef } = useOutletContext() || {};
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
+  // Initialize EmailJS - it's safe to call this multiple times.
+  useEffect(() => {
+    // Replace with your EmailJS Public Key
+    emailjs.init("YXAWeRbfmChLSofYa"); 
+  }, []);
+
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubscribing(true);
+    const form = e.target;
+    const email = form.email.value;
+
+    
+    // Reuse  existing contact form template.
+   
+    const serviceID = "service_dq2932e";// EmailJS service ID
+    const templateID = "template_yx6apnf"; //contact form template ID
+
+    const templateParams = {
+      name: 'Newsletter Subscriber',
+      email: email,
+      inquiry_subject: 'New Newsletter Subscription',
+      message: `Please add this email to the newsletter list: ${email}`,
+    };
+
+    try {
+      await emailjs.send(serviceID, templateID, templateParams);
+      toast.success("Thanks for subscribing! 🎉");
+      form.reset();
+    } catch (error) {
+      console.error("Failed to subscribe:", error);
+      toast.error("Oops! Something went wrong. Please try again.");
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
   return (
     <div className="space-y-0">
       {/* Hero Section */}
@@ -227,13 +266,7 @@ function HomePage() {
           </p>
           
           <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              const email = e.target.email.value;
-              // TODO: Implement newsletter subscription
-              console.log('Subscribed:', email);
-              e.target.reset();
-            }}
+            onSubmit={handleNewsletterSubmit}
             className="space-y-4 max-w-md mx-auto"
           >
             <div className="flex flex-col sm:flex-row gap-4">
@@ -247,9 +280,10 @@ function HomePage() {
               />
               <button 
                 type="submit"
-                className="bg-white text-pink-600 hover:bg-gray-100 font-medium py-3 px-8 rounded-full transition-colors"
+                disabled={isSubscribing}
+                className="bg-white text-pink-600 hover:bg-gray-100 font-medium py-3 px-8 rounded-full transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Subscribe
+                {isSubscribing ? 'Subscribing...' : 'Subscribe'}
               </button>
             </div>
             <p className="text-pink-100 text-sm">
