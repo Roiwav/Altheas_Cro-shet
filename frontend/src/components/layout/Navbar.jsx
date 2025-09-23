@@ -53,7 +53,7 @@ export default function Navbar({
       // save current cart to server for this user before logging out
       const uid = user?._id || user?.id;
       if (uid) {
-        await saveCartForUser(uid);
+        await saveCartForUser(uid, cartItems, user.username);
       }
     } catch (err) {
       console.error("Failed saving cart on logout:", err);

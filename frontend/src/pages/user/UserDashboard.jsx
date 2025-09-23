@@ -1,20 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Package, Heart, Home, User, ShoppingBag } from 'lucide-react';
+import { Loader2, Package, Heart, Home, User, ShoppingBag, XCircle } from 'lucide-react';
+import { useUser } from '../../context/useUser';
+
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+};
+
+// Currency formatter
+const currencyFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+});
 
 function UserDashboard() {
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, token } = useUser();
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user || !token) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('http://localhost:5001/api/orders/myorders', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Failed to fetch orders.');
+        const data = await response.json();
+        setOrders(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [user, token]);
 
-  const stats = [
+  const stats = [
     { 
       title: 'Orders', 
-      value: '5', 
+      value: orders.length.toString(),
       icon: <Package className="w-6 h-6" />, 
       color: 'pink', 
       link: '/orders' 
@@ -22,13 +55,13 @@ function UserDashboard() {
     { 
       title: 'Wishlist', 
       value: '12', 
-      icon: <Heart className="w-6 h-6" />, 
+      icon: <Heart className="w-6 h-6" />, 
       color: 'purple', 
       link: '/wishlist' 
     },
     { 
       title: 'Addresses', 
-      value: '2', 
+      value: '', 
       icon: <Home className="w-6 h-6" />, 
       color: 'blue', 
       link: '/settings?tab=addresses' 
@@ -41,16 +74,36 @@ function UserDashboard() {
       link: '/settings?tab=profile' 
     }
   ];
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="w-12 h-12 text-pink-600 dark:text-pink-400 animate-spin" />
+      </div>
+    );
+  }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-pink-600 dark:text-pink-400 animate-spin" />
-      </div>
-    );
-  }
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="max-w-md mx-auto bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-6 rounded-md text-center">
+          <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <h3 className="mt-4 text-lg font-medium text-red-800 dark:text-red-200">Could not load dashboard data</h3>
+          <p className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</p>
+          <div className="mt-4">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  return (
+  return (
     <div className="min-h-screen p-4 sm:p-6 bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
@@ -119,27 +172,55 @@ function UserDashboard() {
 
         {/* Recent Orders */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center">
               <ShoppingBag className="w-5 h-5 mr-2 text-pink-600 dark:text-pink-400" />
               Recent Orders
             </h2>
-          </div>
-          <div className="p-8 text-center">
-            <div className="mx-auto w-16 h-16 bg-pink-50 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="w-8 h-8 text-pink-600 dark:text-pink-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No orders yet</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-              You haven't placed any orders yet. Start shopping to see your orders here.
-            </p>
-            <Link 
-              to="/shop" 
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200"
-            >
-              Start Shopping
-            </Link>
-          </div>
+            {orders.length > 0 && (
+              <Link to="/orders" className="text-sm font-medium text-pink-600 hover:underline">
+                View All
+              </Link>
+            )}
+          </div>
+          {orders.length > 0 ? (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+              {orders.slice(0, 3).map(order => (
+                <li key={order._id}>
+                  <Link to="/orders" className="block hover:bg-gray-50 dark:hover:bg-gray-700/50 p-4 sm:p-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-pink-600 truncate">
+                        Order #{order._id.substring(0, 8)}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {formatDate(order.createdAt)}
+                      </p>
+                    </div>
+                    <div className="mt-2 sm:flex sm:justify-between">
+                      <div className="sm:flex">
+                        <p className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                          {order.products.length} item(s)
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center text-sm text-gray-900 dark:text-white sm:mt-0 font-semibold">
+                        <p>{currencyFormatter.format(order.total)}</p>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="p-8 text-center">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No recent orders</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                When you place an order, it will appear here.
+              </p>
+              <Link to="/shop" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200">
+                Start Shopping
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

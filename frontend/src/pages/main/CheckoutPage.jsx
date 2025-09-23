@@ -2,6 +2,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { toast } from "react-toastify";
 
 import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
@@ -12,18 +13,31 @@ export default function CheckoutPage() {
 
     const {
         cartItems,
+        getId, // Import the getId helper function
         updateQuantity,
         removeFromCart,
-        region,
-        city,
+        shippingAddress,
         shippingFee,
         clearCart
     } = useCart();
     
-    const { user, isAuthenticated } = useUser?.() || { user: null, isAuthenticated: false };
+    const { user, isAuthenticated, token, isLoading } = useUser?.() || { user: null, isAuthenticated: false, token: null, isLoading: true };
     const toastShown = useRef(false);
 
     const singleProduct = location.state?.product;
+
+    // This useEffect handles redirecting unauthenticated users.
+    useEffect(() => {
+        // Wait until the authentication status is confirmed and use a ref to ensure
+        // the toast and redirect only happen once.
+        if (!isLoading && !isAuthenticated && !toastShown.current) {
+            // Mark that we've shown the toast to prevent it from showing again on re-renders.
+            toastShown.current = true;
+            toast.info("You must be logged in to proceed to checkout.");
+            // Redirect to login, and pass the current location to come back after login.
+            navigate("/login", { state: { from: location.pathname } });
+        }
+    }, [isLoading, isAuthenticated, navigate, location]);
 
     const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
@@ -51,58 +65,81 @@ export default function CheckoutPage() {
         }
 
         try {
-            const orderData = {
-                userId: user?.id,
-                username: user?.username,
-                products: checkoutItems.map(item => ({
-                    productId: item._id || item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.qty || 1,
-                    variation: item.variation,
-                })),
-                region: region, 
-                city: city,
-                shippingFee: shippingFee,
-                total: totalCost,
-            };
+            // Create an array of promises, one for each order to be placed.
+            const orderPromises = checkoutItems.map(item => {
+                const itemTotal = item.price * (item.qty || 1);
+                // Apply the shipping fee to each individual order.
+                const orderShippingFee = singleProduct ? singleProduct.shippingFee : shippingFee;
+                const orderTotal = itemTotal + orderShippingFee;
 
-            const res = await fetch("http://localhost:5001/api/orders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orderData),
+                const orderData = {
+                    userId: user?.id,
+                    username: user?.username,
+                    products: [{ // The products array now contains only one item
+                        productId: item._id || item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.qty || 1,
+                        image: item.image,
+                        variation: item.variation,
+                    }],
+                    shippingAddress: singleProduct ? singleProduct.shippingAddress : shippingAddress,
+                    shippingFee: orderShippingFee,
+                    total: orderTotal,
+                };
+
+                return fetch("http://localhost:5001/api/orders", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(orderData),
+                });
             });
 
-            const data = await res.json();
+            // Wait for all orders to be placed.
+            const responses = await Promise.all(orderPromises);
 
-            if (data.success) {
-                // Clear the cart after a successful order
-                clearCart(); 
-                navigate("/shop");
+            // Check if all responses were successful.
+            const allSuccessful = responses.every(res => res.ok);
+
+            if (allSuccessful) {
+                // If it wasn't a "Buy Now" single product, clear the main cart.
+                if (!singleProduct) {
+                    clearCart(); 
+                }
+                toast.success("Your order(s) have been placed successfully!");
+                navigate("/orders"); // Navigate to orders page to see the new orders
             } else {
-                console.error("Failed to place order:", data.message);
+                // Find the first failed response to show an error.
+                const failedResponses = await Promise.all(responses.filter(res => !res.ok).map(res => res.json()));
+                const errorMessage = failedResponses[0]?.message || "One or more items could not be ordered.";
+                console.error("Failed to place order(s):", errorMessage);
+                toast.error(errorMessage);
             }
         } catch (err) {
-            console.error("Server error:", err.message);
+            console.error("Server error:", err);
+            toast.error("An unexpected server error occurred. Please try again.");
         }
     };
     
     const handleDecreaseQuantity = async (item) => {
         const newQty = (item.qty || 1) - 1;
         if (newQty > 0) {
-            await updateQuantity(item._id || item.id, newQty);
+            await updateQuantity(getId(item), newQty);
         } else {
-            await removeFromCart(item._id || item.id);
+            await removeFromCart(getId(item));
         }
     };
 
     const handleIncreaseQuantity = async (item) => {
         const newQty = (item.qty || 1) + 1;
-        await updateQuantity(item._id || item.id, newQty);
+        await updateQuantity(getId(item), newQty);
     };
 
     const handleRemoveItem = async (item) => {
-        await removeFromCart(item._id || item.id);
+        await removeFromCart(getId(item));
     };
 
     const currencyFormatter = new Intl.NumberFormat("en-PH", {
@@ -174,9 +211,15 @@ export default function CheckoutPage() {
                     <div className="p-6 md:w-1/2 space-y-4">
                         <div>
                             <h4 className="text-gray-700 font-medium">Shipping Info</h4>
-                            <p className="text-sm text-gray-600">Region: {singleProduct ? singleProduct.region : region}</p>
-                            <p className="text-sm text-gray-600">City: {singleProduct ? singleProduct.city : city}</p>
-                            <p className="text-sm text-gray-600">
+                            <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {(() => {
+                                    const addr = singleProduct ? singleProduct.shippingAddress : shippingAddress;
+                                    if (!addr) return <p>No shipping address selected.</p>;
+                                    const addressParts = [addr.line1, addr.line2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
+                                    return <p>{addressParts.join(', ')}</p>;
+                                })()}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2">
                                 Shipping Fee: {currencyFormatter.format(singleProduct ? singleProduct.shippingFee : shippingFee)}
                             </p>
                         </div>

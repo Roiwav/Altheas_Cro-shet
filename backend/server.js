@@ -17,6 +17,9 @@ dotenv.config();
 
 const app = express();
 
+// Enable CORS for all routes before any other middleware or routes
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+
 // Create HTTP server and wrap the Express app
 const server = http.createServer(app);
 
@@ -30,7 +33,6 @@ const io = new Server(server, {
 
 // Middleware
 app.use(express.json({ limit: "5mb" }));
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 
 // API routes
 app.use("/api/v1/cart", cartRoutes);

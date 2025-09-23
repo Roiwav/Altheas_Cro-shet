@@ -1,26 +1,13 @@
 const express = require("express");
-const Order = require("../models/Order.js");
-
 const router = express.Router();
+const { createOrder, getMyOrders, deleteOrder, cancelOrderItem } = require("../controllers/orderController.js");
+const { verifyToken } = require("../middleware/authMiddleware.js");
 
-router.post("/", async (req, res) => {
-  try {
-    const order = new Order(req.body);
-    await order.save();
-    res.json({ success: true, message: "✅ Order placed successfully", order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "❌ Failed to place order", error: err.message });
-  }
-});
+// All routes in this file are automatically prefixed with /api/orders
 
-// 📌 Get all orders (for admin later)
-router.get("/", async (req, res) => {
-  try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    res.json({ success: true, orders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+router.post("/", verifyToken, createOrder);
+router.get("/myorders", verifyToken, getMyOrders);
+router.delete("/:id", verifyToken, deleteOrder);
+router.delete("/:orderId/product/:productId", verifyToken, cancelOrderItem);
 
 module.exports = router;

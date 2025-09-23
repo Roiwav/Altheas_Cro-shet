@@ -1,31 +1,49 @@
-// models/Cart.js
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const cartSchema = new mongoose.Schema(
-    {
-        userId: { 
-            type: mongoose.Schema.Types.ObjectId, // ✅ UPDATED: Use ObjectId for referencing
-            required: true, 
-            unique: true 
-        },
-        username: { // ✅ ADDED: Field for the user's username
-            type: String, 
-            required: true 
-        },
-        items: [
-            {
-                productId: { type: String, required: true },
-                name: String,
-                price: Number,
-                qty: { type: Number, default: 1 },
-            },
-        ],
-        // ✅ ADDED: Fields for shipping information
-        region: { type: String, default: "" },
-        city: { type: String, default: "" },
-        shippingFee: { type: Number, default: 0 },
+// This defines the structure for each product within a cart
+const cartItemSchema = new Schema({
+    productId: { type: String, required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    variation: String,
+    image: String
+}, { _id: false });
+
+// This defines the structure for the shipping address
+const shippingAddressSchema = new Schema({
+    line1: { type: String, required: true },
+    line2: { type: String },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    postalCode: { type: String, required: true },
+    country: { type: String, required: true },
+    label: { type: String }
+}, { _id: false });
+
+// This is the main schema for the 'carts' collection
+const cartSchema = new Schema({
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        unique: true
     },
-    { timestamps: true }
-);
+    username: {
+        type: String,
+        required: true
+    },
+    items: [cartItemSchema],
+    shippingAddress: shippingAddressSchema,
+    shippingFee: {
+        type: Number,
+        default: 0
+    }
+}, {
+    timestamps: true
+});
 
-module.exports = mongoose.model("Cart", cartSchema, "carts");
+const Cart = mongoose.model('Cart', cartSchema);
+
+module.exports = Cart;

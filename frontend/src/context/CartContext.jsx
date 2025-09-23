@@ -1,5 +1,5 @@
 // src/context/CartContext.jsx
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,34 +8,25 @@ export const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
-    const { user, isAuthenticated } = useUser?.() || { user: null, isAuthenticated: false };
+    const { user, isAuthenticated, isLoading } = useUser?.() || { user: null, isAuthenticated: false, isLoading: true };
 
     console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
-    const [cartItems, setCartItems] = useState(() => {
-        try {
-            const stored = localStorage.getItem("cart");
-            return stored ? JSON.parse(stored) : [];
-        } catch {
-            return [];
-        }
-    });
-
-    const [region, setRegion] = useState("");
-    const [city, setCity] = useState("");
+    const [cartItems, setCartItems] = useState([]);
+    const [shippingAddress, setShippingAddress] = useState(null);
     const [shippingFee, setShippingFee] = useState(0);
 
-    const prevUserRef = useRef(null);
     const API_BASE = "http://localhost:5001/api/v1/cart";
 
     const getId = (product) => product?.id || product?.id || product?.productId;
 
     // Save cart to backend (upsert)
-    const saveCartForUser = async (userId, items) => {
+    const saveCartForUser = useCallback(async (userId, items, username) => {
         console.log("➡️ Attempting to save cart to backend for user:", userId);
         console.log("➡️ Items to be saved:", items);
-        if (!userId) {
-            console.error("❌ Aborting save: userId is not available.");
+        // Critical: Ensure we have a valid user and username before saving.
+        if (!userId || !username) { // Use the passed `username` argument
+            console.error("❌ Aborting save: userId or username is not available.", { userId, username: username });
             return null;
         }
         try {
@@ -43,10 +34,9 @@ export const CartProvider = ({ children }) => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    username: user?.username,
+                    username: username,
                     items,
-                    region,
-                    city,
+                    shippingAddress,
                     shippingFee 
                 }),
             });
@@ -65,10 +55,10 @@ export const CartProvider = ({ children }) => {
             // Re-throw the error to ensure the calling function knows about it
             throw err;
         }
-    };
+    }, [shippingAddress, shippingFee]);
 
     // Load cart from backend
-    const loadCartForUser = async (userId) => {
+    const loadCartForUser = useCallback(async (userId) => {
         console.log("➡️ Attempting to load cart for user:", userId);
         if (!userId) return { items: [] };
         try {
@@ -77,8 +67,7 @@ export const CartProvider = ({ children }) => {
             const data = await res.json();
             console.log("✅ Cart loaded from backend:", data);
             
-            setRegion(data.region || "");
-            setCity(data.city || "");
+            setShippingAddress(data.shippingAddress || null);
             setShippingFee(data.shippingFee || 0);
 
             return data;
@@ -86,7 +75,7 @@ export const CartProvider = ({ children }) => {
             console.error("❌ Failed loading cart:", err);
             return { items: [] };
         }
-    };
+    }, []);
 
     // Merge local and server carts
     const mergeCarts = (serverItems = [], localItems = []) => {
@@ -113,6 +102,11 @@ export const CartProvider = ({ children }) => {
             return;
         }
         
+        if (!isAuthenticated) {
+            toast.info("Please log in to add items to your cart.");
+            return false;
+        }
+
         console.log(`🛍️ addToCart called for product ID: ${id}`);
         const newCart = cartItems.find((p) => getId(p) === id)
             ? cartItems.map((p) => (getId(p) === id ? { ...p, qty: (p.qty || 0) + quantity } : p))
@@ -121,16 +115,16 @@ export const CartProvider = ({ children }) => {
         if (isAuthenticated && user?.id) {
             console.log("🔐 User is authenticated, attempting to save to backend...");
             try {
-                await saveCartForUser(user.id, newCart);
+                await saveCartForUser(user.id, newCart, user.username);
                 setCartItems(newCart);
                 console.log("✔️ Local state updated after successful backend save.");
+                return true;
             } catch (err) {
                 console.error("❌ Failed to add item to cart due to backend error:", err);
+                throw err; // Re-throw to be caught by the calling component
             }
-        } else {
-            console.log("👤 User is not authenticated, updating local state only.");
-            setCartItems(newCart);
         }
+        return false; // Should not be reached, but as a fallback.
     };
 
     // ✅ ADDED: Update quantity function
@@ -144,7 +138,7 @@ export const CartProvider = ({ children }) => {
         );
         if (isAuthenticated && user?.id) {
             try {
-                await saveCartForUser(user.id, newCart);
+                await saveCartForUser(user.id, newCart, user.username);
                 setCartItems(newCart);
             } catch (err) {
                 console.error("❌ Failed to update quantity:", err);
@@ -159,7 +153,7 @@ export const CartProvider = ({ children }) => {
         const newCart = cartItems.filter((item) => getId(item) !== productId);
         if (isAuthenticated && user?.id) {
             try {
-                await saveCartForUser(user.id, newCart);
+                await saveCartForUser(user.id, newCart, user.username);
                 setCartItems(newCart);
             } catch (err) {
                 console.error("❌ Failed to remove item from cart:", err);
@@ -172,61 +166,61 @@ export const CartProvider = ({ children }) => {
     const clearCart = async () => {
         if (isAuthenticated && user?.id) {
             try {
-                await saveCartForUser(user.id, []);
+                await saveCartForUser(user.id, [], user.username);
                 setCartItems([]);
-                localStorage.removeItem("cart");
             } catch (err) {
                 console.error("❌ Failed to clear cart:", err);
             }
         } else {
             setCartItems([]);
-            localStorage.removeItem("cart");
         }
     };  
 
     const totalQuantity = cartItems.reduce((sum, it) => sum + (it.qty || 0), 0);
     const totalPrice = cartItems.reduce((sum, it) => sum + (it.qty || 0) * (it.price || 0), 0);
 
+    // This effect handles loading the cart when a user is authenticated,
+    // and clearing it when they are not.
     useEffect(() => {
-        localStorage.setItem("cart", JSON.stringify(cartItems));
-    }, [cartItems]);
-
-    useEffect(() => {
-        const prevId = prevUserRef.current?.id;
-        const currId = user?.id;
-
-        if (!prevId && currId) {
-            console.log(`➡️ User logged in (${currId}), merging carts...`);
-            (async () => {
-                const serverCart = await loadCartForUser(currId);
-                const merged = mergeCarts(serverCart.items || [], cartItems);
-                try {
-                    await saveCartForUser(currId, merged);
-                    setCartItems(merged);
-                    console.log("✔️ Merged cart updated successfully.");
-                } catch (err) {
-                    console.error("❌ Failed to merge and save cart:", err);
-                }
-            })();
+        // A guard to prevent running the effect with stale or incomplete user data during login/logout transitions.
+        if (isAuthenticated && !user?.id) {
+            console.log("⏳ Waiting for full user object before handling auth change...");
+            return;
         }
 
-        prevUserRef.current = user;
-    }, [user]);
+        // Do nothing until the user's authentication status is fully loaded.
+        if (isLoading) {
+            console.log("⏳ Waiting for authentication to resolve...");
+            return;
+        }
+
+        if (isAuthenticated && user?.id) {
+            console.log(`➡️ User is authenticated (${user.id}), loading cart...`);
+            loadCartForUser(user.id)
+                .then(serverCart => setCartItems(serverCart.items || []))
+                .catch(err => console.error("❌ Failed to load cart for user:", err));
+        } else {
+            if (!isLoading) { // Ensure we don't clear the cart prematurely
+                console.log("➡️ No authenticated user, cart is cleared.");
+                setCartItems([]);
+            }
+        }
+    }, [isAuthenticated, user?.id, isLoading]); // Rerun when auth state or loading status changes
 
     return (
         <CartContext.Provider
             value={{
+                getId,
                 cartItems,
                 addToCart,
                 removeFromCart,
                 updateQuantity, // ✅ UPDATED: Expose updateQuantity
+                saveCartForUser,
                 clearCart,
                 totalQuantity,
                 totalPrice,
-                region,
-                setRegion,
-                city,
-                setCity,
+                shippingAddress,
+                setShippingAddress,
                 shippingFee,
                 setShippingFee,
             }}
