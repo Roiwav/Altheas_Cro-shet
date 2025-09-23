@@ -46,7 +46,15 @@ const placeholderImage =
 
 export default function ShopPage() {
   const navigate = useNavigate();
-  const { addToCart, saveCartForUser, setRegion, setCity, setShippingFee } = useCart();
+  const {
+    addToCart,
+    totalQuantity,
+    region,
+    city,
+    setRegion,
+    setCity,
+    setShippingFee,
+  } = useCart();
 
   const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
@@ -87,23 +95,20 @@ export default function ShopPage() {
   );
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
+  // Get product image safely
   const getImageSrc = (product) => {
-    if (!product) return placeholderImage;
-    const id = product.productId || product.id;
-    if (id && productImages[id]) return productImages[id];
-    if (typeof product.image === "string" && product.image.startsWith("http")) {
-      return product.image;
-    }
+    if (productImages?.[product.id]) return productImages[product.id];
+    if (productImages?.[String(product.id)]) return productImages[String(product.id)];
+    if (product.image && typeof product.image === "string") return product.image;
     return placeholderImage;
   };
 
+  // Handle Add to Cart (wait for backend sync if user is logged in)
   const handleAddToCart = async (product) => {
     if (!product) return;
     try {
+      // addToCart already handles saving the cart to the backend
       await addToCart(product, 1);
-      if (saveCartForUser) {
-        await saveCartForUser(); // ensure backend sync
-      }
       toast.success(`${product.name} added to cart!`);
       setSelectedProduct(null);
     } catch (err) {
@@ -112,11 +117,13 @@ export default function ShopPage() {
     }
   };
 
+  // Handle Buy Now
   const handleBuyNow = (product) => {
     if (!product) return;
-    const fee = shippingFees[localCity] || 0;
-    // ✅ Pass the local state to Checkout
-    navigate("/checkout", { state: { product, region: localRegion, city: localCity, shippingFee: fee } });
+    const shippingFee = shippingFees[localCity] || 0;
+    // Pass all necessary info in the product object for the checkout page
+    const productForCheckout = { ...product, shippingFee, region: localRegion, city: localCity };
+    navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
 
@@ -295,8 +302,8 @@ export default function ShopPage() {
                       className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                       value={localRegion} // ✅ Use local state
                       onChange={(e) => {
-                        setLocalRegion(e.target.value); // ✅ Update local state
-                        setLocalCity(regions[e.target.value][0]); // ✅ Update local state
+                        setLocalRegion(e.target.value);
+                        setLocalCity(regions[e.target.value][0]);
                       }}
                     >
                       {Object.keys(regions).map((r) => (
@@ -311,14 +318,14 @@ export default function ShopPage() {
                       value={localCity} // ✅ Use local state
                       onChange={(e) => setLocalCity(e.target.value)} // ✅ Update local state
                     >
-                      {regions[localRegion].map((c) => ( // ✅ Use local state
+                      {regions[localRegion].map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
                   </div>
                   <div className="flex justify-between pt-2">
                     <span className="text-gray-600 dark:text-gray-400">Shipping Fee:</span>
-                    <span className="text-gray-900 dark:text-white font-semibold">₱{shippingFees[localCity] || 0}</span> {/* ✅ Use local state */}
+                    <span className="text-gray-900 dark:text-white font-semibold">{currencyFormatter.format(shippingFees[localCity] || 0)}</span>
                   </div>
                 </div>
 

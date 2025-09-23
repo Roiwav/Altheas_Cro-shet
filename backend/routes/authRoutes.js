@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifyToken } = require("../middleware/authMiddleware.js");
 
 const router = express.Router();
 
@@ -27,23 +28,38 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
+    // Determine user role
+    let role = 'customer';
+    if (username === 'admin' && email === 'admin@gmail.com' && password === 'admin123') {
+      role = 'admin';
+    }
+
     // Create new user (password will be hashed by pre("save") in schema)
     const user = await User.create({
       fullName,
       username,
       email,
       password,
+      role, // Assign the determined role
     });
 
     // 🔑 Auto login: generate JWT immediately
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
+    // Add the user's role to the JWT payload
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
       expiresIn: "7d",
     });
 
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+        role: user.role, // Include the role in the response
+      },
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -96,16 +112,55 @@ router.post("/login", async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallbackSecret", {
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
       expiresIn: "7d",
     });
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "" },
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+        role: user.role, // Include the role in the response
+      },
     });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
+// =============================
+// CHANGE PASSWORD
+// =============================
+router.post("/change-password", verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect current password" });
+    }
+
+    user.password = newPassword; // The 'pre-save' hook in User.js will hash it
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("Change Password error:", err);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });

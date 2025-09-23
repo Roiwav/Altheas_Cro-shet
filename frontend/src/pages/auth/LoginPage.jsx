@@ -66,18 +66,20 @@ export default function LoginPage() {
 
   // Validation
   const validateForm = () => {
-    if (!formData.identifier.trim()) return setError("Email or Username is required"), false;
+    if (!formData.identifier.trim())
+      return setError("Email or Username is required"), false;
+
     // If it looks like an email, validate format; otherwise allow username
     if (formData.identifier.includes("@")) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.identifier))
         return setError("Please enter a valid email address"), false;
     }
+
     if (!formData.password) return setError("Password is required"), false;
     setError("");
     return true;
   };
 
-  // Submit handler
   // ✅ Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,33 +89,51 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const tryLogin = async () => {
-        const attempt = async (payload) => {
-          const res = await fetch(`${API_URL}/auth/login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.message || "Login failed");
-          return data;
+      // ✅ Hardcoded admin login check
+      if (
+        (formData.identifier.trim() === "admin" ||
+          formData.identifier.trim() === "admi@gmail.com") &&
+        formData.password === "admin123"
+      ) {
+        const adminUser = {
+          username: "admin",
+          email: "admi@gmail.com",
+          role: "admin",
         };
 
-        // Send identifier (email or username) to match backend flexibility
-        return await attempt({
+        // Save to context + storage
+        login(adminUser, "dummy-admin-token");
+        if (rememberMe) {
+          localStorage.setItem("token", "dummy-admin-token");
+          localStorage.setItem("user", JSON.stringify(adminUser));
+        } else {
+          sessionStorage.setItem("token", "dummy-admin-token");
+          sessionStorage.setItem("user", JSON.stringify(adminUser));
+        }
+
+        toast.success("Welcome, Admin!");
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      // ✅ Normal login flow
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
           identifier: formData.identifier.trim(),
           password: formData.password,
-        });
-      };
+        }),
+      });
 
-      const data = await tryLogin();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
-      // ✅ Save in context + localStorage
+      // Save in context + storage
       login(data.user, data.token);
-
       if (rememberMe) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -137,7 +157,12 @@ export default function LoginPage() {
   };
 
   // ✅ Particle background
-  useBubbles("login-container", { count: 18, sizeRange: [6, 14], durationRange: [10, 18], opacity: 0.18 });
+  useBubbles("login-container", {
+    count: 18,
+    sizeRange: [6, 14],
+    durationRange: [10, 18],
+    opacity: 0.18,
+  });
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-16">
