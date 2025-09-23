@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser';
 import { 
   ShoppingBag, 
@@ -12,7 +13,8 @@ import {
   CreditCard,
   Calendar,
   PackageOpen,
-  Loader2
+  Loader2,
+  MapPin
 } from 'lucide-react';
 
 // Helper function to format date
@@ -20,6 +22,12 @@ const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
+
+// Currency formatter
+const currencyFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+});
 
 // Status Badge Component
 const StatusBadge = ({ status }) => {
@@ -71,11 +79,99 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+// Order Tracker Component
+const OrderTracker = ({ status }) => {
+  const steps = [
+    { key: 'pending', label: 'Pending', icon: <Clock className="h-5 w-5" /> },
+    { key: 'processing', label: 'On the Making', icon: <Package className="h-5 w-5" /> },
+    { key: 'shipped', label: 'On the Road', icon: <Truck className="h-5 w-5" /> },
+    { key: 'delivered', label: 'Delivered', icon: <CheckCircle className="h-5 w-5" /> },
+  ];
+
+  const currentStepIndex = steps.findIndex(step => step.key === status);
+
+  if (status === 'cancelled') {
+    return (
+      <div className="flex items-center justify-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg my-4">
+        <XCircle className="h-6 w-6 text-red-500 mr-2" />
+        <p className="text-red-700 dark:text-red-300 font-medium">This order has been cancelled.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full relative">
+      {/* Keyframes for the animated dots on the tracker line */}
+      <style>{`
+        @keyframes running-dots {
+          from { background-position-x: 0px; }
+          to { background-position-x: -40px; }
+        }
+      `}</style>
+      <div className="flex items-start">
+        {steps.map((step, index) => {
+          const isCompleted = currentStepIndex >= index;
+          const isLastStep = index === steps.length - 1;
+          const isActiveConnector = isCompleted && currentStepIndex > index;
+
+          return (
+            <React.Fragment key={step.key}>
+              <div className="flex flex-col items-center text-center w-1/4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCompleted ? 'bg-pink-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+                  {step.icon}
+                </div>
+                <p className={`mt-2 text-xs ${isCompleted ? 'text-gray-800 dark:text-white font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>{step.label}</p>
+              </div>
+              {!isLastStep && (
+                <div className={`flex-1 h-1 mt-5 transition-colors ${isActiveConnector ? 'bg-pink-600' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                  {isActiveConnector && <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(circle, white 2px, transparent 3px)', backgroundSize: '20px 20px', backgroundRepeat: 'repeat-x', backgroundPosition: '0% 50%', animation: 'running-dots 1.5s linear infinite' }} />}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const OrdersPage = () => {
-  const { user } = useUser();
+  const { user, token } = useUser();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleCancelProduct = async (orderId, productId) => {
+    if (!window.confirm('Are you sure you want to remove this item from your order?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/product/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to cancel product.');
+      }
+
+      // If the backend confirms the order was deleted, remove it from the list. Otherwise, update it.
+      if (data.orderDeleted) {
+        setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+      } else {
+        setOrders(prevOrders => prevOrders.map(order => (order._id === orderId ? data.order : order)));
+      }
+      toast.success('Item cancelled successfully.');
+    } catch (err) {
+      console.error('Error cancelling product:', err);
+      toast.error(err.message || 'Could not cancel the product.');
+    }
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -85,12 +181,11 @@ const OrdersPage = () => {
       }
 
       try {
-        const token = localStorage.getItem('token');
         if (!token) {
           throw new Error('No authentication token found');
         }
 
-        const response = await fetch('/api/orders/myorders', {
+        const response = await fetch('http://localhost:5001/api/orders/myorders', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -112,7 +207,7 @@ const OrdersPage = () => {
     };
 
     fetchOrders();
-  }, [user]);
+  }, [user, token]);
 
   if (loading) {
     return (
@@ -200,59 +295,91 @@ const OrdersPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-2 sm:mt-0">
-                    <StatusBadge status={order.status || 'pending'} />
-                  </div>
                 </div>
               </div>
               
               <div className="px-6 py-4">
                 <div className="space-y-4">
-                  {order.orderItems?.map((item, itemIdx) => (
-                    <div key={item._id || itemIdx} className="flex items-start">
-                      <div className="flex-shrink-0 h-20 w-20 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <img
-                          src={item.image || '/images/placeholder-product.jpg'}
-                          alt={item.name}
-                          className="h-full w-full object-cover object-center"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/images/placeholder-product.jpg';
-                          }}
-                        />
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <div className="flex justify-between text-base font-medium text-gray-900 dark:text-white">
-                          <Link 
-                            to={`/product/${item.product || item._id}`}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            {item.name}
-                          </Link>
-                          <p className="ml-4">${(item.price * item.quantity).toFixed(2)}</p>
+                  {/* Since each order now has only one product, we can display it directly */}
+                  {order.products?.[0] && (() => {
+                    const item = order.products[0];
+                    return (
+                      <div key={item.productId} className="flex items-start">
+                        <div className="flex-shrink-0 h-20 w-20 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
+                          <img
+                            src={item.image || '/images/placeholder-product.jpg'}
+                            alt={item.name}
+                            className="h-full w-full object-cover object-center"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/images/placeholder-product.jpg';
+                            }}
+                          />
                         </div>
-                        {item.color || item.size ? (
+                        <div className="ml-4 flex-1">
+                          <div className="flex justify-between text-base font-medium text-gray-900 dark:text-white">
+                            <Link 
+                              to={`/product/${item.productId}`}
+                              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            >
+                              {item.name}
+                            </Link>
+                            <p className="ml-4">{currencyFormatter.format(item.price * item.quantity)}</p>
+                          </div>
+                          {item.variation && (
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              Variation: {item.variation}
+                            </p>
+                          )}
                           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {item.color && <span>Color: {item.color}</span>}
-                            {item.size && <span className="ml-2">Size: {item.size}</span>}
+                            Qty: {item.quantity} × {currencyFormatter.format(item.price)}
                           </p>
-                        ) : null}
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          Qty: {item.quantity} × ${item.price.toFixed(2)}
-                        </p>
+                          <button
+                            onClick={() => handleCancelProduct(order._id, item.productId)}
+                            className="mt-2 text-xs font-medium text-red-600 hover:text-red-500 hover:underline"
+                          >
+                            Cancel Item
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Shipping To</h4>
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <div className="flex items-start">
+                    <MapPin className="inline-block h-4 w-4 mr-2 mt-1 flex-shrink-0" />
+                    <div>
+                      {order.shippingAddress ? 
+                        [order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.postalCode, order.shippingAddress.country].filter(Boolean).join(', ') :
+                        `${order.city}, ${order.region}` /* Fallback for old orders */
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Track Order</h4>
+                <OrderTracker status={order.status || 'pending'} />
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                   <div className="mb-3 sm:mb-0">
                     <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Shipping Fee: </span>
+                      <span className="text-gray-900 dark:text-white ml-1">
+                        {currencyFormatter.format(order.shippingFee || 0)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                       <span className="font-medium">Total: </span>
                       <span className="text-lg font-semibold text-gray-900 dark:text-white ml-1">
-                        ${order.totalPrice?.toFixed(2) || '0.00'}
+                        {currencyFormatter.format(order.total || 0)}
                       </span>
                       {order.paymentMethod && (
                         <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
@@ -263,13 +390,6 @@ const OrdersPage = () => {
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                    <Link
-                      to={`/orders/${order._id || order.id}`}
-                      className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <PackageOpen className="-ml-1 mr-2 h-4 w-4" />
-                      Order Details
-                    </Link>
                     <Link
                       to="/shop"
                       className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

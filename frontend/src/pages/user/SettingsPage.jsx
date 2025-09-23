@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, createContext, useContext } from "react";
 import { toast } from "react-toastify";
+import { useSearchParams } from "react-router-dom";
 import {
   User as UserIcon,
   Mail,
@@ -16,12 +17,29 @@ import {
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { UserContext } from "../../context/UserContext.jsx";
 
+// Data for city and region dropdowns
+const cityToRegionMap = {
+  "Manila": "Metro Manila",
+  "Quezon City": "Metro Manila",
+  "Calamba City": "South Luzon",
+  "Batangas City": "South Luzon",
+  "Baguio": "North Luzon",
+  "Dagupan": "North Luzon",
+  "Cebu City": "Visayas",
+  "Iloilo City": "Visayas",
+  "Davao City": "Mindanao",
+  "Cagayan de Oro": "Mindanao",
+};
+const cities = Object.keys(cityToRegionMap);
+
 
 export default function SettingsPage() {
   const { user, token, updateUser } = useContext(UserContext);
   const { darkMode, toggleDarkMode } = useDarkMode();
 
-  const [activeTab, setActiveTab] = useState("profile");
+  const [searchParams] = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "profile");
 
   const [profile, setProfile] = useState({
     fullName: "",
@@ -75,6 +93,14 @@ export default function SettingsPage() {
     }
   }, [addresses, activeAddressId]);
 
+  // This useEffect hook listens for changes in the URL's 'tab' parameter
+  // and updates the active tab in the component's state.
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl && tabs.some(t => t.key === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   const tabs = useMemo(
     () => [
@@ -133,7 +159,7 @@ export default function SettingsPage() {
 
   const addAddress = () => {
     const id = crypto.randomUUID?.() || String(Date.now());
-    const newAddress = { id, label: "New Address", line1: "", line2: "", city: "", state: "", postalCode: "", country: "", isDefault: addresses.length === 0 };
+    const newAddress = { id, label: "New Address", line1: "", line2: "", city: "", state: "", postalCode: "", country: "Philippines", isDefault: addresses.length === 0 };
     setAddresses((arr) => [...arr, newAddress]);
     setActiveAddressId(id);
     setIsEditingAddress(true);
@@ -141,6 +167,17 @@ export default function SettingsPage() {
 
   const updateAddress = (id, field, value) => {
     setAddresses((arr) => arr.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
+  };
+
+  const handleCityChange = (addressId, newCity) => {
+    const newRegion = cityToRegionMap[newCity] || "";
+    setAddresses((arr) =>
+      arr.map((a) =>
+        a.id === addressId
+          ? { ...a, city: newCity, state: newRegion }
+          : a
+      )
+    );
   };
 
   const removeAddress = (id) => {
@@ -163,6 +200,7 @@ export default function SettingsPage() {
       setActiveAddressId(null);
     }
     setAddresses(newAddresses);
+    toast.info('Address removed. Click "Save addresses" to make it permanent.');
   };
 
   const setDefaultAddress = (id) => {
@@ -202,7 +240,7 @@ export default function SettingsPage() {
       updateUser(data.user);
       setAddressesPassword("");
       setIsEditingAddress(false); // Hide form on successful save
-      toast.success("Addresses saved");
+      toast.success("save successfully");
     } catch (err) {
       toast.error(err.message || "Failed to save addresses");
     }
@@ -419,13 +457,26 @@ export default function SettingsPage() {
                       <input value={activeAddress.line1 || ""} onChange={(e) => updateAddress(activeAddress.id, "line1", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Street address" />
                     </Field>
                     <Field label="Line 2">
-                      <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Apartment, suite, etc." />
+                      <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Apartment, Barangay" />
                     </Field>
                     <Field label="City">
-                      <input value={activeAddress.city || ""} onChange={(e) => updateAddress(activeAddress.id, "city", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <select
+                        value={activeAddress.city || ""}
+                        onChange={(e) => handleCityChange(activeAddress.id, e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      >
+                        <option value="" disabled>Select a city</option>
+                        {cities.map(city => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                      </select>
                     </Field>
                     <Field label="State / Province">
-                      <input value={activeAddress.state || ""} onChange={(e) => updateAddress(activeAddress.id, "state", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input
+                        value={activeAddress.state || ""}
+                        readOnly
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      />
                     </Field>
                     <Field label="Postal code">
                       <input value={activeAddress.postalCode || ""} onChange={(e) => updateAddress(activeAddress.id, "postalCode", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />

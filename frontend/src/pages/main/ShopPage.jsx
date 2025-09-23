@@ -9,6 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
 import { useCart } from "../../context/CartContext.jsx";
+import { useUser } from "../../context/useUser.js";
 
 // Currency formatter
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
@@ -25,12 +26,12 @@ const regions = {
   Mindanao: ["Davao City", "Cagayan de Oro"],
 };
 const shippingFees = {
-  Manila: 25,
+  "Manila": 25,
   "Quezon City": 20,
   "Calamba City": 36,
   "Batangas City": 30,
-  Baguio: 35,
-  Dagupan: 32,
+  "Baguio": 35,
+  "Dagupan": 32,
   "Cebu City": 28,
   "Iloilo City": 30,
   "Davao City": 34,
@@ -49,12 +50,11 @@ export default function ShopPage() {
   const {
     addToCart,
     totalQuantity,
-    region,
-    city,
-    setRegion,
-    setCity,
+    shippingAddress,
+    setShippingAddress,
     setShippingFee,
   } = useCart();
+  const { user, isAuthenticated } = useUser();
 
   const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
@@ -64,6 +64,24 @@ export default function ShopPage() {
   // ✅ Use CartContext state for region and city
   const [localRegion, setLocalRegion] = useState(defaultRegion);
   const [localCity, setLocalCity] = useState(defaultCity);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+
+  // This effect sets the initial shipping info when the page loads or user changes.
+  useEffect(() => {
+    if (isAuthenticated && user?.addresses?.length > 0) {
+      const defaultAddress = user.addresses.find(a => a.isDefault) || user.addresses[0];
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+        setLocalRegion(defaultAddress.state);
+        setLocalCity(defaultAddress.city);
+      }
+    } else {
+      // Fallback for guests or users without addresses
+      setLocalRegion(defaultRegion);
+      setLocalCity(defaultCity);
+      setSelectedAddressId("");
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 
@@ -72,16 +90,30 @@ export default function ShopPage() {
     setPage(1);
   }, [searchQuery]);
 
-  // ✅ Add useEffect to sync local state with CartContext
+  // This useEffect hook syncs the local shipping choices with the CartContext.
   useEffect(() => {
-    setRegion(localRegion);
-  }, [localRegion, setRegion]);
-
-  useEffect(() => {
+    // The fee is calculated directly in the JSX. This effect's job is to
+    // keep the global cart context aware of the shipping details.
     const fee = shippingFees[localCity] || 0;
-    setCity(localCity);
+    let addressToSet;
+    if (isAuthenticated && selectedAddressId) {
+      addressToSet = user.addresses.find(a => a.id === selectedAddressId);
+    } else {
+      addressToSet = {
+        state: localRegion,
+        city: localCity,
+        label: "Guest Address",
+        line1: "N/A",
+        postalCode: "N/A",
+        country: "Philippines"
+      };
+    }
+
+    if (addressToSet) {
+      setShippingAddress(addressToSet);
+    }
     setShippingFee(fee);
-  }, [localCity, setCity, setShippingFee]);
+  }, [localRegion, localCity, isAuthenticated, user, selectedAddressId, setShippingAddress, setShippingFee]);
   
   // Filter products based on search query
   const filteredProducts = productList.filter((product) =>
@@ -108,8 +140,10 @@ export default function ShopPage() {
     if (!product) return;
     try {
       // addToCart already handles saving the cart to the backend
-      await addToCart(product, 1);
-      toast.success(`${product.name} added to cart!`);
+      const success = await addToCart(product, 1);
+      if (success) {
+        toast.success(`${product.name} added to cart!`);
+      }
       setSelectedProduct(null);
     } catch (err) {
       toast.error("Failed to add to cart.");
@@ -121,8 +155,19 @@ export default function ShopPage() {
   const handleBuyNow = (product) => {
     if (!product) return;
     const shippingFee = shippingFees[localCity] || 0;
+    let shippingAddress;
+    if (isAuthenticated && selectedAddressId) {
+      shippingAddress = user.addresses.find(a => a.id === selectedAddressId);
+    } else {
+      // For guests, create a partial address object that still works
+      shippingAddress = {
+        state: localRegion,
+        city: localCity,
+        line1: "N/A", postalCode: "N/A", country: "Philippines"
+      };
+    }
     // Pass all necessary info in the product object for the checkout page
-    const productForCheckout = { ...product, shippingFee, region: localRegion, city: localCity };
+    const productForCheckout = { ...product, shippingFee, shippingAddress, id: product.id };
     navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
@@ -296,33 +341,47 @@ export default function ShopPage() {
                 </div>
 
                 <div className="border-y py-4 space-y-4 text-sm">
-                  <div>
-                    <label className="font-medium text-gray-700 dark:text-gray-300 block">Region</label>
-                    <select
-                      className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                      value={localRegion} // ✅ Use local state
-                      onChange={(e) => {
-                        setLocalRegion(e.target.value);
-                        setLocalCity(regions[e.target.value][0]);
-                      }}
-                    >
-                      {Object.keys(regions).map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-medium text-gray-700 dark:text-gray-300 block">City</label>
-                    <select
-                      className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                      value={localCity} // ✅ Use local state
-                      onChange={(e) => setLocalCity(e.target.value)} // ✅ Update local state
-                    >
-                      {regions[localRegion].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {isAuthenticated && user?.addresses?.length > 0 ? (
+                    <div>
+                      <label className="font-medium text-gray-700 dark:text-gray-300 block">Shipping Address</label>
+                      <select
+                        className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                        value={selectedAddressId}
+                        onChange={(e) => {
+                          const addressId = e.target.value;
+                          setSelectedAddressId(addressId);
+                          const selectedAddr = user.addresses.find(a => a.id === addressId);
+                          if (selectedAddr) {
+                            setLocalRegion(selectedAddr.state);
+                            setLocalCity(selectedAddr.city);
+                          }
+                        }}
+                      >
+                        {user.addresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.label} - {addr.line1}, {addr.city}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="font-medium text-gray-700 dark:text-gray-300 block">Region</label>
+                        <select className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" value={localRegion} onChange={(e) => { setLocalRegion(e.target.value); setLocalCity(regions[e.target.value][0]); }}>
+                          {Object.keys(regions).map((r) => (<option key={r} value={r}>{r}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="font-medium text-gray-700 dark:text-gray-300 block">City</label>
+                        <select className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" value={localCity} onChange={(e) => setLocalCity(e.target.value)}>
+                          {regions[localRegion].map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between pt-2">
                     <span className="text-gray-600 dark:text-gray-400">Shipping Fee:</span>
                     <span className="text-gray-900 dark:text-white font-semibold">{currencyFormatter.format(shippingFees[localCity] || 0)}</span>
