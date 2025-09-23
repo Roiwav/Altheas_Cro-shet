@@ -10,16 +10,12 @@ import HomeBg1 from "../../assets/images/homeBg/HomeBg1.png";
 // AboutPage component using forwardRef for scroll behavior
 const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
   return (
-    <div ref={ref} className="bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 w-full transition-colors duration-300">
+    <div ref={ref} className="relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
       {/* Optional Navbar */}
-      {!noNavbar && (
-        <div className="fixed top-0 w-full z-50">
-          <Navbar />
-        </div>
-      )}
+      {!noNavbar && <Navbar />}
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section className="relative z-0 pt-32 pb-20 px-6 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-pink-200/30 to-purple-200/30 dark:from-pink-800/20 dark:to-purple-800/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-200/30 to-pink-200/30 dark:from-blue-800/20 dark:to-pink-800/20 rounded-full blur-3xl"></div>
@@ -114,74 +110,76 @@ const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
       </section>
 
       {/* Values Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-gray-50 to-pink-50 dark:from-gray-800 dark:to-gray-900">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-block mb-6">
-              <span className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
-                What We Stand For
-              </span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              <span className="text-gray-900 dark:text-white">Our </span>
-              <span className="bg-gradient-to-r from-pink-600 to-purple-600 dark:from-pink-400 dark:to-purple-400 bg-clip-text text-transparent">Values</span>
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
-          </div>
-
-          {/* Value Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Award,
-                title: "Artisanal Excellence",
-                description: "Each petal is shaped by hand, with stitches so fine they mimic nature's delicate details. We never compromise on quality, from yarn selection to final assembly.",
-                color: "from-pink-500 to-rose-500"
-              },
-              {
-                icon: Leaf,
-                title: "Mindful Crafting",
-                description: "Our commitment to sustainability means choosing materials that are kind to the earth, creating pieces designed to be cherished for generations.",
-                color: "from-green-500 to-emerald-500"
-              },
-              {
-                icon: Handshake,
-                title: "Personal Touch",
-                description: "We believe in the power of personal connection. Whether it's a custom color match or a special request, your vision guides our hands.",
-                color: "from-purple-500 to-violet-500"
-              }
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="group relative"
-              >
-                {/* Hover Background */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-                
-                {/* Card Content */}
-                <div className="relative bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-xl dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-800 transform group-hover:-translate-y-2 transition-all duration-300">
-                  {/* Icon */}
-                  <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <item.icon size={28} className="text-white" />
-                  </div>
-                  
-                  {/* Content */}
-                  <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">
-                    {item.title}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
+      <section className="relative z-0 py-20 px-6 bg-gradient-to-br from-gray-50 to-pink-50 dark:from-gray-800 dark:to-gray-900">
+        <div className="w-full overflow-x-auto">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block mb-6">
+                <span className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
+                  What We Stand For
+                </span>
               </div>
-            ))}
+              <h2 className="text-4xl md:text-5xl font-bold mb-6">
+                <span className="text-gray-900 dark:text-white">Our </span>
+                <span className="bg-gradient-to-r from-pink-600 to-purple-600 dark:from-pink-400 dark:to-purple-400 bg-clip-text text-transparent">Values</span>
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
+            </div>
+
+            {/* Value Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: Award,
+                  title: "Artisanal Excellence",
+                  description: "Each petal is shaped by hand, with stitches so fine they mimic nature's delicate details. We never compromise on quality, from yarn selection to final assembly.",
+                  color: "from-pink-500 to-rose-500"
+                },
+                {
+                  icon: Leaf,
+                  title: "Mindful Crafting",
+                  description: "Our commitment to sustainability means choosing materials that are kind to the earth, creating pieces designed to be cherished for generations.",
+                  color: "from-green-500 to-emerald-500"
+                },
+                {
+                  icon: Handshake,
+                  title: "Personal Touch",
+                  description: "We believe in the power of personal connection. Whether it's a custom color match or a special request, your vision guides our hands.",
+                  color: "from-purple-500 to-violet-500"
+                }
+              ].map((item, index) => (
+                <div
+                  key={index}
+                  className="group relative flex"
+                >
+                  {/* Hover Background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
+                  
+                  {/* Card Content */}
+                  <div className="relative bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-xl dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-800 transform group-hover:-translate-y-2 transition-all duration-300 flex flex-col">
+                    {/* Icon */}
+                    <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                      <item.icon size={28} className="text-white" />
+                    </div>
+                    
+                    {/* Content */}
+                    <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">
+                      {item.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Call to Action Section */}
       <section
-        className="relative py-32 px-6 bg-cover bg-center bg-fixed"
+        className="relative z-0 py-32 px-6 bg-cover bg-center bg-fixed"
         style={{ backgroundImage: `url(${HomeBg1})` }}
       >
         {/* Overlay */}

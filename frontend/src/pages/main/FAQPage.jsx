@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, HelpCircle, ShoppingBag, Truck, CreditCard, RefreshCw, Mail, Phone, MessageCircle } from 'lucide-react';
 
 const FAQPage = () => {
   const [activeIndex, setActiveIndex] = useState(null);
   const [search, setSearch] = useState(''); // Add search state
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const toggleAccordion = (index) => {
     setActiveIndex(activeIndex === index ? null : index);
@@ -109,14 +113,14 @@ const FAQPage = () => {
       title: 'Email Us',
       description: 'We usually respond within 24 hours',
       contact: 'altheacrochet@gmail.com',
-      link: 'mailto:hello@altheascrochet.com'
+      link: 'https://mail.google.com/mail/?view=cm&fs=1&to=altheacrochet@gmail.com'
     },
     {
       icon: <Phone className="w-6 h-6 text-pink-600" />,
       title: 'Call Us',
       description: 'Mon-Fri, 9am-5pm PHT',
-      contact: '+63 912 345 6789',
-      link: 'tel:+639123456789'
+      contact: '+63 123 456 7890',
+      link: 'tel:+631234567890'
     },
     {
       icon: <MessageCircle className="w-6 h-6 text-pink-600" />,
@@ -128,7 +132,7 @@ const FAQPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-24 lg:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="relative z-10 min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-24 lg:pt-32 pb-12 px-4 sm:px-6 lg:px-8 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
       <div className="max-w-7xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -229,6 +233,8 @@ const FAQPage = () => {
               <a
                 key={index}
                 href={method.link}
+                target={method.link.startsWith('http') ? '_blank' : undefined}
+                rel={method.link.startsWith('http') ? 'noopener noreferrer' : undefined}
                 className="group bg-gray-50 dark:bg-gray-700 rounded-xl p-6 text-center hover:bg-pink-50 dark:hover:bg-gray-600 transition-colors duration-300"
               >
                 <div className="flex justify-center mb-4">

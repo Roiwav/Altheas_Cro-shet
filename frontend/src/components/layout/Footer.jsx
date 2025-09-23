@@ -5,7 +5,9 @@ import { Mail, Phone, MapPin, Facebook, Instagram } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300 pt-16 pb-8 mt-20">
+    <footer
+      className="bg-gray-900 text-gray-300 pt-16 pb-8 mt-20 transition-all duration-300 ease-in-out lg:ml-[var(--sidebar-width,5rem)]"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Grid columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 text-center sm:text-left">
@@ -95,15 +97,31 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start justify-center sm:justify-start">
                 <Mail className="w-5 h-5 mt-1 mr-3 text-pink-400 flex-shrink-0" />
-                <span>altheacrochet@gmail.com</span>
+                <a
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=altheacrochet@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition"
+                >
+                  altheacrochet@gmail.com
+                </a>
               </li>
               <li className="flex items-start justify-center sm:justify-start">
                 <Phone className="w-5 h-5 mt-1 mr-3 text-pink-400 flex-shrink-0" />
-                <span>+1 (555) 123-4567</span>
+                <a href="tel:+631234567890" className="hover:text-white transition">
+                  +63 123 456 7890
+                </a>
               </li>
               <li className="flex items-start justify-center sm:justify-start">
                 <MapPin className="w-5 h-5 mt-1 mr-3 text-pink-400 flex-shrink-0" />
-                <span>Granville, Brgy. Lawa, Calamba Laguna</span>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Granville%20Townhouses%2C%20Barangay%20Lawa%2C%20Calamba%20City%2C%20Laguna"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition"
+                >
+                  Granville Townhouses, Brgy. Lawa, Calamba, Laguna
+                </a>
               </li>
             </ul>
           </div>

@@ -276,7 +276,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10">
+    <div className="relative z-10 bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
       <div className="container mx-auto max-w-5xl">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Account Settings</h1>
 

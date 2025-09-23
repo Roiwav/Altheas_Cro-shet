@@ -74,7 +74,7 @@ export default function Navbar({
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+      className={`fixed top-0 right-0 z-40 transition-all duration-300 left-0 lg:left-[var(--sidebar-width,5rem)] ${
         scrolled
           ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md"
           : "bg-transparent"
@@ -85,16 +85,20 @@ export default function Navbar({
           {/* Left & Center Group */}
           <div className="flex items-center">
             {/* Mobile menu button */}
-            <div className="lg:hidden mr-4">
+            <div
+              className="lg:hidden mr-4"
+            >
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 focus:outline-none"
               >
-                {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                <Menu size={24} />
               </button>
             </div>
             {/* Logo - Adjust padding to account for sidebar */}
-            <div className="flex-shrink-0 lg:pl-16">
+            <div
+              className={`flex-shrink-0 ${sidebarOpen ? "hidden lg:block" : "block"}`}
+            >
               <Link to="/" className="flex items-center">
                 <span className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
                   Althea Cro-shet
@@ -126,7 +130,7 @@ export default function Navbar({
             {!isAuthPage && (
               <Link
                 to="/checkout"
-                className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
+                className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 hidden lg:inline-flex"
                 aria-label="Shopping Cart"
               >
                 <ShoppingCart size={20} />

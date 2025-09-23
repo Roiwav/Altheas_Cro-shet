@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { DarkModeContext } from './DarkModeContext';
-import { getInitialDarkMode, applyDarkMode } from './darkModeUtils';
+import { applyDarkMode } from './darkModeUtils';
 
 // Custom hook to use dark mode
 export const useDarkMode = () => {
@@ -13,7 +13,15 @@ export const useDarkMode = () => {
 
 // Dark Mode Provider Component
 export const DarkModeProvider = ({ children }) => {
-  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
+  const [darkMode, setDarkMode] = useState(() => {
+    const storedPreference = localStorage.getItem('darkMode');
+    // If a preference is stored, use it.
+    if (storedPreference !== null) {
+      return JSON.parse(storedPreference);
+    }
+    // Otherwise, default to dark mode.
+    return true;
+  });
 
   // Apply dark mode to document and save to localStorage
   useEffect(() => {
@@ -36,4 +44,3 @@ export const DarkModeProvider = ({ children }) => {
     </DarkModeContext.Provider>
   );
 };
-

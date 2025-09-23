@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
+import { motion, useAnimation, useMotionValue } from 'framer-motion';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 import emailjs from '@emailjs/browser';
 import { toast } from 'react-toastify';
@@ -45,8 +46,8 @@ function HomePage() {
       setIsSubscribing(false);
     }
   };
-  return (
-    <div className="space-y-0">
+  return ( // Added transition and margin-left to accommodate the sidebar
+    <div className="relative z-10 space-y-0 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
         {/* Background Pattern */}
@@ -97,7 +98,7 @@ function HomePage() {
             </Link>
           </div>
 
-          <div className="absolute left-1/2 transform -translate-x-1/2 bottom-10 animate-bounce">
+          <div className="hidden sm:block absolute left-1/2 transform -translate-x-1/2 bottom-10 animate-bounce">
             <div className="w-8 h-12 border-2 border-pink-500 rounded-full flex justify-center">
               <div className="w-1 h-3 bg-pink-500 rounded-full mt-2"></div>
             </div>
@@ -203,10 +204,10 @@ function HomePage() {
           
           <div className="grid md:grid-cols-3 gap-8">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div key={item} className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="h-64 bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
-                    <Flower className="w-16 h-16" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Flower className="w-16 h-16 text-gray-400 dark:text-gray-500 transition-transform duration-300 group-hover:scale-110" />
                   </div>
                   <div className="absolute top-4 right-4 bg-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                     Bestseller
@@ -298,7 +299,20 @@ function HomePage() {
 
 function Testimonials() {
   const { testimonials = [] } = useTestimonials() || {};
-  const [isPaused, setIsPaused] = useState(false);
+  const containerRef = useRef(null);
+  const [width, setWidth] = useState(1); // Start with 1 to avoid division by zero
+
+  useEffect(() => {
+    const calculateWidth = () => {
+      if (containerRef.current) {
+        // The total width is half the scrollWidth because we've duplicated the items for the loop
+        setWidth(containerRef.current.scrollWidth / 2);
+      }
+    };
+    calculateWidth();
+    window.addEventListener('resize', calculateWidth);
+    return () => window.removeEventListener('resize', calculateWidth);
+  }, [testimonials]);
 
   // We'll show up to 10 of the most recent testimonials to keep the DOM from getting too large.
   const testimonialsToDisplay = testimonials.slice(0, 10);
@@ -313,55 +327,32 @@ function Testimonials() {
 
   // For a seamless loop, we need to duplicate the testimonials.
   const extendedTestimonials = [...testimonialsToDisplay, ...testimonialsToDisplay];
-  // Adjust animation speed based on the number of items
-  const animationDuration = `${testimonialsToDisplay.length * 8}s`;
 
-  return (
-    <>
-      {/* 
-        This style block is for demonstration. In a real project,
-        you would move these keyframes to your global CSS file (e.g., index.css).
-      */}
-      <style>
-        {`
-          @keyframes scroll {
-            from { transform: translateX(0); }
-            to { transform: translateX(-50%); }
-          }
-        `}
-      </style>
-      <div 
-        className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        onTouchStart={() => setIsPaused(true)}
-        onTouchEnd={() => setIsPaused(false)}
-      >
-        <div 
-          className="flex w-max"
-          style={{ 
-            animation: `scroll ${animationDuration} linear infinite`,
-            animationPlayState: isPaused ? 'paused' : 'running' 
-          }}
-        >
-          {extendedTestimonials.map((testimonial, index) => (
-            <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg mx-4 w-[350px] md:w-[400px] flex-shrink-0">
-              <div className="flex mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400 fill-current' : 'text-gray-300 dark:text-gray-500'}`}
-                  />
+    return (
+        <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]">
+            <motion.div
+                ref={containerRef}
+                className="flex w-max"
+                animate={{ x: [0, -width] }}
+                transition={{ 
+                  duration: testimonialsToDisplay.length * 7, 
+                  ease: "linear", 
+                  repeat: Infinity,
+                  repeatType: "loop"
+                }}
+            >
+                {extendedTestimonials.map((testimonial, index) => (
+                    <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg mx-4 w-[350px] md:w-[400px] flex-shrink-0 pointer-events-none">
+                        <div className="flex mb-4">
+                            {[...Array(5)].map((_, i) => <Star key={i} className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400 fill-current' : 'text-gray-300 dark:text-gray-500'}`} />)}
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-300 italic mb-6 h-24 overflow-y-auto">"{testimonial.quote}"</p>
+                        <p className="font-medium text-gray-900 dark:text-white">— {testimonial.author}</p>
+                    </div>
                 ))}
-              </div>
-              <p className="text-gray-600 dark:text-gray-300 italic mb-6 h-24 overflow-y-auto">"{testimonial.quote}"</p>
-              <p className="font-medium text-gray-900 dark:text-white">— {testimonial.author}</p>
-            </div>
-          ))}
+            </motion.div>
         </div>
-      </div>
-    </>
-  );
+    );
 }
 
 export default HomePage;

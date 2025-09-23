@@ -53,7 +53,7 @@ const BlogPage = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-12">
+    <div className="relative z-10 bg-white dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-12 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Crochet Blog</h1>

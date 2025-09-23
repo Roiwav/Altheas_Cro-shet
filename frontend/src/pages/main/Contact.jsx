@@ -77,7 +77,7 @@ export default function ContactPage() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 pt-24 lg:pt-32 px-6 pb-0 transition-colors duration-300">
+    <div className="relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 pt-24 lg:pt-32 px-6 pb-0 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
         {/* Hero Section */}
         <section className="relative pt-16 pb-20 overflow-hidden">
           {/* Background Elements */}
@@ -254,29 +254,48 @@ export default function ContactPage() {
                       {
                         icon: MapPin,
                         title: "Address",
-                        content: "Granville Townhouses, Barangay Lawa, Calamba City, Laguna",
-                        color: "from-pink-500 to-rose-500"
+                        content:
+                          "Granville Townhouses, Barangay Lawa, Calamba City, Laguna",
+                        color: "from-pink-500 to-rose-500",
+                        href: "https://www.google.com/maps/search/?api=1&query=Granville%20Townhouses%2C%20Barangay%20Lawa%2C%20Calamba%20City%2C%20Laguna",
                       },
                       {
                         icon: Phone,
                         title: "Phone",
                         content: "+63 123 456 7890",
-                        color: "from-blue-500 to-cyan-500"
+                        color: "from-blue-500 to-cyan-500",
+                        href: "tel:+631234567890",
                       },
                       {
                         icon: Mail,
                         title: "Email",
                         content: "altheascrochet@gmail.com",
-                        color: "from-purple-500 to-violet-500"
+                        color: "from-purple-500 to-violet-500",
+                        href: "https://mail.google.com/mail/?view=cm&fs=1&to=altheacrochet@gmail.com",
                       },
                       {
                         icon: Clock,
                         title: "Business Hours",
                         content: "Mon-Sat: 9AM-6PM\nSunday: By appointment",
-                        color: "from-green-500 to-emerald-500"
-                      }
+                        color: "from-green-500 to-emerald-500",
+                        href: null, // Not clickable
+                      },
                     ].map((item, index) => (
-                      <div key={index} className="group/item flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-300">
+                      <a
+                        key={index}
+                        href={item.href || undefined}
+                        target={item.href?.startsWith("http") ? "_blank" : undefined}
+                        rel={
+                          item.href?.startsWith("http")
+                            ? "noopener noreferrer"
+                            : undefined
+                        }
+                        className={`group/item flex items-start space-x-4 p-4 rounded-xl transition-all duration-300 ${
+                          item.href
+                            ? "hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                            : "cursor-default"
+                        }`}
+                      >
                         <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover/item:scale-110 transition-transform duration-300`}>
                           <item.icon size={20} className="text-white" />
                         </div>
@@ -284,7 +303,7 @@ export default function ContactPage() {
                           <p className="font-semibold text-gray-800 dark:text-white mb-1">{item.title}</p>
                           <p className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{item.content}</p>
                         </div>
-                      </div>
+                      </a>
                     ))}
                   </div>
                 </div>

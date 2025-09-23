@@ -56,7 +56,6 @@ export default function ShopPage() {
     setShippingFee,
   } = useCart();
 
-  const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,28 +129,9 @@ export default function ShopPage() {
   return (
     <>
       {/* The Navbar and Sidebar are now provided by the main Layout component */}
-      <main className="bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen lg:pl-20 pt-16 px-6 md:px-20 pb-16">
+      <main className="relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 px-6 md:px-20 pb-16 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
         {/* View, Search & Pagination */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 flex-wrap">
-          <div className="flex gap-3">
-            {[
-              { Icon: FaThLarge, label: "Grid", value: "grid" },
-              { Icon: FaList, label: "List", value: "list" },
-            ].map(({ Icon, label, value }) => (
-              <button
-                key={value}
-                onClick={() => setView(value)}
-                className={`px-4 py-2 flex items-center gap-2 rounded-full border transition ${
-                  view === value
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <Icon className="w-4 h-4" /> {label}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex flex-col sm:flex-row justify-end items-center mb-8 gap-4 flex-wrap">
           {/* Search Bar */}
           <div className="relative w-full sm:w-auto">
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -169,7 +149,7 @@ export default function ShopPage() {
         {/* Products */}
         <motion.div
           layout
-          className={`grid ${view === "grid" ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" : "grid-cols-1 gap-10"}`}
+          className="grid grid-cols-1 gap-10"
         >
           <AnimatePresence>
             {paginatedProducts.map((product) => (
@@ -180,50 +160,37 @@ export default function ShopPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
-                className={`relative group border p-4 rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all ${
-                  view === "list" ? "flex flex-col md:flex-row gap-6" : ""
-                }`}
+                className="relative group border p-4 rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all flex flex-col md:flex-row gap-6"
               >
                 <motion.img
                   layout
                   src={getImageSrc(product)}
                   alt={product.name}
-                  className={`rounded-lg flex-shrink-0 ${view === "list" ? "w-full md:w-1/3 h-72 object-contain bg-gray-100 dark:bg-gray-700" : "w-full h-48 object-contain mb-4 bg-gray-100 dark:bg-gray-700"}`}
+                  className="rounded-lg flex-shrink-0 w-full md:w-1/3 h-72 object-contain bg-gray-100 dark:bg-gray-700"
                 />
-                <motion.div layout className={`${view === "list" ? "md:w-2/3 flex flex-col" : "space-y-2"}`}>
+                <motion.div layout className="md:w-2/3 flex flex-col">
                   <h3 className="text-xl font-bold text-gray-800 dark:text-white">{product.name}</h3>
                   <p className="text-lg text-blue-700 dark:text-blue-400 font-semibold">{currencyFormatter.format(product.price)}</p>
                   <AnimatePresence initial={false}>
-                    {view === "list" && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                        transition={{ duration: 0.4, ease: "easeInOut" }}
-                        className="text-gray-600 dark:text-gray-300 flex-grow"
-                      >
-                        {product.description}
-                      </motion.p>
-                    )}
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
+                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
+                      className="text-gray-600 dark:text-gray-300 flex-grow"
+                    >
+                      {product.description}
+                    </motion.p>
                   </AnimatePresence>
                   <AnimatePresence>
-                    {view === "list" && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-4 mt-auto">
-                        <button onClick={() => setSelectedProduct(product)} className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
-                          <FaShoppingCart className="mr-2 h-4 w-4" />
-                          Add to Cart
-                        </button>
-                      </motion.div>
-                    )}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-4 mt-auto">
+                      <button onClick={() => setSelectedProduct(product)} className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
+                        <FaShoppingCart className="mr-2 h-4 w-4" />
+                        Add to Cart
+                      </button>
+                    </motion.div>
                   </AnimatePresence>
                 </motion.div>
-                <AnimatePresence>
-                  {view === "grid" && (
-                    <motion.button initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} whileHover={{ scale: 1.1 }} onClick={() => setSelectedProduct(product)} className="absolute bottom-3 right-3 bg-black text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                      <FaShoppingCart />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
               </motion.div>
             ))}
           </AnimatePresence>
