@@ -1,7 +1,7 @@
 // src/pages/auth/LoginPage.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight, X } from "lucide-react";
 import { useUser } from "../../context/useUser";
 import { toast } from "react-toastify";
 import useBubbles from "../../hooks/useBubbles";
@@ -168,6 +168,14 @@ export default function LoginPage() {
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden login-container">
         <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20 dark:border-gray-700/50 relative">
+        {/* Close Button */}
+<button 
+  onClick={() => navigate('/')}
+  className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
+  aria-label="Close and return to homepage"
+>
+  <X className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+</button>
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-pink-500/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
 
