@@ -26,6 +26,7 @@ import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
+// eslint-disable-next-line no-unused-vars
 import { useDarkMode } from './context/DarkModeContext.jsx';
 
 export default function App() {
