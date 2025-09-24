@@ -21,7 +21,7 @@ const useBubbles = (containerId, options) => {
 
 // Axios defaults
 axios.defaults.withCredentials = true;
-const API_BASE_URL = "http://localhost:5001";
+const API_BASE_URL = "altheas-crochet-project.vercel.app";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export default function SignUpPage() {

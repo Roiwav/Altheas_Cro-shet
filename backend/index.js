@@ -13,7 +13,7 @@ app.use(express.json());
 // ✅ CORS setup for React frontend
 app.use(
   cors({
-    origin: "http://localhost:5173", // React app URL
+    origin: "altheas-crochet-project.vercel.app", // React app URL
     credentials: true,
   })
 );
