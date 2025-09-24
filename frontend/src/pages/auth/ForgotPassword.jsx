@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
 
-const FORGOT_URL = import.meta.env.VITE_FORGOT_PASSWORD_URL || 'http://localhost/croshet_db/forgot-password.php';
+const FORGOT_URL = 'http://localhost:5001/api/v1/auth/forgot-password';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
