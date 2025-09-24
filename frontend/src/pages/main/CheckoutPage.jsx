@@ -8,6 +8,12 @@ import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
 import { shippingFees } from "../../data/shippingData.js";
 
+// Currency formatter
+const currencyFormatter = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+});
+
 export default function CheckoutPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -25,8 +31,8 @@ export default function CheckoutPage() {
     const { user, isAuthenticated, token, isLoading } = useUser?.() || { user: null, isAuthenticated: false, token: null, isLoading: true };
     const toastShown = useRef(false);
 
-    // New state to track selected items for checkout
-    const [selectedItems, setSelectedItems] = useState([]);
+    // New state to track the single selected item for checkout
+    const [selectedItem, setSelectedItem] = useState(null);
 
     const singleProduct = location.state?.product;
 
@@ -47,11 +53,13 @@ export default function CheckoutPage() {
 
     // Initialize selected items when the component loads
     useEffect(() => {
-        setSelectedItems(checkoutItems);
+        if (checkoutItems.length > 0) {
+            setSelectedItem(checkoutItems[0]);
+        }
     }, [cartItems, singleProduct]);
 
     // Items to actually process in the order
-    const itemsToOrder = singleProduct ? [singleProduct] : selectedItems;
+    const itemsToOrder = singleProduct ? [singleProduct] : (selectedItem ? [selectedItem] : []);
 
     // This useEffect will still display a toast if the cart is empty,
     // which is a good user experience practice.
@@ -69,13 +77,14 @@ export default function CheckoutPage() {
 
     // Determine the correct shipping address and fee
     const finalShippingAddress = singleProduct 
-        ? singleProduct.shippingAddress 
-        : (user?.addresses?.find(a => a.isDefault) || shippingAddress);
-
-    const finalShippingFee = singleProduct 
-        ? singleProduct.shippingFee 
-        : (shippingFees[finalShippingAddress?.city] || 0);
-
+        ? singleProduct.shippingAddress
+        : selectedItem?.shippingAddress || (user?.addresses?.find(a => a.isDefault) || shippingAddress);
+    
+    // Calculate shipping fee ONLY if there are items to order.
+    const finalShippingFee = itemsToOrder.length > 0
+        ? (singleProduct ? singleProduct.shippingFee : (shippingFees[finalShippingAddress?.city] || selectedItem?.shippingFee || 0))
+        : 0;
+    
     const totalCost = subtotal + finalShippingFee;
 
     const handlePlaceOrder = async () => {
@@ -90,8 +99,7 @@ export default function CheckoutPage() {
             // Create an array of promises, one for each order to be placed.
             const orderPromises = itemsToOrder.map(item => {
                 const itemTotal = item.price * (item.qty || 1);
-                // Apply the shipping fee to each individual order.
-                const orderTotal = itemTotal + finalShippingFee;
+                const orderTotal = itemTotal + finalShippingFee; // Apply the dynamically calculated fee
 
                 const orderData = {
                     userId: user?.id,
@@ -163,22 +171,6 @@ export default function CheckoutPage() {
         await removeFromCart(getId(item));
     };
 
-    const handleSelectItem = (item) => {
-        setSelectedItems(prev => {
-            const itemId = getId(item);
-            if (prev.some(selected => getId(selected) === itemId)) {
-                return prev.filter(selected => getId(selected) !== itemId);
-            } else {
-                return [...prev, item];
-            }
-        });
-    };
-
-    const currencyFormatter = new Intl.NumberFormat("en-PH", {
-        style: "currency",
-        currency: "PHP",
-    });
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6 md:p-12">
             <div className="w-full max-w-5xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/50 overflow-hidden">
@@ -196,15 +188,17 @@ export default function CheckoutPage() {
                     <div className="p-6 md:w-1/2 border-r space-y-4">
                         {checkoutItems.map((item) => (
                             <div
-                                key={item._id || item.id}
-                                className={`flex items-center justify-between border p-4 rounded-lg transition-all ${itemsToOrder.some(i => getId(i) === getId(item)) ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-700' : 'bg-white/50 dark:bg-gray-800/50'}`}
+                                key={item.cartItemId || item.id}
+                                className={`flex items-center justify-between border p-4 rounded-lg transition-all cursor-pointer ${selectedItem?.cartItemId === item.cartItemId ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-700' : 'bg-white/50 dark:bg-gray-800/50'}`}
+                                onClick={() => !singleProduct && setSelectedItem(item)}
                             >
                                 {!singleProduct && (
-                                    <input
-                                        type="checkbox"
-                                        checked={itemsToOrder.some(i => getId(i) === getId(item))}
-                                        onChange={() => handleSelectItem(item)}
-                                        className="mr-4 h-5 w-5 rounded border-gray-300 text-pink-600 focus:ring-pink-500"
+                                    <input 
+                                        type="radio"
+                                        name="selectedItem"
+                                        checked={selectedItem?.cartItemId === item.cartItemId}
+                                        onChange={() => setSelectedItem(item)}
+                                        className="mr-4 h-5 w-5 border-gray-300 text-pink-600 focus:ring-pink-500"
                                     />
                                 )}
                                 <img

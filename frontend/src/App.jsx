@@ -23,6 +23,7 @@ import UserDashboard from './pages/user/UserDashboard';
 import OrdersPage from './pages/user/OrdersPage';
 import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
+import ResetPassword from "./pages/auth/ResetPassword";
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import { useDarkMode } from './context/DarkModeContext.jsx';
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* User-specific Pages */}
         <Route path="/dashboard" element={<UserDashboard />} />
