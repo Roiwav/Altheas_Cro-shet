@@ -108,10 +108,9 @@ export const CartProvider = ({ children }) => {
         }
 
         console.log(`🛍️ addToCart called for product ID: ${id}`);
-        // Always add as a new, unique item to support placing separate orders for each.
-        // A unique ID is added for local state management.
-        const newCartItem = { ...product, qty: quantity, cartItemId: crypto.randomUUID() };
-        const newCart = [...cartItems, newCartItem];
+        const newCart = cartItems.find((p) => getId(p) === id)
+            ? cartItems.map((p) => (getId(p) === id ? { ...p, qty: (p.qty || 0) + quantity } : p))
+            : [...cartItems, { ...product, qty: quantity }];
 
         if (isAuthenticated && user?.id) {
             console.log("🔐 User is authenticated, attempting to save to backend...");

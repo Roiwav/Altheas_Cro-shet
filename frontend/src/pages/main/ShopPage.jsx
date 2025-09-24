@@ -1,6 +1,6 @@
 // src/pages/main/ShopPage.jsx
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaThLarge, FaList, FaShoppingCart, FaSearch } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -10,13 +10,36 @@ import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
 import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
-import { regions, shippingFees, defaultRegion, defaultCity } from "../../data/shippingData.js";
 
 // Currency formatter
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
 });
+
+// Regions & Shipping
+const regions = {
+  "Metro Manila": ["Manila", "Quezon City"],
+  "South Luzon": ["Calamba City", "Batangas City"],
+  "North Luzon": ["Baguio", "Dagupan"],
+  Visayas: ["Cebu City", "Iloilo City"],
+  Mindanao: ["Davao City", "Cagayan de Oro"],
+};
+const shippingFees = {
+  "Manila": 25,
+  "Quezon City": 20,
+  "Calamba City": 36,
+  "Batangas City": 30,
+  "Baguio": 35,
+  "Dagupan": 32,
+  "Cebu City": 28,
+  "Iloilo City": 30,
+  "Davao City": 34,
+  "Cagayan de Oro": 33,
+};
+
+const defaultRegion = "South Luzon";
+const defaultCity = "Calamba City";
 
 // Placeholder image
 const placeholderImage =
@@ -36,6 +59,7 @@ export default function ShopPage() {
   const [page, setPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  
   // ✅ Use CartContext state for region and city
   const [localRegion, setLocalRegion] = useState(defaultRegion);
   const [localCity, setLocalCity] = useState(defaultCity);
@@ -43,7 +67,7 @@ export default function ShopPage() {
 
   // This effect sets the initial shipping info when the page loads or user changes.
   useEffect(() => {
-    if (selectedProduct && isAuthenticated && user?.addresses?.length > 0) {
+    if (isAuthenticated && user?.addresses?.length > 0) {
       const defaultAddress = user.addresses.find(a => a.isDefault) || user.addresses[0];
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress.id);
@@ -56,7 +80,7 @@ export default function ShopPage() {
       setLocalCity(defaultCity);
       setSelectedAddressId("");
     }
-  }, [selectedProduct, isAuthenticated, user]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 
@@ -69,6 +93,7 @@ export default function ShopPage() {
   useEffect(() => {
     // The fee is calculated directly in the JSX. This effect's job is to
     // keep the global cart context aware of the shipping details.
+    const fee = shippingFees[localCity] || 0;
     let addressToSet;
     if (isAuthenticated && selectedAddressId) {
       addressToSet = user.addresses.find(a => a.id === selectedAddressId);
@@ -82,8 +107,6 @@ export default function ShopPage() {
         country: "Philippines"
       };
     }
-
-    const fee = shippingFees[addressToSet?.city || localCity] || 0;
 
     if (addressToSet) {
       setShippingAddress(addressToSet);
@@ -143,7 +166,7 @@ export default function ShopPage() {
       };
     }
     // Pass all necessary info in the product object for the checkout page
-    const productForCheckout = { ...product, shippingFee, shippingAddress: shippingAddress, id: product.id };
+    const productForCheckout = { ...product, shippingFee, shippingAddress, id: product.id };
     navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
@@ -286,21 +309,27 @@ export default function ShopPage() {
 
                 <div className="border-y py-4 space-y-4 text-sm">
                   {isAuthenticated && user?.addresses?.length > 0 ? (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <label className="font-medium text-gray-700 dark:text-gray-300 block">Default Address</label>
-                        <Link to="/settings?tab=addresses" className="text-xs text-blue-600 hover:underline">Change</Link>
-                      </div>
-                      <div className="p-3 rounded-md bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
-                        <p className="font-semibold text-gray-800 dark:text-gray-200">{user.addresses.find(a => a.isDefault)?.label || user.addresses[0].label}</p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          {[
-                            user.addresses.find(a => a.isDefault)?.line1 || user.addresses[0].line1,
-                            user.addresses.find(a => a.isDefault)?.city || user.addresses[0].city,
-                            user.addresses.find(a => a.isDefault)?.state || user.addresses[0].state
-                          ].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
+                    <div>
+                      <label className="font-medium text-gray-700 dark:text-gray-300 block">Shipping Address</label>
+                      <select
+                        className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                        value={selectedAddressId}
+                        onChange={(e) => {
+                          const addressId = e.target.value;
+                          setSelectedAddressId(addressId);
+                          const selectedAddr = user.addresses.find(a => a.id === addressId);
+                          if (selectedAddr) {
+                            setLocalRegion(selectedAddr.state);
+                            setLocalCity(selectedAddr.city);
+                          }
+                        }}
+                      >
+                        {user.addresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.label} - {addr.line1}, {addr.city}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ) : (
                     <>

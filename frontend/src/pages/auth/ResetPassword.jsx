@@ -26,7 +26,7 @@ function ResetPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5001/api/v1/auth/reset-password', {
+      const res = await fetch('http://localhost/croshet_db/reset-password.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
@@ -34,7 +34,7 @@ function ResetPassword() {
 
       const data = await res.json();
 
-      if (res.ok) {
+      if (data.success) {
         setMessage('Password successfully reset! Redirecting to login...');
         setTimeout(() => {
           navigate('/login');

@@ -1,9 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const User = require("../models/User");
 const { verifyToken } = require("../middleware/authMiddleware.js");
-const emailjs = require('@emailjs/nodejs');
 
 const router = express.Router();
 
@@ -164,107 +162,6 @@ router.post("/change-password", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Change Password error:", err);
     res.status(500).json({ message: "Server error, please try again later" });
-  }
-});
-
-// =============================
-// FORGOT PASSWORD
-// =============================
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
-    }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      // To prevent email enumeration, we send a success response even if the user doesn't exist.
-      return res.status(200).json({ message: "If a user with that email exists, a reset link has been sent." });
-    }
-
-    // Generate a secure token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // Token expires in 1 hour
-
-    await user.save();
-
-    // Create reset URL
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-
-    // EmailJS parameters
-    const templateParams = {
-      to_email: email,
-      reset_link: resetUrl,
-      // Add any other params your template needs, like `to_name: user.fullName`
-    };
-
-    // Send email using EmailJS Node.js SDK
-    console.log('Attempting to send email with Service ID:', process.env.EMAILJS_SERVICE_ID);
-    await emailjs.send(
-      process.env.EMAILJS_SERVICE_ID,
-      process.env.EMAILJS_TEMPLATE_ID,
-      templateParams,
-      {
-        // The Node.js SDK uses the private key for authentication.
-        publicKey: process.env.EMAILJS_PUBLIC_KEY,
-        privateKey: process.env.EMAILJS_PRIVATE_KEY,
-      }
-    );
-
-    res.status(200).json({ message: "Password reset link sent." });
-
-  } catch (err) {
-    console.error("Forgot Password error:", err);
-    // In case of an error, we still don't want to reveal if the user exists.
-    // But we can send a generic server error.
-    res.status(500).json({ message: "Error sending reset email. Please try again later." });
-  }
-});
-
-// =============================
-// RESET PASSWORD
-// =============================
-router.post("/reset-password", async (req, res) => {
-  try {
-    const { token, password } = req.body;
-
-    if (!token || !password) {
-      return res.status(400).json({ message: "Token and new password are required." });
-    }
-
-    // Hash the incoming token to match the one in the DB
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-    console.log("Received Token:", token);
-    console.log("Hashed Token for DB Search:", hashedToken);
-
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: Date.now() }, // Check if the token is not expired
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
-    }
-
-    // Set the new password
-    user.password = password;
-    // Clear the reset token fields
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-
-    await user.save();
-
-    // Optionally, log the user in by sending a new JWT token
-
-    res.status(200).json({ message: "Password has been reset successfully." });
-
-  } catch (err) {
-    console.error("Reset Password error:", err);
-    res.status(500).json({ message: "Server error, please try again later." });
   }
 });
 

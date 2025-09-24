@@ -61,7 +61,7 @@ function UserDashboard() {
     },
     { 
       title: 'Addresses', 
-      value: user?.addresses?.find(a => a.isDefault)?.label || 'No Default',
+      value: '', 
       icon: <Home className="w-6 h-6" />, 
       color: 'blue', 
       link: '/settings?tab=addresses' 

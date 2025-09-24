@@ -1,18 +1,11 @@
 // src/pages/main/CheckoutPage.jsx
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
-import { shippingFees } from "../../data/shippingData.js";
-
-// Currency formatter
-const currencyFormatter = new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-});
 
 export default function CheckoutPage() {
     const location = useLocation();
@@ -31,9 +24,6 @@ export default function CheckoutPage() {
     const { user, isAuthenticated, token, isLoading } = useUser?.() || { user: null, isAuthenticated: false, token: null, isLoading: true };
     const toastShown = useRef(false);
 
-    // New state to track the single selected item for checkout
-    const [selectedItem, setSelectedItem] = useState(null);
-
     const singleProduct = location.state?.product;
 
     // This useEffect handles redirecting unauthenticated users.
@@ -49,17 +39,7 @@ export default function CheckoutPage() {
         }
     }, [isLoading, isAuthenticated, navigate, location]);
 
-    const checkoutItems = singleProduct ? [singleProduct] : cartItems; // Items to display
-
-    // Initialize selected items when the component loads
-    useEffect(() => {
-        if (checkoutItems.length > 0) {
-            setSelectedItem(checkoutItems[0]);
-        }
-    }, [cartItems, singleProduct]);
-
-    // Items to actually process in the order
-    const itemsToOrder = singleProduct ? [singleProduct] : (selectedItem ? [selectedItem] : []);
+    const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
     // This useEffect will still display a toast if the cart is empty,
     // which is a good user experience practice.
@@ -70,22 +50,11 @@ export default function CheckoutPage() {
         }
     }, [checkoutItems, navigate]);
 
-    const subtotal = itemsToOrder.reduce(
+    const subtotal = checkoutItems.reduce(
         (sum, item) => sum + (item.price * (item.qty || 1)),
         0
     );
-
-    // Determine the correct shipping address and fee
-    const finalShippingAddress = singleProduct 
-        ? singleProduct.shippingAddress
-        : selectedItem?.shippingAddress || (user?.addresses?.find(a => a.isDefault) || shippingAddress);
-    
-    // Calculate shipping fee ONLY if there are items to order.
-    const finalShippingFee = itemsToOrder.length > 0
-        ? (singleProduct ? singleProduct.shippingFee : (shippingFees[finalShippingAddress?.city] || selectedItem?.shippingFee || 0))
-        : 0;
-    
-    const totalCost = subtotal + finalShippingFee;
+    const totalCost = subtotal + (singleProduct ? singleProduct.shippingFee : shippingFee);
 
     const handlePlaceOrder = async () => {
         if (!isAuthenticated) {
@@ -97,9 +66,11 @@ export default function CheckoutPage() {
 
         try {
             // Create an array of promises, one for each order to be placed.
-            const orderPromises = itemsToOrder.map(item => {
+            const orderPromises = checkoutItems.map(item => {
                 const itemTotal = item.price * (item.qty || 1);
-                const orderTotal = itemTotal + finalShippingFee; // Apply the dynamically calculated fee
+                // Apply the shipping fee to each individual order.
+                const orderShippingFee = singleProduct ? singleProduct.shippingFee : shippingFee;
+                const orderTotal = itemTotal + orderShippingFee;
 
                 const orderData = {
                     userId: user?.id,
@@ -112,8 +83,8 @@ export default function CheckoutPage() {
                         image: item.image,
                         variation: item.variation,
                     }],
-                    shippingAddress: finalShippingAddress,
-                    shippingFee: finalShippingFee,
+                    shippingAddress: singleProduct ? singleProduct.shippingAddress : shippingAddress,
+                    shippingFee: orderShippingFee,
                     total: orderTotal,
                 };
 
@@ -171,6 +142,11 @@ export default function CheckoutPage() {
         await removeFromCart(getId(item));
     };
 
+    const currencyFormatter = new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+    });
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6 md:p-12">
             <div className="w-full max-w-5xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/50 overflow-hidden">
@@ -188,23 +164,13 @@ export default function CheckoutPage() {
                     <div className="p-6 md:w-1/2 border-r space-y-4">
                         {checkoutItems.map((item) => (
                             <div
-                                key={item.cartItemId || item.id}
-                                className={`flex items-center justify-between border p-4 rounded-lg transition-all cursor-pointer ${selectedItem?.cartItemId === item.cartItemId ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-700' : 'bg-white/50 dark:bg-gray-800/50'}`}
-                                onClick={() => !singleProduct && setSelectedItem(item)}
+                                key={item._id || item.id}
+                                className="flex items-center justify-between border p-4 rounded-lg"
                             >
-                                {!singleProduct && (
-                                    <input 
-                                        type="radio"
-                                        name="selectedItem"
-                                        checked={selectedItem?.cartItemId === item.cartItemId}
-                                        onChange={() => setSelectedItem(item)}
-                                        className="mr-4 h-5 w-5 border-gray-300 text-pink-600 focus:ring-pink-500"
-                                    />
-                                )}
                                 <img
                                     src={item.image}
                                     alt={item.name}
-                                    className="w-16 h-16 object-contain rounded"
+                                    className="w-20 h-20 object-contain rounded"
                                 />
                                 <div className="flex-1 mx-4">
                                     <p className="font-medium">{item.name}</p>
@@ -247,14 +213,14 @@ export default function CheckoutPage() {
                             <h4 className="text-gray-700 font-medium">Shipping Info</h4>
                             <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                                 {(() => {
-                                    const addr = finalShippingAddress;
+                                    const addr = singleProduct ? singleProduct.shippingAddress : shippingAddress;
                                     if (!addr) return <p>No shipping address selected.</p>;
                                     const addressParts = [addr.line1, addr.line2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
                                     return <p>{addressParts.join(', ')}</p>;
                                 })()}
                             </div>
                             <p className="text-sm text-gray-600 mt-2">
-                                Shipping Fee: {currencyFormatter.format(finalShippingFee)}
+                                Shipping Fee: {currencyFormatter.format(singleProduct ? singleProduct.shippingFee : shippingFee)}
                             </p>
                         </div>
 
@@ -266,7 +232,7 @@ export default function CheckoutPage() {
                             </div>
                             <div className="flex justify-between text-gray-600">
                                 <span>Shipping Fee</span>
-                                <span>{currencyFormatter.format(finalShippingFee)}</span>
+                                <span>{currencyFormatter.format(singleProduct ? singleProduct.shippingFee : shippingFee)}</span>
                             </div>
                             <div className="flex justify-between font-bold text-lg mt-2 text-gray-900">
                                 <span>Total</span>
