@@ -1,27 +1,25 @@
 // src/pages/legal/ServiceTerms.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDarkMode } from '../../context/DarkModeContext.jsx';
 
 export default function ServiceTerms() {
   const navigate = useNavigate();
-
-    const goToSignUp = () => {
-    navigate("/signup");
-  };
+  const { isDarkMode } = useDarkMode();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-90">
+    <div className={`min-h-screen px-4 sm:px-6 lg:px-8 py-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Back button */}
       <button
-        onClick={goToSignUp}
-        className="mb-4 flex items-center text-gray-600 hover:text-gray-800"
+        onClick={() => navigate(-1)}
+        className="mb-4 flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
       >
         ← Back
       </button>
 
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow">
+      <div className={`max-w-3xl mx-auto p-8 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <h1 className="text-3xl font-bold mb-4">Terms of Service</h1>
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 2025</p>
+        <p className={`text-sm mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last updated: May 2025</p>
 
         <section className="mb-6">
           <h2 className="text-xl font-semibold mb-2">1. Acceptance of Terms</h2>
@@ -143,16 +141,6 @@ export default function ServiceTerms() {
             .
           </p>
         </section>
-
-        {/* Confirmation button */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={goToSignUp}
-            className="px-6 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition"
-          >
-            I Confirm I’ve Read These Terms
-          </button>
-        </div>
       </div>
     </div>
   );

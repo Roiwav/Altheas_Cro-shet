@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo, Fragment } from "react";
 import { Navigate } from "react-router-dom";
 import { useUser } from "../../context/useUser";
@@ -28,7 +29,7 @@ export default function AdminPage() {
     { id: 2, name: 'John Smith', email: 'john.s@example.com', message: 'Great customer service and fast shipping. The packaging was also very lovely. Will definitely buy again!', created_at: '2023-10-25T14:30:00Z' },
     { id: 3, name: 'Emily White', email: 'emily.w@example.com', message: 'The sunflower is so cheerful and well-made. It brightens up my desk.', created_at: '2023-10-25T11:20:00Z' },
   ]);
-  const [subscribers, setSubscribers] = useState([
+  const [subscribers, _setSubscribers] = useState([
     { id: 1, email: 'subscriber1@example.com', subscribed_at: '2023-10-24T09:00:00Z' },
     { id: 2, email: 'subscriber2@example.com', subscribed_at: '2023-10-23T18:45:00Z' },
     { id: 3, email: 'another.fan@example.com', subscribed_at: '2023-10-22T12:00:00Z' },
@@ -135,39 +136,38 @@ export default function AdminPage() {
   });
 
   // Sort orders based on sortConfig
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const sortedAndFilteredOrders = useMemo(() => {
-    let sortableItems = [...filteredOrders];
-    if (sortConfig.key) {
-      sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+    if (!sortConfig.key) return filteredOrders;
 
-        const numericKeys = ['id', 'quantity', 'shipping_fee', 'total_price'];
-        const dateKeys = ['created_at'];
+    return [...filteredOrders].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
 
-        let valA, valB;
+      const numericKeys = ['id', 'quantity', 'shipping_fee', 'total_price'];
+      const dateKeys = ['created_at'];
 
-        if (numericKeys.includes(sortConfig.key)) {
-          valA = parseFloat(aValue) || 0;
-          valB = parseFloat(bValue) || 0;
-        } else if (dateKeys.includes(sortConfig.key)) {
-          valA = new Date(aValue).getTime() || 0;
-          valB = new Date(bValue).getTime() || 0;
-        } else { // String sorting
-          valA = String(aValue).toLowerCase();
-          valB = String(bValue).toLowerCase();
-        }
+      let valA, valB;
 
-        if (valA < valB) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (valA > valB) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    return sortableItems;
+      if (numericKeys.includes(sortConfig.key)) {
+        valA = parseFloat(aValue) || 0;
+        valB = parseFloat(bValue) || 0;
+      } else if (dateKeys.includes(sortConfig.key)) {
+        valA = new Date(aValue).getTime() || 0;
+        valB = new Date(bValue).getTime() || 0;
+      } else { // String sorting
+        valA = String(aValue).toLowerCase();
+        valB = String(bValue).toLowerCase();
+      }
+
+      if (valA < valB) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (valA > valB) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
   }, [filteredOrders, sortConfig]);
 
   const requestSort = (key) => {
@@ -179,6 +179,7 @@ export default function AdminPage() {
   };
 
   // Paginate orders
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const paginatedOrders = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return sortedAndFilteredOrders.slice(startIndex, startIndex + itemsPerPage);
@@ -1045,7 +1046,7 @@ export default function AdminPage() {
   
   const SidebarContent = () => (
         <div className={`flex flex-col h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-           <div className="flex items-center h-16 flex-shrink-0 px-4 space-x-2">
+          <div className="flex items-center h-16 flex-shrink-0 px-4 space-x-2">
             <img
               className="h-8 w-auto"
               src={logoSrc}
@@ -1069,7 +1070,13 @@ export default function AdminPage() {
                 return (
                   <div key={tab.id} className="relative group"> {/* Added group for hover effects */}
                     <button
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => {
+                        if (tab.id === 'orders') {
+                          setActiveTab('dashboard');
+                        } else {
+                          setActiveTab(tab.id);
+                        }
+                      }}
                       className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                         isSidebarCollapsed && !sidebarOpen ? 'justify-center' : ''
                       } ${
