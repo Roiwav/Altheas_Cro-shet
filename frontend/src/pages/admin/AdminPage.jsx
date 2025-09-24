@@ -55,6 +55,7 @@
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+
       })
         .then((res) => res.json())
         .then((data) => {
@@ -182,6 +183,7 @@
       return sortableItems;
     }, [filteredOrders, sortConfig]);
 
+
     const requestSort = (key) => {
       let direction = 'ascending';
       if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -221,6 +223,7 @@
           {status}
         </span>
       );
+
     };
 
     const renderActions = (order) => {
@@ -1056,6 +1059,7 @@
           </button>
         </div>
       </div>
+
     );
 
     const isSidebarCollapsed = !isSidebarHovered;
@@ -1104,6 +1108,7 @@
                 })}
               </nav>
             </div>
+
           </div>
     );
 

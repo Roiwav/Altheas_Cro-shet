@@ -26,6 +26,7 @@ import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
+// eslint-disable-next-line no-unused-vars
 import { useDarkMode } from './context/DarkModeContext.jsx';
 
 export default function App() {
@@ -49,6 +50,14 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
       </Route>
 
+      {/* Auth Pages without Layout */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/data-policy" element={<DataPolicy />} />
+      <Route path="/service-terms" element={<ServiceTerm />} />
+
       <Route element={<Layout />}>
         {/* Main Pages */}
         <Route path="/" element={<HomePage />} />
@@ -64,14 +73,6 @@ export default function App() {
         <Route path="/ar" element={<ARPage />} />
         <Route path="/view-ar" element={<ARViewerPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
-        <Route path="/data-policy" element={<DataPolicy />} />
-        <Route path="/service-terms" element={<ServiceTerm />} />
-        
-        {/* Auth Pages */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/oauth/callback" element={<OAuthCallback />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* User-specific Pages */}
         <Route path="/dashboard" element={<UserDashboard />} />
