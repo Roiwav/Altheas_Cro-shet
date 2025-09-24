@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
 
-const FORGOT_URL = import.meta.env.VITE_FORGOT_PASSWORD_URL || 'http://localhost/croshet_db/forgot-password.php';
-
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -21,25 +19,23 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(FORGOT_URL, {
+      const response = await fetch('http://localhost:5001/api/v1/auth/forgot-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json();
 
-      if (response.ok && (data.success ?? true)) {
-        setMessage('A password reset link has been sent to your email.');
+      if (response.status === 200) {
+        setMessage(data.message || 'A password reset link has been sent to your email.');
         setEmail('');
       } else {
-        setError(data.message || 'Something went wrong. Please try again.');
+        setError(data.message || 'Failed to send reset link.');
       }
-    } catch {
-      setError('Failed to send reset link. Please try again.');
+    } catch (err) {
+      console.error('Forgot Password Error:', err);
+      setError('Failed to send reset link. Please try again later.');
     } finally {
       setIsLoading(false);
     }
