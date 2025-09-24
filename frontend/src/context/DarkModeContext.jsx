@@ -1,8 +1,10 @@
-import { useContext, useState, useEffect } from 'react';
-import { DarkModeContext } from './DarkModeContext';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { applyDarkMode } from './darkModeUtils';
 
-// Custom hook to use dark mode
+// Create the context
+export const DarkModeContext = createContext(null);
+
+// Custom hook to easily consume the dark mode context
 export const useDarkMode = () => {
   const context = useContext(DarkModeContext);
   if (!context) {
@@ -10,7 +12,7 @@ export const useDarkMode = () => {
   }
   return context;
 };
-
+ 
 // Dark Mode Provider Component
 export const DarkModeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(() => {
@@ -23,17 +25,17 @@ export const DarkModeProvider = ({ children }) => {
     return true;
   });
 
-  // Apply dark mode to document and save to localStorage
+  // Apply dark mode class to the document and save preference to localStorage
   useEffect(() => {
     applyDarkMode(darkMode);
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
+  const toggleDarkMode = () => { 
     setDarkMode(prev => !prev);
   };
 
   const value = {
-    darkMode,
+    isDarkMode: darkMode,
     setDarkMode,
     toggleDarkMode
   };

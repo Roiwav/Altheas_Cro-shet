@@ -2,6 +2,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
+import AdminRoute from './components/auth/AdminRoute';
 import AdminPage from './pages/admin/AdminPage';
 import HomePage from './pages/main/HomePage';
 import { useEffect, useState } from 'react';
@@ -44,6 +45,10 @@ export default function App() {
 
   return (
     <Routes>
+      <Route element={<AdminRoute />}>
+        <Route path="/admin" element={<AdminPage />} />
+      </Route>
+
       <Route element={<Layout />}>
         {/* Main Pages */}
         <Route path="/" element={<HomePage />} />
@@ -72,9 +77,6 @@ export default function App() {
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        
-        {/* Admin */}
-        <Route path="/admin" element={<AdminPage />} />
         
         {/* Catch-all for 404 Not Found */}
       </Route>
