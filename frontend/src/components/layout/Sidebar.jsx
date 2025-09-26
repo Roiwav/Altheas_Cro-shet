@@ -124,7 +124,7 @@ export default function Sidebar({ isOpen, setIsOpen, scrollToSection, aboutRef, 
       <div
         className={`fixed left-0 top-0 h-screen z-50 transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
-          ${isHovered || sidebarOpen ? 'w-56' : 'w-20'}
+          ${isHovered || sidebarOpen ? 'w-72' : 'w-20'}
           bg-white dark:bg-gray-900 shadow-lg`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

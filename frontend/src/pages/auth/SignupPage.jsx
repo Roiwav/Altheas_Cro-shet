@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, User, Mail, Lock, X } from "lucide-react";
+import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
 
@@ -155,14 +155,6 @@ export default function SignUpPage() {
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden signup-container">
         <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20 dark:border-gray-700/50 relative z-10">
-        {/* Close Button */}
-<button 
-  onClick={() => navigate('/')}
-  className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
-  aria-label="Close and return to homepage"
->
-  <X className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-</button>
           <div className="p-8 sm:p-10">
             <div className="text-center mb-8">
               <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
