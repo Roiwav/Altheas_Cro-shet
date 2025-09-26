@@ -1,8 +1,5 @@
 // src/pages/static/GalleryPage.jsx
 import React, { useState } from "react";
-import { Home } from "lucide-react";
-import { Link } from "react-router-dom";
-
 // Gallery images
 import img1 from '../../assets/images/gallery/image1.jpg';
 import img2 from '../../assets/images/gallery/image2.jpg';
