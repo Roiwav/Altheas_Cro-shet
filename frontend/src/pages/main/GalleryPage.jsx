@@ -14,7 +14,7 @@ import img10 from '../../assets/images/gallery/image10.jpg';
 import img11 from '../../assets/images/gallery/image11.jpg';
 import img12 from '../../assets/images/gallery/image12.jpg';
 
-export default function GalleryPage({ isSidebarHovered }) {
+export default function GalleryPage() {
   const [modalImage, setModalImage] = useState(null);
 
   const images = [
@@ -39,9 +39,7 @@ export default function GalleryPage({ isSidebarHovered }) {
         dark:bg-gradient-to-br dark:from-[#2C2C54] dark:via-[#474787] dark:to-[#40407a]
       `}
     >
-      <div className={`max-w-7xl mx-auto py-10 px-4 transition-all duration-300 ${
-          isSidebarHovered ? "md:pl-64" : "md:pl-20"
-        }`}
+      <div className="max-w-7xl mx-auto py-10 px-4 md:pr-4 md:pl-[calc(var(--sidebar-width,5rem)+1rem)] transition-[padding-left] duration-300 ease-in-out"
       >
         {/* Title */}
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white text-center mb-12 drop-shadow-md">
@@ -50,14 +48,16 @@ export default function GalleryPage({ isSidebarHovered }) {
 
         {/* Image Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {images.map((image) => (
+          {images.map((image, index) => (
             <div
               key={image.id}
               onClick={() => setModalImage(image)}
               className="group cursor-pointer overflow-hidden rounded-2xl 
                          bg-white/70 dark:bg-gray-800/70 
                          backdrop-blur-sm shadow-lg hover:shadow-2xl 
-                         transform hover:scale-105 transition-all duration-300"
+                         transform hover:scale-105 transition-all duration-300
+                         animate-fade-in-up"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
               <img
                 src={image.src}
@@ -76,12 +76,13 @@ export default function GalleryPage({ isSidebarHovered }) {
         {/* Modal Viewer */}
         {modalImage && (
           <div
-            onClick={() => setModalImage(null)} // Close modal on overlay click
-            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            onClick={() => setModalImage(null)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
           >
             <div
               className="relative max-w-3xl w-full rounded-2xl overflow-hidden shadow-2xl 
-                         bg-white dark:bg-gray-900"
+                         bg-white dark:bg-gray-900
+                         animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <img
@@ -92,10 +93,10 @@ export default function GalleryPage({ isSidebarHovered }) {
               <button
                 onClick={() => setModalImage(null)}
                 className="absolute top-4 right-4 
-                           bg-[#F8F8E1]/90 dark:bg-gray-700 
-                           hover:bg-[#FFC1DA]/90 dark:hover:bg-gray-600 
+                           bg-white/50 dark:bg-gray-800/50
+                           hover:bg-white/80 dark:hover:bg-gray-700/80
                            text-gray-800 dark:text-gray-200 
-                           rounded-full w-10 h-10 flex items-center justify-center transition"
+                           rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-300"
               >
                 ✕
               </button>
