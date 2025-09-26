@@ -19,8 +19,7 @@ import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { UserContext } from "../../context/UserContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
 
-export default function Sidebar({ isOpen, setIsOpen, scrollToSection, aboutRef, contactRef }) {
-  const [isHovered, setIsHovered] = useState(false);
+export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, scrollToSection, aboutRef, contactRef }) {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
   const navigate = useNavigate();

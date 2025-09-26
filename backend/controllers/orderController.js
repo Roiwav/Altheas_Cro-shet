@@ -7,23 +7,44 @@ const Order = require('../models/Order.js');
  */
 const createOrder = async (req, res) => {
   try {
-    const { userId, username, products, shippingAddress, shippingFee, total } = req.body;
+    const { userId, username, products, shippingAddress, shippingFee, total, paymentMethod } = req.body;
 
     if (!products || products.length === 0) {
       return res.status(400).json({ success: false, message: 'No order items' });
+    }
+    
+    if (!paymentMethod) {
+      return res.status(400).json({ success: false, message: 'Payment method is required' });
+    }
+
+    // Normalize shippingAddress to ensure it's an object
+    let finalShippingAddress = shippingAddress;
+    if (!shippingAddress || typeof shippingAddress !== 'object' || !shippingAddress.line1) {
+      // If it's a string, convert it to the object structure the model expects.
+      // This is a fallback for older or simpler address formats.
+      const addressString = typeof shippingAddress === 'string' ? shippingAddress : 'N/A';
+      const parts = addressString.split(',').map(p => p.trim());
+      finalShippingAddress = {
+        line1: parts[0] || 'N/A',
+        city: parts[1] || 'N/A',
+        state: parts[2] || 'N/A',
+        postalCode: 'N/A',
+        country: 'Philippines',
+      };
     }
 
     const order = new Order({
       userId,
       username,
       products,
-      shippingAddress,
+      shippingAddress: finalShippingAddress,
       shippingFee,
       total,
+      paymentMethod,
     });
 
     const createdOrder = await order.save();
-    res.status(201).json({ success: true, order: createdOrder });
+    res.status(201).json(createdOrder);
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ success: false, message: 'Server Error' });

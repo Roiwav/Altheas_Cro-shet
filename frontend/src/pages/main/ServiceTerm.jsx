@@ -19,7 +19,7 @@ export default function ServiceTerms() {
 
       <div className={`max-w-3xl mx-auto p-8 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <h1 className="text-3xl font-bold mb-4">Terms of Service</h1>
-        <p className={`text-sm mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last updated: May 2025</p>
+        <p className={`text-sm mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last updated: Oct 2025</p>
 
         <section className="mb-6">
           <h2 className="text-xl font-semibold mb-2">1. Acceptance of Terms</h2>
@@ -73,7 +73,7 @@ export default function ServiceTerms() {
           <h2 className="text-xl font-semibold mb-2">7. Cancellations &amp; Returns</h2>
           <p>
             Cancel within 1 hour by emailing{' '}
-            <a href="mailto:support@altheascroshet.com" className="underline">
+            <a href="mailto:altheacroshet@gmail.com" className="underline">
               support@altheascroshet.com
             </a>
             . Custom items are non-returnable unless defective.
@@ -136,7 +136,7 @@ export default function ServiceTerms() {
           <p>
             Questions? Email{' '}
             <a href="mailto:legal@altheascroshet.com" className="underline">
-              legal@altheascroshet.com
+              altheascroshet@gmail.com
             </a>
             .
           </p>

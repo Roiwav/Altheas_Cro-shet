@@ -59,7 +59,7 @@ export default function App() {
 
       <Route element={<Layout />}>
         {/* Main Pages */}
-        <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
@@ -68,14 +68,15 @@ export default function App() {
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/about" element={<AboutUs />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/ar" element={<ARPage />} />
         <Route path="/view-ar" element={<ARViewerPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         
         {/* User-specific Pages */}
         <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/cart" element={<UserDashboard />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         
         {/* Catch-all for 404 Not Found */}
