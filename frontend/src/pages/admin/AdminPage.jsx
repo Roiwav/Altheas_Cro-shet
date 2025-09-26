@@ -42,7 +42,6 @@ export default function AdminPage() {
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "products", label: "Products", icon: Box },
-    { id: "users", label: "Users", icon: Users },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "subscribers", label: "Subscribers", icon: Mail },
     { id: "settings", label: "Settings", icon: SettingsIcon },
@@ -793,15 +792,6 @@ export default function AdminPage() {
     );
   };
 
-  const renderUsers = () => {
-    return (
-      <div className="space-y-8">
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Users</h2>
-        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Coming soon...</p>
-      </div>
-    );
-  };
-
   // Component for displaying settings
   const SettingsTab = ({ isDarkMode }) => {
     const ToggleSwitch = ({ enabled, onChange }) => (
@@ -1208,7 +1198,6 @@ export default function AdminPage() {
               {activeTab === "dashboard" && renderDashboard()}
               {activeTab === "orders" && renderOrders()}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} Plus={Plus} />}
-              {activeTab === "users" && renderUsers()}
               {activeTab === "feedback" && renderFeedback()}
               {activeTab === "subscribers" && renderSubscribers()}
               {activeTab === "settings" && renderSettings()}
