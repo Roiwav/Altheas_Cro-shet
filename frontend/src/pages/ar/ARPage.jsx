@@ -1,35 +1,50 @@
 import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, Save, Undo, ShoppingCart, Check } from 'lucide-react';
+import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, Save, ShoppingCart, Check } from 'lucide-react';
 
 // Lazy load AR components
 const ARViewer = lazy(() => import('../../components/ar/ARViewer'));
 const FlowerTypeSelector = lazy(() => import('../../components/ar/FlowerTypeSelector'));
 const ColorSelector = lazy(() => import('../../components/ar/ColorSelector'));
+const ArrangementSelector = lazy(() => import('../../components/ar/ArrangementSelector'));
 const QRCodeDisplay = lazy(() => import('../../components/ar/QRCodeDisplay'));
 
 const defaultColors = {
   rose: '#ff69b4',
-  // Add more flower types and their default colors here
+  tulip: '#ff8c00',
+  sunflower: '#ffd700',
+  lily: '#ffffff',
+  carnation: '#ffc0cb',
+  peony: '#ffb6c1',
+};
+
+const FLOWER_PRICES = {
+  rose: { single: 150, bouquet: 1500 },
+  tulip: { single: 120, bouquet: 1200 },
+  sunflower: { single: 180, bouquet: 1800 },
+  lily: { single: 160, bouquet: 1600 },
+  carnation: { single: 100, bouquet: 1000 },
+  peony: { single: 250, bouquet: 2500 },
 };
 
 const ARPage = () => {
   const { type: initialType } = useParams();
   const navigate = useNavigate();
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
+  const [arrangement, setArrangement] = useState('single');
   const [color, setColor] = useState(defaultColors[flowerType] || '#ff69b4');
+  const [price, setPrice] = useState(0);
   const [showQR, setShowQR] = useState(false);
-  const [history, setHistory] = useState([]);
   const [isSaved, setIsSaved] = useState(false);
 
   // Handle save as draft
   const handleSaveDraft = useCallback(() => {
-    const draft = { flowerType, color, savedAt: new Date().toISOString() };
+    const draft = { flowerType, color, arrangement, savedAt: new Date().toISOString() };
     localStorage.setItem('flowerDraft', JSON.stringify(draft));
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
-  }, [flowerType, color]);
+  }, [flowerType, color, arrangement]);
 
   // Handle generate QR code
   const handleGenerateQR = useCallback(() => {
@@ -40,46 +55,29 @@ const ARPage = () => {
   // Handle place order
   const handlePlaceOrder = useCallback(() => {
     handleSaveDraft();
-    navigate('/checkout', { state: { flowerType, color } });
-  }, [flowerType, color, handleSaveDraft, navigate]);
+    navigate('/checkout', { state: { flowerType, color, arrangement, price } });
+  }, [flowerType, color, arrangement, price, handleSaveDraft, navigate]);
 
-  // Handle undo
-  const handleUndo = useCallback(() => {
-    if (history.length > 0) {
-      const previousState = history[history.length - 1];
-      setFlowerType(previousState.flowerType);
-      setColor(previousState.color);
-      setHistory(prev => prev.slice(0, -1));
-    }
-  }, [history]);
-
-  // Add to history when flower type or color changes
+  // Calculate price when flower type or arrangement changes
   useEffect(() => {
-    setHistory(prev => [...prev, { flowerType, color }].slice(-10));
-  }, [flowerType, color]);
+    const prices = FLOWER_PRICES[flowerType] || { single: 0, bouquet: 0 };
+    setPrice(prices[arrangement] || 0);
+  }, [flowerType, arrangement]);
+
+  const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 lg:pl-20 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 lg:ml-[var(--sidebar-width,5rem)] pt-16 pb-28 lg:pb-0 transition-all duration-300 ease-in-out">
       {/* The Navbar and Sidebar are now provided by the main Layout component */}
       <main className="container mx-auto px-4 py-6">
         {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-              Flower Customizer
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">Create and visualize your perfect crochet flower in AR.</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleUndo}
-              disabled={history.length === 0}
-              className={`p-2 rounded-full ${history.length > 0 ? 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'} transition-colors`}
-              title="Undo"
-            >
-              <Undo className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
+            Flower Customizer
+          </h1>
+          <p className="mt-2 text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            Create and visualize your perfect crochet flower in AR.
+          </p>
         </div>
 
         {isSaved && (
@@ -97,7 +95,7 @@ const ARPage = () => {
               <p className="text-sm text-gray-500 dark:text-gray-400">Drag to rotate • Scroll to zoom • Pinch to zoom on mobile</p>
             </div>
             
-            <div className="relative w-full h-96 lg:h-[500px] bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center">
+            <div className="relative w-full h-[50vh] lg:h-[500px] bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center">
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center space-y-4">
                   <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
@@ -135,6 +133,17 @@ const ARPage = () => {
                 </Suspense>
               </div>
 
+              {/* Arrangement Selection */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Arrangement</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Choose single stem or a full bouquet</p>
+                <Suspense fallback={
+                  <div className="h-10 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                }>
+                  <ArrangementSelector selectedArrangement={arrangement} onSelect={setArrangement} />
+                </Suspense>
+              </div>
+
               {/* Color Picker */}
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Color</h3>
@@ -149,8 +158,16 @@ const ARPage = () => {
                 </Suspense>
               </div>
               
+              {/* Price Display */}
+              <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">Total Price:</h3>
+                <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                  {currencyFormatter.format(price)}
+                </span>
+              </div>
+
               {/* Action Buttons */}
-              <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-700 space-y-3">
+              <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-700 space-y-3 hidden lg:block">
                 <button
                   onClick={handleGenerateQR}
                   className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
@@ -193,17 +210,31 @@ const ARPage = () => {
                   </svg>
                   <span>Save your favorite designs to your account</span>
                 </li>
-                <li className="flex items-start">
-                  <svg className="h-3.5 w-3.5 text-pink-500 mr-1.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Use the undo button to revert changes</span>
-                </li>
               </ul>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Sticky Footer for Mobile Actions */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 p-3 z-40">
+        <div className="container mx-auto flex items-center justify-center space-x-3">
+          <button
+            onClick={handleGenerateQR}
+            className="flex-1 flex items-center justify-center px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-medium rounded-lg shadow-md transition-all"
+          >
+            <QrCode className="w-5 h-5 mr-2" />
+            <span>View in AR</span>
+          </button>
+          <button
+            onClick={handlePlaceOrder}
+            className="flex-1 flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg shadow-md transition-all"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" />
+            <span>Order Now</span>
+          </button>
+        </div>
+      </div>
 
       {/* QR Code Modal */}
       <AnimatePresence>

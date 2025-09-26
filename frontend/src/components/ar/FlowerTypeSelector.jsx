@@ -71,7 +71,8 @@ const FlowerTypeSelector = React.memo(({
             <div className="relative">
               <Listbox.Button className="relative w-full py-2 pl-3 pr-10 text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm cursor-default focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 sm:text-sm">
                 <span className="flex items-center">
-                  <span className="ml-3 block truncate">{selectedFlower.name}</span>
+                  <span className="text-pink-600 dark:text-pink-400">{selectedFlower.icon}</span>
+                  <span className="ml-2 block truncate text-gray-900 dark:text-gray-100">{selectedFlower.name}</span>
                 </span>
                 <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                   <ChevronDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -79,6 +80,7 @@ const FlowerTypeSelector = React.memo(({
               </Listbox.Button>
               
               <Transition
+                as="ul"
                 show={open}
                 enter="transition ease-out duration-100"
                 enterFrom="transform opacity-0 scale-95"
@@ -92,15 +94,16 @@ const FlowerTypeSelector = React.memo(({
                   <Listbox.Option
                     key={type.id}
                     className={({ active }) =>
-                      `${active ? 'text-pink-900 dark:text-pink-100 bg-pink-100 dark:bg-pink-900' : 'text-gray-900 dark:text-gray-100'}
-                       cursor-default select-none relative py-2 pl-3 pr-9`
+                      `${active ? 'text-pink-900 dark:text-pink-100 bg-pink-100 dark:bg-pink-900/50' : 'text-gray-900 dark:text-gray-100'}
+                       cursor-default select-none relative py-2 pl-4 pr-9`
                     }
                     value={type.id}
                   >
                     {({ selected, active }) => (
                       <>
                         <div className="flex items-center">
-                          <span className={`${selected ? 'font-semibold' : 'font-normal'} ml-3 block truncate`}>
+                          <span className={`${active ? 'text-pink-600' : 'text-gray-500 dark:text-gray-400'}`}>{type.icon}</span>
+                          <span className={`${selected ? 'font-semibold' : 'font-normal'} ml-2 block truncate`}>
                             {type.name}
                           </span>
                         </div>
