@@ -1,27 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, User, Mail, Lock, X } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
-
-// Mocking useUser and useBubbles for a self-contained file.
-// In a real application, you would import these from their respective files.
-const useUser = () => {
-  const login = (token) => {
-    console.log("Mock login function called with token:", token);
-  };
-  return { login };
-};
-
-const useBubbles = (containerId, options) => {
-  useEffect(() => {
-    console.log(`Mock useBubbles hook for container ${containerId} initialized.`);
-  }, [containerId, options]);
-};
+import { useUser } from "../../context/useUser";
+import useBubbles from "../../hooks/useBubbles";
 
 // Axios defaults
 axios.defaults.withCredentials = true;
-const API_BASE_URL = "http://13.213.90.25";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export default function SignUpPage() {
@@ -155,6 +142,13 @@ export default function SignUpPage() {
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden signup-container">
         <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20 dark:border-gray-700/50 relative z-10">
+          <Link
+            to="/"
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors z-20"
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </Link>
           <div className="p-8 sm:p-10">
             <div className="text-center mb-8">
               <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">

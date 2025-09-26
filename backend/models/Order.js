@@ -55,6 +55,12 @@ const orderSchema = new Schema({
         type: Number,
         required: true
     },
+    paymentMethod: {
+        type: String,
+        required: true,
+        enum: ['COD', 'GCash'],
+        default: 'COD'
+    },
     status: {
         type: String,
         enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],

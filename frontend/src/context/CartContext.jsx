@@ -1,5 +1,5 @@
 // src/context/CartContext.jsx
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,19 +9,34 @@ export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
     const { user, isAuthenticated, isLoading } = useUser?.() || { user: null, isAuthenticated: false, isLoading: true };
+    const prevAuth = useRef(isAuthenticated);
+    useEffect(() => {
+        // Keep track of the previous authentication state to detect logout
+        prevAuth.current = isAuthenticated;
+    }, [isAuthenticated]);
 
     console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
-    const [cartItems, setCartItems] = useState([]);
+    // Initialize cart from localStorage for guest users
+    const [cartItems, setCartItems] = useState(() => {
+        const localCart = localStorage.getItem('guestCart');
+        return localCart ? JSON.parse(localCart) : [];
+    });
+    const cartItemsRef = useRef(cartItems);
+    useEffect(() => {
+        // Keep a ref to the latest cartItems to use in the logout logic
+        // without adding cartItems to the main useEffect dependency array.
+        cartItemsRef.current = cartItems;
+    }, [cartItems]);
     const [shippingAddress, setShippingAddress] = useState(null);
     const [shippingFee, setShippingFee] = useState(0);
 
     const API_BASE = "http://localhost:5001/api/v1/cart";
 
-    const getId = (product) => product?.id || product?.id || product?.productId;
+    const getId = useCallback((product) => product?._id || product?.id || product?.productId, []);
 
     // Save cart to backend (upsert)
-    const saveCartForUser = useCallback(async (userId, items, username) => {
+    const saveCartForUser = useCallback(async (userId, items, username, currentShippingAddress, currentShippingFee) => {
         console.log("➡️ Attempting to save cart to backend for user:", userId);
         console.log("➡️ Items to be saved:", items);
         // Critical: Ensure we have a valid user and username before saving.
@@ -36,8 +51,8 @@ export const CartProvider = ({ children }) => {
                 body: JSON.stringify({ 
                     username: username,
                     items,
-                    shippingAddress,
-                    shippingFee 
+                    shippingAddress: currentShippingAddress,
+                    shippingFee: currentShippingFee 
                 }),
             });
             
@@ -55,7 +70,7 @@ export const CartProvider = ({ children }) => {
             // Re-throw the error to ensure the calling function knows about it
             throw err;
         }
-    }, [shippingAddress, shippingFee]);
+    }, []);
 
     // Load cart from backend
     const loadCartForUser = useCallback(async (userId) => {
@@ -78,35 +93,39 @@ export const CartProvider = ({ children }) => {
     }, []);
 
     // Merge local and server carts
-    const mergeCarts = (serverItems = [], localItems = []) => {
+    const mergeCarts = useCallback((serverItems = [], localItems = []) => {
         console.log("🔄 Merging local and server carts...");
+        if (!localItems || localItems.length === 0) return serverItems;
+
         const map = new Map();
+
+        // Helper to add or update an item in the map
         const addItem = (item) => {
             const id = getId(item);
             if (!id) return;
-            const qty = item.qty ?? item.quantity ?? 1;
+            const qty = item.qty || item.quantity || 1;
             const existing = map.get(id);
-            if (existing) existing.qty += qty;
-            else map.set(id, { ...item, qty });
+            // Prioritize server item details but sum quantities
+            if (existing) {
+                existing.qty += qty;
+            } else {
+                map.set(id, { ...item, qty });
+            }
         };
+
         serverItems.forEach(addItem);
         localItems.forEach(addItem);
         return Array.from(map.values());
-    };
+    }, [getId]);
 
     // Add item to cart
-    const addToCart = async (product, quantity = 1) => {
+    const addToCart = useCallback(async (product, quantity = 1) => {
         const id = getId(product);
         if (!id) {
             console.error("❌ Aborting addToCart: Product ID is missing.");
             return;
         }
         
-        if (!isAuthenticated) {
-            toast.info("Please log in to add items to your cart.");
-            return false;
-        }
-
         console.log(`🛍️ addToCart called for product ID: ${id}`);
         const newCart = cartItems.find((p) => getId(p) === id)
             ? cartItems.map((p) => (getId(p) === id ? { ...p, qty: (p.qty || 0) + quantity } : p))
@@ -115,20 +134,41 @@ export const CartProvider = ({ children }) => {
         if (isAuthenticated && user?.id) {
             console.log("🔐 User is authenticated, attempting to save to backend...");
             try {
-                await saveCartForUser(user.id, newCart, user.username);
+                await saveCartForUser(user.id, newCart, user.username, shippingAddress, shippingFee);
                 setCartItems(newCart);
                 console.log("✔️ Local state updated after successful backend save.");
                 return true;
             } catch (err) {
-                console.error("❌ Failed to add item to cart due to backend error:", err);
-                throw err; // Re-throw to be caught by the calling component
+                console.error("❌ Failed to save cart to backend:", err);
+                toast.error("Could not update cart on the server.");
+                return false;
             }
+        } else {
+            // Guest user: save to localStorage
+            localStorage.setItem('guestCart', JSON.stringify(newCart));
+            setCartItems(newCart);
         }
-        return false; // Should not be reached, but as a fallback.
-    };
+    }, [cartItems, getId, isAuthenticated, user, saveCartForUser, shippingAddress, shippingFee]);
+
+    // ✅ ADDED: Remove item function
+    const removeFromCart = useCallback(async (productId) => {
+        const newCart = cartItems.filter((item) => getId(item) !== productId);
+        if (isAuthenticated && user?.id) {
+            try {
+                await saveCartForUser(user.id, newCart, user.username, shippingAddress, shippingFee);
+                setCartItems(newCart);
+            } catch (err) {
+                console.error("❌ Failed to remove item from cart:", err);
+            }
+        } else {
+            // Guest user
+            setCartItems(newCart);
+            localStorage.setItem('guestCart', JSON.stringify(newCart));
+        }
+    }, [cartItems, getId, isAuthenticated, user, saveCartForUser, shippingAddress, shippingFee]);
 
     // ✅ ADDED: Update quantity function
-    const updateQuantity = async (productId, newQty) => {
+    const updateQuantity = useCallback(async (productId, newQty) => {
         if (newQty <= 0) {
             await removeFromCart(productId);
             return;
@@ -138,43 +178,32 @@ export const CartProvider = ({ children }) => {
         );
         if (isAuthenticated && user?.id) {
             try {
-                await saveCartForUser(user.id, newCart, user.username);
+                await saveCartForUser(user.id, newCart, user.username, shippingAddress, shippingFee);
                 setCartItems(newCart);
             } catch (err) {
                 console.error("❌ Failed to update quantity:", err);
             }
         } else {
+            // Guest user
             setCartItems(newCart);
+            localStorage.setItem('guestCart', JSON.stringify(newCart));
         }
-    };
+    }, [cartItems, getId, isAuthenticated, user, saveCartForUser, removeFromCart, shippingAddress, shippingFee]);
 
-    // ✅ ADDED: Remove item function
-    const removeFromCart = async (productId) => {
-        const newCart = cartItems.filter((item) => getId(item) !== productId);
+    const clearCart = useCallback(async () => {
         if (isAuthenticated && user?.id) {
             try {
-                await saveCartForUser(user.id, newCart, user.username);
-                setCartItems(newCart);
-            } catch (err) {
-                console.error("❌ Failed to remove item from cart:", err);
-            }
-        } else {
-            setCartItems(newCart);
-        }
-    };
-
-    const clearCart = async () => {
-        if (isAuthenticated && user?.id) {
-            try {
-                await saveCartForUser(user.id, [], user.username);
+                await saveCartForUser(user.id, [], user.username, shippingAddress, shippingFee);
                 setCartItems([]);
             } catch (err) {
                 console.error("❌ Failed to clear cart:", err);
             }
         } else {
+            // Guest user
             setCartItems([]);
+            localStorage.removeItem('guestCart');
         }
-    };  
+    }, [isAuthenticated, user, saveCartForUser, shippingAddress, shippingFee]);
 
     const totalQuantity = cartItems.reduce((sum, it) => sum + (it.qty || 0), 0);
     const totalPrice = cartItems.reduce((sum, it) => sum + (it.qty || 0) * (it.price || 0), 0);
@@ -196,16 +225,49 @@ export const CartProvider = ({ children }) => {
 
         if (isAuthenticated && user?.id) {
             console.log(`➡️ User is authenticated (${user.id}), loading cart...`);
-            loadCartForUser(user.id)
-                .then(serverCart => setCartItems(serverCart.items || []))
-                .catch(err => console.error("❌ Failed to load cart for user:", err));
+            const localCartData = localStorage.getItem('guestCart');
+            const localItems = localCartData ? JSON.parse(localCartData) : [];
+
+            loadCartForUser(user.id).then(serverCart => {
+                const serverItems = serverCart.items || [];
+                const mergedItems = mergeCarts(serverItems, localItems);
+                
+                setCartItems(mergedItems);
+
+                // If there were local items, save the merged cart to the backend and clear local storage
+                if (localItems.length > 0) {
+                    saveCartForUser(user.id, mergedItems, user.username, serverCart.shippingAddress, serverCart.shippingFee)
+                        .then(() => localStorage.removeItem('guestCart'))
+                        .catch(err => console.error("❌ Failed to save merged cart:", err));
+                }
+            }).catch(err => console.error("❌ Failed to load cart for user:", err));
+        } else if (prevAuth.current && !isAuthenticated) {
+            // User has just logged out. Save their current cart to localStorage.
+            if (cartItemsRef.current.length > 0) {
+                console.log("➡️ User logged out, saving cart to guest cart.");
+                localStorage.setItem('guestCart', JSON.stringify(cartItemsRef.current));
+            } else {
+                localStorage.removeItem('guestCart');
+            }
         } else {
-            if (!isLoading) { // Ensure we don't clear the cart prematurely
-                console.log("➡️ No authenticated user, cart is cleared.");
-                setCartItems([]);
+            if (!isLoading) {
+                console.log("➡️ No authenticated user, using guest cart.");
+                const localCart = localStorage.getItem('guestCart');
+                setCartItems(localCart ? JSON.parse(localCart) : []);
             }
         }
-    }, [isAuthenticated, user?.id, isLoading]); // Rerun when auth state or loading status changes
+    }, [isAuthenticated, user?.id, isLoading, loadCartForUser, mergeCarts, saveCartForUser]); // Rerun when auth state or loading status changes
+
+    // This function will be called explicitly on logout to ensure cart is saved.
+    const persistCartOnLogout = () => {
+        return new Promise((resolve) => {
+            if (cartItemsRef.current.length > 0) {
+                console.log("➡️ Persisting cart to localStorage on logout.");
+                localStorage.setItem('guestCart', JSON.stringify(cartItemsRef.current));
+            }
+            resolve();
+        });
+    };
 
     return (
         <CartContext.Provider
@@ -216,6 +278,7 @@ export const CartProvider = ({ children }) => {
                 removeFromCart,
                 updateQuantity, // ✅ UPDATED: Expose updateQuantity
                 saveCartForUser,
+                persistCartOnLogout, // Expose the new function
                 clearCart,
                 totalQuantity,
                 totalPrice,

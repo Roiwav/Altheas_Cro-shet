@@ -6,6 +6,7 @@ import Footer from "./Footer";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const location = useLocation();
 
   // Determine if the current page is an authentication page
@@ -23,10 +24,18 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} scrollToSection={scrollToSection} aboutRef={aboutRef} contactRef={contactRef} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
+        isHovered={isSidebarHovered}
+        setIsHovered={setIsSidebarHovered}
+        scrollToSection={scrollToSection}
+        aboutRef={aboutRef}
+        contactRef={contactRef}
+      />
       <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isAuthPage={isAuthPage} />
       <main className="flex-grow">
-        <Outlet context={{ aboutRef, contactRef }} />
+        <Outlet context={{ aboutRef, contactRef, isSidebarHovered }} />
       </main>
       <Footer />
     </div>

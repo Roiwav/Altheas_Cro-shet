@@ -79,12 +79,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="hover:text-white transition">
+                <Link to="/service-terms" className="hover:text-white transition">
                   Terms & Conditions
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="hover:text-white transition">
+                <Link to="/data-policy" className="hover:text-white transition">
                   Privacy Policy
                 </Link>
               </li>

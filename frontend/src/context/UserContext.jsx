@@ -58,19 +58,22 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async (persistCartFn) => {
+    // If a function to persist the cart is provided, call it and wait for it to complete.
+    if (typeof persistCartFn === 'function') {
+      console.log("UserContext: Calling function to persist cart before logging out.");
+      await persistCartFn();
+    }
+
     setUser(null);
     setToken(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("token");
+
     toast.success("Logged out");
-    navigate("/login");
-    // Force a full page reload to clearly show the reload and fully reset state
-    setTimeout(() => {
-      window.location.reload();
-    }, 0);
+    navigate("/login", { replace: true });
   };
 
   const updateUser = (updatedFields) => {

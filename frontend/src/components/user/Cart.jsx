@@ -6,31 +6,34 @@ import productImages from '../../../assets/images/productImages';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { cartItems, updateQuantity, removeFromCart } = useCart();
-  const [selectedItems, setSelectedItems] = React.useState([]);
+  const { cartItems, updateQuantity, removeFromCart, getId } = useCart();
+  const [selectedItemIds, setSelectedItemIds] = React.useState([]);
 
   const handleDelete = async () => {
-    for (const idx of selectedItems) {
-      const item = cartItems[idx];
-
-      console.log('item', item);
-      try {
-        await removeFromCart(item.product_id); // Call remove function from context
-      } catch {
-        console.error("Failed to delete item:", item.name);
-      }
+    // Create a promise for each deletion
+    const deletePromises = selectedItemIds.map(itemId => removeFromCart(itemId));
+    
+    try {
+      // Wait for all deletions to complete
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error("One or more items failed to delete:", err);
+      toast.error("Could not delete all selected items.");
     }
-    setSelectedItems([]);
+    
+    // Clear the selection after deletion
+    setSelectedItemIds([]);
   };
 
   const handleCheckout = () => {
-    const selected = cartItems.filter((_, idx) => selectedItems.includes(idx));
+    const selected = cartItems.filter(item => selectedItemIds.includes(getId(item)));
     if (selected.length === 0) {
-      alert("Please select items to checkout.");
+      // Using toast for consistency, but alert is also fine.
+      toast.warn("Please select items to checkout.");
       return;
     }
-    alert(`✅ Checked out ${selected.length} item(s)!`);
-    // 🔄 integrate with backend checkout functionality
+    // Navigate to checkout page with the selected items
+    navigate("/checkout", { state: { items: selected } });
   };
 
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0).toFixed(2);
@@ -83,14 +86,15 @@ export default function Cart() {
                   <td className="px-4 py-3 text-center">
                     <input
                       type="checkbox"
-                      checked={selectedItems.includes(idx)}
-                      onChange={() =>
-                        setSelectedItems((prev) =>
-                          prev.includes(idx)
-                            ? prev.filter((i) => i !== idx)
-                            : [...prev, idx]
-                        )
-                      }
+                      checked={selectedItemIds.includes(getId(item))}
+                      onChange={() => {
+                        const itemId = getId(item);
+                        setSelectedItemIds(prev =>
+                          prev.includes(itemId)
+                            ? prev.filter(id => id !== itemId)
+                            : [...prev, itemId]
+                        );
+                      }}
                     />
                   </td>
                   <td className="px-4 py-3 flex items-center gap-3">
@@ -108,7 +112,7 @@ export default function Cart() {
                     <div className="flex justify-center items-center gap-2">
                       <button
                         onClick={() =>
-                          updateQuantity(item.product_id, Math.max(1, item.qty - 1))
+                          updateQuantity(getId(item), Math.max(1, item.qty - 1))
                         }
                         disabled={item.qty <= 1}
                         className="px-2 py-1 rounded-full bg-pink-300 text-white hover:bg-pink-400 disabled:opacity-50"
@@ -117,7 +121,7 @@ export default function Cart() {
                       </button>
                       <span className="min-w-[24px] text-center">{item.qty}</span>
                       <button
-                        onClick={() => updateQuantity(item.product_id, item.qty + 1)}
+                        onClick={() => updateQuantity(getId(item), item.qty + 1)}
                         className="px-2 py-1 rounded-full bg-pink-300 text-white hover:bg-pink-400"
                       >
                         +
