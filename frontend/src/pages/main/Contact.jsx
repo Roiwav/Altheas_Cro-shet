@@ -262,7 +262,7 @@ export default function ContactPage() {
                       {
                         icon: Phone,
                         title: "Phone",
-                        content: "+63 123 456 7890",
+                        content: "+63 9936 006 006",
                         color: "from-blue-500 to-cyan-500",
                         href: "tel:+631234567890",
                       },

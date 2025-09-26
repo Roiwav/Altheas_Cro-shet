@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { toast } from "react-toastify";
 
+import codIcon from '../../assets/images/icons/cash-on-delivery.png';
+import gcashIcon from '../../assets/images/icons/gcash.png';
 import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
 
-export default function CheckoutPage({ isSidebarHovered }) {
+export default function CheckoutPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -166,9 +168,7 @@ export default function CheckoutPage({ isSidebarHovered }) {
 
     return (
         <div
-            className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6 md:p-12 transition-all duration-300 ${
-                isSidebarHovered ? "md:pl-72" : "md:pl-28"
-            }`}
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6 md:pr-12 md:pl-[calc(var(--sidebar-width,5rem)+3rem)] transition-[padding-left] duration-300 ease-in-out"
         >
             <div className="w-full max-w-5xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/50 overflow-hidden">
                 <div className="px-6 py-5 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center justify-between">
@@ -240,7 +240,7 @@ export default function CheckoutPage({ isSidebarHovered }) {
 
                         <div className="p-6 md:w-1/2 space-y-4">
                             <div>
-                                <h4 className="text-gray-700 font-medium">Shipping Info</h4>
+                                <h4 className="text-gray-700 dark:text-gray-300 font-medium">Shipping Info</h4>
                                 {isAuthenticated && user?.addresses?.length > 0 ? (
                                     <div className="mt-2">
                                         <select
@@ -270,26 +270,26 @@ export default function CheckoutPage({ isSidebarHovered }) {
                                 </p>
                             </div>
 
-                            <div className="mt-4 border-t pt-4">
-                                <h4 className="text-gray-700 font-medium mb-2">Order Summary</h4>
-                                <div className="flex justify-between text-gray-600">
+                            <div className="mt-4 border-t border-gray-200/70 dark:border-gray-700/70 pt-4">
+                                <h4 className="text-gray-700 dark:text-gray-300 font-medium mb-2">Order Summary</h4>
+                                <div className="flex justify-between text-gray-600 dark:text-gray-400">
                                     <span>Subtotal</span>
                                     <span>{currencyFormatter.format(subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-600">
+                                <div className="flex justify-between text-gray-600 dark:text-gray-400">
                                     <span>Shipping Fee</span>
                                     <span>{currencyFormatter.format(singleProduct ? singleProduct.shippingFee : shippingFee)}</span>
                                 </div>
-                                <div className="flex justify-between font-bold text-lg mt-2 text-gray-900">
+                                <div className="flex justify-between font-bold text-lg mt-2 text-gray-900 dark:text-white">
                                     <span>Total</span>
                                     <span>{currencyFormatter.format(totalCost)}</span>
                                 </div>
                             </div>
 
-                            <div className="mt-4 border-t pt-4">
-                                <h4 className="text-gray-700 font-medium mb-3">Payment Method</h4>
+                            <div className="mt-4 border-t border-gray-200/70 dark:border-gray-700/70 pt-4">
+                                <h4 className="text-gray-700 dark:text-gray-300 font-medium mb-3">Payment Method</h4>
                                 <div className="space-y-2">
-                                    <label className="flex items-center p-3 border rounded-lg hover:bg-pink-50 cursor-pointer">
+                                    <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-700/50 cursor-pointer">
                                         <input
                                             type="radio"
                                             name="paymentMethod"
@@ -298,9 +298,10 @@ export default function CheckoutPage({ isSidebarHovered }) {
                                             onChange={() => setPaymentMethod('COD')}
                                             className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300"
                                         />
-                                        <span className="ml-3 text-sm font-medium text-gray-800">Cash on Delivery (COD)</span>
+                                        <img src={codIcon} alt="Cash on Delivery" className="ml-3 h-6 w-auto" />
+                                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">Cash on Delivery (COD)</span>
                                     </label>
-                                    <label className="flex items-center p-3 border rounded-lg hover:bg-pink-50 cursor-pointer">
+                                    <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-700/50 cursor-pointer">
                                         <input
                                             type="radio"
                                             name="paymentMethod"
@@ -309,7 +310,7 @@ export default function CheckoutPage({ isSidebarHovered }) {
                                             onChange={() => setPaymentMethod('GCash')}
                                             className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300"
                                         />
-                                        <span className="ml-3 text-sm font-medium text-gray-800">GCash</span>
+                                        <img src={gcashIcon} alt="GCash" className="ml-3 h-6 w-auto" />
                                     </label>
                                 </div>
                             </div>

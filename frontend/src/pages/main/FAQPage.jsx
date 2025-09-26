@@ -119,7 +119,7 @@ const FAQPage = () => {
       icon: <Phone className="w-6 h-6 text-pink-600" />,
       title: 'Call Us',
       description: 'Mon-Fri, 9am-5pm PHT',
-      contact: '+63 123 456 7890',
+      contact: '+63 9936 006 006',
       link: 'tel:+631234567890'
     },
     {

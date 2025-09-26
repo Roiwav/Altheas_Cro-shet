@@ -104,7 +104,7 @@ function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen pt-20 sm:pt-24 p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 lg:pl-[calc(var(--sidebar-width,5rem)+1.5rem)] transition-[padding-left] duration-300 ease-in-out">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
