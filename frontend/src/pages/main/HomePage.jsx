@@ -1,13 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
-import { motion, useAnimation, useMotionValue } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 import emailjs from '@emailjs/browser';
 import { toast } from 'react-toastify';
 
+// Product data and context for featured products
+import productList from '../../data/productList.js';
+import productImages from '../../assets/images/productImages.js';
+import { useCart } from '../../context/CartContext.jsx';
+
+// Currency formatter (same as in ShopPage)
+const currencyFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+});
+
 function HomePage() {
   const { aboutRef, contactRef } = useOutletContext() || {};
+  const { addToCart } = useCart();
   const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Initialize EmailJS - it's safe to call this multiple times.
@@ -44,6 +56,28 @@ function HomePage() {
       toast.error("Oops! Something went wrong. Please try again.");
     } finally {
       setIsSubscribing(false);
+    }
+  };
+
+  // Get product image safely
+  const placeholderImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+  const getImageSrc = (product) => {
+    if (productImages?.[product.id]) return productImages[product.id];
+    if (productImages?.[String(product.id)]) return productImages[String(product.id)];
+    if (product.image && typeof product.image === "string") return product.image;
+    return placeholderImage;
+  };
+
+  const handleAddToCart = async (product) => {
+    if (!product) return;
+    try {
+      const success = await addToCart(product, 1);
+      if (success) {
+        toast.success(`${product.name} added to cart!`);
+      }
+    } catch (err) {
+      toast.error("Failed to add to cart.");
+      console.error(err);
     }
   };
   return ( // Added transition and margin-left to accommodate the sidebar
@@ -202,30 +236,29 @@ function HomePage() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {productList.slice(0, 3).map((product) => (
+              <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="h-64 bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Flower className="w-16 h-16 text-gray-400 dark:text-gray-500 transition-transform duration-300 group-hover:scale-110" />
-                  </div>
+                  <img 
+                    src={getImageSrc(product)} 
+                    alt={product.name}
+                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                  />
                   <div className="absolute top-4 right-4 bg-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                     Bestseller
                   </div>
                 </div>
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Floral Bouquet #{item}</h3>
-                    <span className="text-lg font-bold text-pink-500">₱{1200 + (item * 200)}</span>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{product.name}</h3>
+                    <span className="text-lg font-bold text-pink-500">{currencyFormatter.format(product.price)}</span>
                   </div>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Handmade crochet flower arrangement perfect for any occasion.
+                    {product.description.substring(0, 70)}...
                   </p>
                   <button 
-                    onClick={() => {
-                      // TODO: Add to cart functionality
-                      console.log('Added to cart:', item);
-                    }}
+                    onClick={() => handleAddToCart(product)}
                     className="w-full bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add to Cart
