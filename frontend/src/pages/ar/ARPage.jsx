@@ -444,16 +444,16 @@ const ARPage = () => {
       <AnimatePresence>
         {showQR && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <Motion.div 
+            <Motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-md overflow-hidden bg-white shadow-2xl dark:bg-gray-800 rounded-2xl"
+              className="relative flex flex-col w-full max-w-md bg-white shadow-2xl dark:bg-gray-800 rounded-2xl max-h-[90vh]"
             >
-              <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">View in Augmented Reality</h3>
-                <button 
+              <div className="flex items-center justify-between flex-shrink-0 p-4 border-b border-gray-100 sm:p-5 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl dark:text-white">View in Augmented Reality</h3>
+                <button
                   onClick={() => setShowQR(false)}
                   className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
                   aria-label="Close"
@@ -461,23 +461,24 @@ const ARPage = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              <div className="p-6">
+
+              <div className="flex-grow p-4 overflow-y-auto sm:p-6">
                 <Suspense fallback={
-                  <div className="flex items-center justify-center w-64 h-64 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                  <div className="flex items-center justify-center w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-xl">
                     <div className="flex flex-col items-center">
                       <div className="w-10 h-10 mb-3 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Preparing QR Code...</p>
                     </div>
                   </div>
                 }>
-                  <QRCodeDisplay 
+                  <QRCodeDisplay
                     flowerType={flowerType}
                     color={color}
+                    arrangement={arrangement}
                     className="w-full"
                   />
                 </Suspense>
-                
+
                 <div className="p-4 mt-6 border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:border-blue-800">
                   <h4 className="flex items-center mb-2 font-medium text-blue-800 dark:text-blue-200">
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -485,7 +486,7 @@ const ARPage = () => {
                     </svg>
                     How to view in AR
                   </h4>
-                  <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1.5 list-decimal list-inside">
+                  <ol className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 space-y-1.5 list-decimal list-inside">
                     <li>Open your phone's camera app</li>
                     <li>Point it at the QR code</li>
                     <li>Tap the notification to open in AR</li>
@@ -493,8 +494,8 @@ const ARPage = () => {
                   </ol>
                 </div>
               </div>
-              
-              <div className="flex justify-end p-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
+
+              <div className="flex justify-end flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
                 <button
                   onClick={() => setShowQR(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-md dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
