@@ -5,33 +5,54 @@ import * as THREE from 'three';
 // Available flower models with their configurations
 const FLOWER_MODELS = {
   rose: {
-    path: '/models/rose.glb',
+    single: { path: '/models/rose.glb' },
+    bouquet: { 
+      path: '/models/Rose Bouquet.glb', // Using single model for now
+      scale: 1.2, // Slightly larger scale for bouquet effect
+    },
     scale: 0.50,
     rotation: [0, 0, 0]
   },
   tulip: {
-    path: '/models/tulips.glb',
-    scale: 0.50,
+    single: { path: '/models/tulips.glb' },
+    bouquet: { path: '/models/Tulips Bouquet.glb' },
+    scale: 1,
     rotation: [0, Math.PI / 4, 0]
   },
   sunflower: {
-    path: '/models/sunflower.glb',
-    scale: 0.50,
+    single: { path: '/models/sunflower.glb' },
+    bouquet: {
+      path: '/models/Sunflower Bouquet.glb', 
+      scale:1,
+    },
+    scale: 1,
     rotation: [0, 0, 0]
   },
   lily: {
-    path: '/models/lily.glb',
-    scale: 0.50,
+    single: { path: '/models/lily.glb' },
+    bouquet: {
+      path: '/models/Lily Bouquet.glb',
+      scale: 1.2,
+    },
+    scale: 1,
     rotation: [0, 0, 0]
   },
   carnation: {
-    path: '/models/carnation.glb',
-    scale: 0.50,
+    single: { path: '/models/carnation.glb' },
+    bouquet: { 
+      path: '/models/Carnation Bouquet.glb',
+      scale: 1, 
+    },
+    scale: 1,
     rotation: [0, 0, 0]
   },
   peony: {
-    path: '/models/peony.glb',
-    scale: 0.50,
+    single: { path: '/models/peony.glb' },
+    bouquet: {
+      path: '/models/Peony Bouquet.glb', 
+      scale: 1.2,
+    },
+    scale: 0.7,
     rotation: [0, 0, 0]
   }
 };
@@ -49,21 +70,39 @@ const MATERIALS = {
   stem: {
     roughness: 0.9,
     metalness: 0.05
+  },
+  wrapper: {
+    roughness: 0.8,
+    metalness: 0.1,
+    color: '#FFFFFF'
+  },
+  diskfloret: {
+    roughness: 0.9,
+    metalness: 0.1,
+    color: '#654321' // A brown color for the sunflower center
   }
 };
 
 const FlowerModel = React.memo(({ 
   flowerType = 'rose', 
+  arrangement = 'single',
   color = '#ff69b4',
   position = [0, 0, 0],
   castShadow = true,
   receiveShadow = true
 }) => {
   const group = useRef();
-  const previousType = useRef(flowerType);
+  const previousKey = useRef(`${flowerType}-${arrangement}`);
   
   // Get the model config or default to rose if not found
-  const modelConfig = FLOWER_MODELS[flowerType] || FLOWER_MODELS.rose;
+  const modelConfig = useMemo(() => {
+    const flowerData = FLOWER_MODELS[flowerType] || FLOWER_MODELS.rose;
+    const arrangementData = flowerData[arrangement] || flowerData.single;
+    return {
+      ...flowerData, // base rotation, scale
+      ...arrangementData, // override with arrangement-specific path, scale, etc.
+    };
+  }, [flowerType, arrangement]);
   
   // Handle WebGL context loss
   useEffect(() => {
@@ -91,7 +130,7 @@ const FlowerModel = React.memo(({
   }, []);
   
   // Load the model with error handling and resource management
-  const { scene, animations } = useGLTF(modelConfig.path, true, true, (error) => {
+  const { scene, animations } = useGLTF(modelConfig.path, true, (error) => {
     console.error('Error loading model:', error);
   });
   
@@ -114,26 +153,35 @@ const FlowerModel = React.memo(({
         window.gc();
       }
       
-      previousType.current = flowerType;
+      previousKey.current = `${flowerType}-${arrangement}`;
     };
-  }, [flowerType, actions]);
+  }, [flowerType, arrangement, actions]);
   
   // Memoize materials to prevent unnecessary re-renders
   const materials = useMemo(() => {
     const createMaterial = (type) => {
-      const baseColor = type === 'petal' ? color : type === 'leaf' ? '#4CAF50' : '#8BC34A';
+      const config = MATERIALS[type] || MATERIALS.petal;
+      let baseColor;
+      if (type === 'petal') {
+        baseColor = color;
+      } else {
+        baseColor = config.color || (type === 'leaf' ? '#4CAF50' : '#8BC34A');
+      }
+
       return new THREE.MeshStandardMaterial({
         color: new THREE.Color(baseColor),
-        ...MATERIALS[type] || MATERIALS.petal,
+        ...config,
         transparent: true,
-        opacity: 0.9
+        opacity: type === 'wrapper' ? 0.8 : 0.9
       });
     };
     
     return {
       petal: createMaterial('petal'),
       leaf: createMaterial('leaf'),
-      stem: createMaterial('stem')
+      stem: createMaterial('stem'),
+      wrapper: createMaterial('wrapper'),
+      diskfloret: createMaterial('diskfloret'),
     };
   }, [color]);
 
@@ -174,16 +222,22 @@ const FlowerModel = React.memo(({
           child.castShadow = castShadow;
           child.receiveShadow = receiveShadow;
           
-          // Apply appropriate material based on mesh name or geometry type
           const name = child.name.toLowerCase();
-          if (name.includes('petal') || name.includes('flower')) {
-            child.material = materials.petal;
+
+          // Prioritize wrapper material assignment for bouquets
+          if (name.includes('diskfloret')) {
+            child.material = materials.diskfloret;
+          } else if (arrangement === 'bouquet' && (name.includes('wrapper') || name.includes('wrap'))) {
+            child.material = materials.wrapper;
           } else if (name.includes('leaf') || name.includes('leaves')) {
             child.material = materials.leaf;
-          } else if (name.includes('stem') || name.includes('branch')) {
+          } else if (name.includes('stem') || name.includes('branch') || name.includes('stick')) {
             child.material = materials.stem;
-          } else {
-            // Default to petal material for any other mesh
+          } else if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
+            child.material = materials.petal; // This is the main flower part
+          } else if (arrangement === 'single') {
+            // Fallback for any un-named parts, default to the selected flower color.
+            // This is useful for simple single-part models.
             child.material = materials.petal;
           }
         }
@@ -210,14 +264,13 @@ const FlowerModel = React.memo(({
     return cleanup;
   }, [scene, materials, animations, actions, castShadow, receiveShadow, modelConfig.scale, modelConfig.rotation]);
 
-  const config = FLOWER_MODELS[flowerType] || FLOWER_MODELS.rose;
   
   return (
     <group 
       ref={group} 
       position={position}
-      rotation={config.rotation}
-      scale={config.scale}
+      rotation={modelConfig.rotation}
+      scale={modelConfig.scale}
     >
       <primitive 
         object={scene} 
@@ -228,12 +281,14 @@ const FlowerModel = React.memo(({
 }, (prevProps, nextProps) => {
   // Only re-render if color or flowerType changes
   return prevProps.color === nextProps.color && 
-         prevProps.flowerType === nextProps.flowerType;
+         prevProps.flowerType === nextProps.flowerType &&
+         prevProps.arrangement === nextProps.arrangement;
 });
 
 // Preload models for better UX
-Object.values(FLOWER_MODELS).forEach(({ path }) => {
-  useGLTF.preload(path);
+Object.values(FLOWER_MODELS).forEach((flower) => {
+  if (flower.single?.path) useGLTF.preload(flower.single.path);
+  if (flower.bouquet?.path) useGLTF.preload(flower.bouquet.path);
 });
 
 // Display name for better debugging
