@@ -10,6 +10,7 @@ const isMobile = () => {
 const QRCodeDisplay = React.memo(({ 
   flowerType = 'rose', 
   color = '#ff69b4',
+  arrangement = 'single',
   className = ''
 }) => {
   const [showCopied, setShowCopied] = useState(false);
@@ -18,10 +19,11 @@ const QRCodeDisplay = React.memo(({
   const generateARUrl = useCallback(() => {
     const url = new URL(window.location.origin + '/view-ar');
     url.searchParams.set('type', encodeURIComponent(flowerType));
+    url.searchParams.set('arrangement', encodeURIComponent(arrangement));
     url.searchParams.set('color', encodeURIComponent(color.replace('#', '')));
     url.searchParams.set('ar', 'true');
     return url.toString();
-  }, [flowerType, color]);
+  }, [flowerType, color, arrangement]);
   
   const arUrl = generateARUrl();
   
@@ -157,7 +159,8 @@ const QRCodeDisplay = React.memo(({
   // Only re-render if flowerType or color changes
   prevProps.flowerType === nextProps.flowerType && 
   prevProps.color === nextProps.color &&
-  prevProps.className === nextProps.className
+  prevProps.className === nextProps.className &&
+  prevProps.arrangement === nextProps.arrangement
 ));
 
 QRCodeDisplay.displayName = 'QRCodeDisplay';

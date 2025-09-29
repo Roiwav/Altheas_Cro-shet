@@ -14,6 +14,7 @@ function ARViewerPage() {
   
   // Get flower type and color from URL parameters
   const flowerType = searchParams.get('type') || 'rose';
+  const arrangement = searchParams.get('arrangement') || 'single';
   const color = '#' + (searchParams.get('color') || 'ff69b4');
 
   // Check device and WebXR support
@@ -96,13 +97,13 @@ function ARViewerPage() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black text-white">
-        <div className="text-center p-6 max-w-md">
-          <div className="w-16 h-16 border-4 border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-xl font-medium mb-2">Preparing AR Experience</h2>
+      <div className="fixed inset-0 flex items-center justify-center text-white bg-black">
+        <div className="max-w-md p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-6 border-4 rounded-full border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+          <h2 className="mb-2 text-xl font-medium">Preparing AR Experience</h2>
           <p className="text-gray-300">This may take a moment...</p>
           {!isMobile && (
-            <div className="mt-4 p-3 bg-yellow-500 bg-opacity-20 text-yellow-300 rounded-lg flex items-start">
+            <div className="flex items-start p-3 mt-4 text-yellow-300 bg-yellow-500 rounded-lg bg-opacity-20">
               <AlertTriangle className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
               <span>For best results, please use a mobile device with AR support.</span>
             </div>
@@ -114,22 +115,22 @@ function ARViewerPage() {
 
   if (error) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black text-white p-6">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500 bg-opacity-20 flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center p-6 text-white bg-black">
+        <div className="max-w-md text-center">
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-6 bg-red-500 rounded-full bg-opacity-20">
             <AlertTriangle className="w-8 h-8 text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold mb-3">AR Not Available</h2>
+          <h2 className="mb-3 text-2xl font-bold">AR Not Available</h2>
           <p className="mb-6 text-gray-300">{error}</p>
           <div className="space-y-3">
             <button
               onClick={handleExitAR}
-              className="w-full px-6 py-3 bg-pink-600 rounded-full font-medium hover:bg-pink-700 transition-colors"
+              className="w-full px-6 py-3 font-medium transition-colors bg-pink-600 rounded-full hover:bg-pink-700"
             >
               Go Back
             </button>
             {!isMobile && (
-              <p className="text-sm text-gray-400 mt-4">
+              <p className="mt-4 text-sm text-gray-400">
                 Try opening this page on a mobile device with AR support for the full experience.
               </p>
             )}
@@ -144,13 +145,14 @@ function ARViewerPage() {
       {/* AR Viewport */}
       <div className="absolute inset-0">
         <Suspense fallback={
-          <div className="w-full h-full flex items-center justify-center bg-black text-white">
-            <div className="w-12 h-12 border-4 border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center w-full h-full text-white bg-black">
+            <div className="w-12 h-12 border-4 rounded-full border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
           </div>
         }>
           <ARViewer 
             flowerType={flowerType} 
             color={color} 
+            arrangement={arrangement}
             arEnabled={true}
             className="ar-viewer"
           />
@@ -158,10 +160,10 @@ function ARViewerPage() {
       </div>
       
       {/* AR Controls */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col space-y-3">
+      <div className="absolute z-10 flex flex-col space-y-3 top-4 right-4">
         <button
           onClick={handleExitAR}
-          className="w-12 h-12 rounded-full bg-black bg-opacity-50 flex items-center justify-center text-white hover:bg-opacity-70 transition-all backdrop-blur-sm"
+          className="flex items-center justify-center w-12 h-12 text-white transition-all bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 backdrop-blur-sm"
           aria-label="Exit AR"
         >
           <X className="w-6 h-6" />
@@ -169,7 +171,7 @@ function ARViewerPage() {
       </div>
       
       {/* AR Prompt */}
-      <div className="absolute bottom-8 left-0 right-0 mx-auto text-center text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded-full max-w-xs">
+      <div className="absolute left-0 right-0 max-w-xs px-4 py-2 mx-auto text-sm text-center text-white bg-black bg-opacity-50 rounded-full bottom-8">
         Move your device to view the flower in your space
       </div>
     </div>
