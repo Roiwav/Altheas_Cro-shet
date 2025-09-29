@@ -37,7 +37,7 @@ const ModelViewer = ({ autoRotate = true }) => {
 };
 
 // --- 3D Scene Component ---
-const Scene3D = React.memo(({ flowerType, color }) => {
+const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
   return (
     <>
       <ambientLight intensity={0.6} />
@@ -53,10 +53,11 @@ const Scene3D = React.memo(({ flowerType, color }) => {
       
       <Suspense fallback={null}>
         <FlowerModel 
-          key={`${flowerType}-${color}`}
+          key={`${flowerType}-${arrangement}-${color}`}
           flowerType={flowerType}
           color={color}
           position={[0, 0, 0]}
+          arrangement={arrangement}
           scale={1}
         />
       </Suspense>
@@ -91,7 +92,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="text-red-500 p-4 bg-red-50 rounded">
+        <div className="p-4 text-red-500 rounded bg-red-50">
           Failed to load 3D model. Please try refreshing the page.
         </div>
       );
@@ -105,6 +106,7 @@ class ErrorBoundary extends React.Component {
 const ARViewer = ({ 
   flowerType = 'rose',
   color = '#ff69b4',
+  arrangement = 'single',
   className = ''
 }) => {
   const [isReady, setIsReady] = useState(false);
@@ -153,13 +155,13 @@ const ARViewer = ({
   
   if (error) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+      <div className="flex items-center justify-center w-full h-full p-4 bg-gray-100 rounded-lg dark:bg-gray-800">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-medium mb-2">WebGL Error</div>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
+          <div className="mb-2 text-lg font-medium text-red-500">WebGL Error</div>
+          <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+            className="px-4 py-2 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600"
           >
             Reload Page
           </button>
@@ -192,16 +194,20 @@ const ARViewer = ({
           onCreated={onCreated}
         >
           <Suspense fallback={<Loader />}>
-            <Scene3D flowerType={flowerType} color={color} />
+            <Scene3D 
+              flowerType={flowerType} 
+              color={color}
+              arrangement={arrangement}
+            />
             <ModelViewer autoRotate={true} />
           </Suspense>
         </Canvas>
       </ErrorBoundary>
       {!isReady && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm z-10 p-6 text-center">
-          <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Loading 3D Viewer</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md">Preparing your flower model. This may take a moment...</p>
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
+          <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading 3D Viewer</h3>
+          <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Preparing your flower model. This may take a moment...</p>
         </div>
       )}
     </div>

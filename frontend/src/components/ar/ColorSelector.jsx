@@ -18,7 +18,7 @@ const COLOR_PRESETS = [
 const ColorSelector = React.memo(({ 
   selectedColor = '#ff69b4', 
   onSelect,
-  className = '' 
+  className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [customColor, setCustomColor] = useState(selectedColor);
@@ -57,14 +57,17 @@ const ColorSelector = React.memo(({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Flower Color</h3>
         <Popover className="relative">
           {() => (
             <>
               <Popover.Button 
                 className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => {
+                  setCustomColor(selectedColor); // Sync color on open
+                  setIsOpen(!isOpen);
+                }}
                 aria-label="Open color picker"
               >
                 <PaintBrushIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
@@ -72,8 +75,8 @@ const ColorSelector = React.memo(({
               
               {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 md:absolute md:right-0 md:top-8 md:inset-auto">
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-xs">
-                    <div className="flex justify-between items-center mb-4">
+                  <div className="w-full max-w-xs p-4 bg-white rounded-lg shadow-xl dark:bg-gray-800">
+                    <div className="flex items-center justify-between mb-4">
                       <h3 className="font-medium">Custom Color</h3>
                       <button 
                         onClick={handleClose}
@@ -90,12 +93,12 @@ const ColorSelector = React.memo(({
                         className="w-full h-48"
                       />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="w-8 h-8 rounded border border-gray-300" style={{ backgroundColor: customColor }} />
-                      <span className="text-sm font-mono">{customColor.toUpperCase()}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 border border-gray-300 rounded" style={{ backgroundColor: customColor }} />
+                      <span className="font-mono text-sm">{customColor.toUpperCase()}</span>
                       <button
                         onClick={handleClose}
-                        className="px-3 py-1 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                        className="px-3 py-1 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600"
                       >
                         Apply
                       </button>
