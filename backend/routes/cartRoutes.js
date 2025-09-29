@@ -1,10 +1,12 @@
 // routes/cartRoutes.js
 const express = require("express");
-const { getCart, saveCart } = require("../controllers/cartController");
+const { getCart, saveCart, mergeCart } = require("../controllers/cartController");
 
 const router = express.Router();
 
-router.get("/:userId", getCart);
-router.post("/:userId", saveCart);
+router.get("/", getCart); // Will use userId or guestId
+router.post("/", saveCart); // Will use userId or guestId
+
+router.post("/merge", mergeCart);
 
 module.exports = router;

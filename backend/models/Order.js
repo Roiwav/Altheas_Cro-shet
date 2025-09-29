@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 // This defines the structure for each product within an order
 const orderProductSchema = new Schema({
@@ -24,7 +25,7 @@ const orderProductSchema = new Schema({
     image: {
         type: String
     }
-}, { _id: false }); // _id: false because this is a subdocument
+}, { _id: true }); // Let Mongoose manage the _id for subdocuments
 
 // This is the main schema for the 'orders' collection
 const orderSchema = new Schema({
@@ -38,6 +39,11 @@ const orderSchema = new Schema({
         required: true
     },
     products: [orderProductSchema],
+    orderNumber: {
+        type: Number,
+        unique: true
+        // This will be auto-populated by the plugin
+    },
     shippingAddress: {
         line1: { type: String, required: true },
         line2: { type: String },
@@ -69,6 +75,9 @@ const orderSchema = new Schema({
 }, {
     timestamps: true // This adds `createdAt` and `updatedAt` fields automatically
 });
+
+// Add the auto-increment plugin to the schema
+orderSchema.plugin(AutoIncrement, { inc_field: 'orderNumber' });
 
 const Order = mongoose.model('Order', orderSchema);
 

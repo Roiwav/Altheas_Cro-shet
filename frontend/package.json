@@ -21,6 +21,7 @@
     "emailjs-com": "^3.2.0",
     "framer-motion": "^12.23.12",
     "html-to-image": "^1.11.13",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.525.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",

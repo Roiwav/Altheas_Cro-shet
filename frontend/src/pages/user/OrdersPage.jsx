@@ -304,7 +304,7 @@ const OrdersPage = () => {
                   {order.products?.[0] && (() => {
                     const item = order.products[0];
                     return (
-                      <div key={item.productId} className="flex items-start">
+                      <div key={item.productId || item._id} className="flex items-start">
                         <div className="flex-shrink-0 h-20 w-20 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
                           <img
                             src={item.image || '/images/placeholder-product.jpg'}
@@ -319,7 +319,7 @@ const OrdersPage = () => {
                         <div className="ml-4 flex-1">
                           <div className="flex justify-between text-base font-medium text-gray-900 dark:text-white">
                             <Link 
-                              to={`/product/${item.productId}`}
+                              to={`/product/${item.productId || item._id}`}
                               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                             >
                               {item.name}
@@ -335,7 +335,7 @@ const OrdersPage = () => {
                             Qty: {item.quantity} × {currencyFormatter.format(item.price)}
                           </p>
                           <button
-                            onClick={() => handleCancelProduct(order._id, item.productId)}
+                            onClick={() => handleCancelProduct(order._id, item.productId || item._id)}
                             className="mt-2 text-xs font-medium text-red-600 hover:text-red-500 hover:underline"
                           >
                             Cancel Item
