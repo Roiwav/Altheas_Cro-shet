@@ -42,16 +42,26 @@ export default function CheckoutPage() {
     const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
     useEffect(() => {
-        // When the component loads, set the initial selected address
-        if (isAuthenticated && user?.addresses?.length > 0) {
-            // Try to find a default address, or fall back to the first one
-            const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0];
-            if (defaultAddress) {
-                setShippingAddress(defaultAddress);
-                setShippingFee(shippingFees[defaultAddress.city] || 0);
-            }
-        }
-    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
+  if (isAuthenticated) {
+    let addresses = user?.addresses || [];
+
+    // ✅ If DB has no addresses, fallback to localStorage
+    if (addresses.length === 0) {
+      const saved = localStorage.getItem("userAddresses");
+      if (saved) {
+        addresses = JSON.parse(saved);
+      }
+    }
+
+    if (addresses.length > 0) {
+      // ✅ Find the default, else use first one
+      const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
+
+      setShippingAddress(defaultAddress);
+      setShippingFee(shippingFees[defaultAddress.city] || 0);
+    }
+  }
+}, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
 
     const subtotal = checkoutItems.reduce(
         (sum, item) => sum + (item.price * (item.quantity || 1)),

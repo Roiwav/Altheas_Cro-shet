@@ -126,7 +126,7 @@ export default function AdminPage() {
   }
 
   // Update order status via backend API
-  const updateOrderStatus = (orderId, newStatus) => {
+  const updateOrderStatus = (orderId, formattedStatus) => {
     const token = localStorage.getItem('token');
     fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
       method: "PATCH",
@@ -134,19 +134,29 @@ export default function AdminPage() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ status: formattedStatus }),
+
+
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          toast.success(`Order #${orderId} status updated to ${newStatus}`);
-          fetchOrders(); // Refresh after update
-        } else {
-          toast.error("Failed to update order: " + data.message);
-        }
-      })
-      .catch(() => {
-        toast.error("Error updating order status.");
+      .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {  
+        toast.error("Failed to update order: " + (data.message || "Unknown error"));
+        return;
+      } 
+
+      toast.success(`Order #${orderId} status updated to ${formattedStatus}`);
+      
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === orderId ? { ...order, status: formattedStatus } : order
+        )
+      );
+      
+    })
+      .catch((err) => {
+        console.error("Network error:", err); 
+        toast.error("Network error updating order status.");
       });
   };
 
@@ -222,7 +232,6 @@ export default function AdminPage() {
       processing: isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800',
       shipped: isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-800',
       delivered: isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800',
-      out_for_delivery: isDarkMode ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-800',
       rejected: isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800',
       cancelled: isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800',
     };
@@ -239,7 +248,7 @@ export default function AdminPage() {
   };
 
   const renderActions = (order) => {
-    const statuses = ['pending', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'rejected', 'cancelled'];
+    const statuses = ['pending', 'processing', 'shipped', 'delivered', 'rejected', 'cancelled'];
     return (
       <Menu as="div" className="relative inline-block text-left">
         <div>
