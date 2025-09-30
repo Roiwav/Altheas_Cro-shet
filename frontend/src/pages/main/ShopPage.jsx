@@ -64,6 +64,7 @@ export default function ShopPage() {
   const [localRegion, setLocalRegion] = useState(defaultRegion);
   const [localCity, setLocalCity] = useState(defaultCity);
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [selectedVariation, setSelectedVariation] = useState("");
 
   // This effect sets the initial shipping info when the page loads or user changes.
   useEffect(() => {
@@ -81,6 +82,16 @@ export default function ShopPage() {
       setSelectedAddressId("");
     }
   }, [isAuthenticated, user]);
+
+  // Effect to handle selected product changes, for setting default variation
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.variations?.length > 0) {
+      // Set the first variation as the default when the modal opens
+      setSelectedVariation(selectedProduct.variations[0]);
+    } else {
+      setSelectedVariation("");
+    }
+  }, [selectedProduct]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 
@@ -137,9 +148,15 @@ export default function ShopPage() {
   // Handle Add to Cart (wait for backend sync if user is logged in)
   const handleAddToCart = async (product) => {
     if (!product) return;
+    // Create a product object that includes the selected variation
+    const productToAdd = {
+      ...product,
+      variation: selectedVariation,
+    };
+
     try {
       // addToCart already handles saving the cart to the backend
-      const success = await addToCart(product, 1);
+      const success = await addToCart(productToAdd, 1);
       if (success) {
         toast.success(`${product.name} added to cart!`);
       }
@@ -151,8 +168,8 @@ export default function ShopPage() {
   };
 
   // Handle Buy Now
-  const handleBuyNow = (product) => {
-    if (!product) return;
+  const handleBuyNow = () => {
+    if (!selectedProduct) return;
     const shippingFee = shippingFees[localCity] || 0;
     let shippingAddress;
     if (isAuthenticated && selectedAddressId) {
@@ -166,7 +183,19 @@ export default function ShopPage() {
       };
     }
     // Pass all necessary info in the product object for the checkout page
-    const productForCheckout = { ...product, shippingFee, shippingAddress, id: product.id };
+    // Standardize the object to look like a cart item for consistency
+    // This ensures the object structure is identical to items from the cart.
+    const productForCheckout = {
+      _id: String(selectedProduct.id),
+      productId: String(selectedProduct.id),
+      name: selectedProduct.name,
+      price: selectedProduct.price,
+      image: getImageSrc(selectedProduct),
+      variation: selectedVariation,
+      quantity: 1,
+      shippingFee,
+      shippingAddress,
+    };
     navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
@@ -307,52 +336,30 @@ export default function ShopPage() {
                   </p>
                 </div>
 
-                <div className="border-y py-4 space-y-4 text-sm">
-                  {isAuthenticated && user?.addresses?.length > 0 ? (
-                    <div>
-                      <label className="font-medium text-gray-700 dark:text-gray-300 block">Shipping Address</label>
-                      <select
-                        className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                        value={selectedAddressId}
-                        onChange={(e) => {
-                          const addressId = e.target.value;
-                          setSelectedAddressId(addressId);
-                          const selectedAddr = user.addresses.find(a => a.id === addressId);
-                          if (selectedAddr) {
-                            setLocalRegion(selectedAddr.state);
-                            setLocalCity(selectedAddr.city);
-                          }
-                        }}
-                      >
-                        {user.addresses.map((addr) => (
-                          <option key={addr.id} value={addr.id}>
-                            {addr.label} - {addr.line1}, {addr.city}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="font-medium text-gray-700 dark:text-gray-300 block">Region</label>
-                        <select className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" value={localRegion} onChange={(e) => { setLocalRegion(e.target.value); setLocalCity(regions[e.target.value][0]); }}>
-                          {Object.keys(regions).map((r) => (<option key={r} value={r}>{r}</option>))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="font-medium text-gray-700 dark:text-gray-300 block">City</label>
-                        <select className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" value={localCity} onChange={(e) => setLocalCity(e.target.value)}>
-                          {regions[localRegion].map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between pt-2">
-                    <span className="text-gray-600 dark:text-gray-400">Shipping Fee:</span>
-                    <span className="text-gray-900 dark:text-white font-semibold">{currencyFormatter.format(shippingFees[localCity] || 0)}</span>
+                {selectedProduct.variations && selectedProduct.variations.length > 0 && (
+                  <div className="pt-4">
+                    <label htmlFor="variation-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Select Variation
+                    </label>
+                    <select
+                      id="variation-select"
+                      value={selectedVariation}
+                      onChange={(e) => setSelectedVariation(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500"
+                    >
+                      {selectedProduct.variations.map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                )}
+                
+                <div className="border-y py-4 text-sm text-gray-600 dark:text-gray-300 flex-grow">
+                  <p>
+                    {selectedProduct.description}
+                  </p>
                 </div>
 
                 <div className="flex gap-4">
@@ -363,7 +370,7 @@ export default function ShopPage() {
                     Add to Cart
                   </button>
                   <button
-                    onClick={() => handleBuyNow(selectedProduct)}
+                    onClick={handleBuyNow}
                     className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition"
                   >
                     Buy Now

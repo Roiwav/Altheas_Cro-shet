@@ -9,7 +9,7 @@ const cartItemSchema = new Schema({
     quantity: { type: Number, required: true, min: 1 },
     variation: String,
     image: String
-}, { _id: false });
+});
 
 // This defines the structure for the shipping address
 const shippingAddressSchema = new Schema({
@@ -27,12 +27,11 @@ const cartSchema = new Schema({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        unique: true
+        unique: true,
+        sparse: true // Allows multiple documents to have a null userId
     },
     username: {
         type: String,
-        required: true
     },
     items: [cartItemSchema],
     shippingAddress: shippingAddressSchema,

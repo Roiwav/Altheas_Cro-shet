@@ -15,7 +15,7 @@ export default function Navbar({
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   // ✅ Only call useCart once
-  const { cartItems, clearCart, saveCartForUser } = useCart();
+  const { cartItems, clearCart } = useCart();
 
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -25,7 +25,7 @@ export default function Navbar({
 
   // ✅ Calculate total quantity in cart
   const totalQuantity = Array.isArray(cartItems)
-    ? cartItems.reduce((sum, item) => sum + item.qty, 0)
+    ? cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
     : 0;
 
   // Close dropdown when clicking outside
@@ -49,18 +49,9 @@ export default function Navbar({
   }, []);
 
   const handleLogout = async () => {
-    try {
-      // save current cart to server for this user before logging out
-      const uid = user?._id || user?.id;
-      if (uid) {
-        await saveCartForUser(uid, cartItems, user.username);
-      }
-    } catch (err) {
-      console.error("Failed saving cart on logout:", err);
-    }
-
-    logout();    // clear auth session
-    clearCart(); // clear local cart (localStorage)
+    // The cart persists on the backend, so we just need to log out
+    // and clear the local state.
+    logout();    // from useUser: clears auth session
     setIsOpen(false);
     navigate("/");
   };

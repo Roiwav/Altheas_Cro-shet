@@ -1,137 +1,180 @@
-const Order = require('../models/Order.js');
+  const Order = require('../models/Order.js');
 
-/**
- * @desc    Create new order
- * @route   POST /api/orders
- * @access  Private
- */
-const createOrder = async (req, res) => {
-  try {
-    const { userId, username, products, shippingAddress, shippingFee, total, paymentMethod } = req.body;
+  /**
+   * @desc    Create new order
+   * @route   POST /api/orders
+   * @access  Private
+   */
+  const createOrder = async (req, res) => {
+    try {
+      const { userId, username, products, shippingAddress, shippingFee, total, paymentMethod } = req.body;
 
-    if (!products || products.length === 0) {
-      return res.status(400).json({ success: false, message: 'No order items' });
+      if (!products || products.length === 0) {
+        return res.status(400).json({ success: false, message: 'No order items' });
+      }
+      
+      if (!paymentMethod) {
+        return res.status(400).json({ success: false, message: 'Payment method is required' });
+      }
+
+      // Normalize shippingAddress to ensure it's an object
+      let finalShippingAddress = shippingAddress;
+      if (!shippingAddress || typeof shippingAddress !== 'object' || !shippingAddress.line1) {
+        // If it's a string, convert it to the object structure the model expects.
+        // This is a fallback for older or simpler address formats.
+        const addressString = typeof shippingAddress === 'string' ? shippingAddress : 'N/A';
+        const parts = addressString.split(',').map(p => p.trim());
+        finalShippingAddress = {
+          line1: parts[0] || 'N/A',
+          city: parts[1] || 'N/A',
+          state: parts[2] || 'N/A',
+          postalCode: 'N/A',
+          country: 'Philippines',
+        };
+      }
+
+      const order = new Order({
+        userId,
+        username,
+        products,
+        shippingAddress: finalShippingAddress,
+        shippingFee,
+        total,
+        paymentMethod,
+      });
+
+      const createdOrder = await order.save();
+      res.status(201).json(createdOrder);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      res.status(500).json({ success: false, message: 'Server Error' });
     }
-    
-    if (!paymentMethod) {
-      return res.status(400).json({ success: false, message: 'Payment method is required' });
+  };
+
+  /**
+   * @desc    Get logged in user's orders
+   * @route   GET /api/orders/myorders
+   * @access  Private
+   */
+  const getMyOrders = async (req, res) => {
+    try {
+      const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 });
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      res.status(500).json({ message: 'Server Error' });
     }
+  };
 
-    // Normalize shippingAddress to ensure it's an object
-    let finalShippingAddress = shippingAddress;
-    if (!shippingAddress || typeof shippingAddress !== 'object' || !shippingAddress.line1) {
-      // If it's a string, convert it to the object structure the model expects.
-      // This is a fallback for older or simpler address formats.
-      const addressString = typeof shippingAddress === 'string' ? shippingAddress : 'N/A';
-      const parts = addressString.split(',').map(p => p.trim());
-      finalShippingAddress = {
-        line1: parts[0] || 'N/A',
-        city: parts[1] || 'N/A',
-        state: parts[2] || 'N/A',
-        postalCode: 'N/A',
-        country: 'Philippines',
-      };
+  /**
+   * @desc    Delete an order
+   * @route   DELETE /api/orders/:id
+   * @access  Private
+   */
+  const deleteOrder = async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id);
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      // Check if the user owns the order
+      if (order.userId.toString() !== req.user._id.toString()) {
+        return res.status(401).json({ success: false, message: 'Not authorized' });
+      }
+
+      await order.deleteOne();
+      res.json({ success: true, message: 'Order removed' });
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      res.status(500).json({ success: false, message: 'Server Error' });
     }
+  };
 
-    const order = new Order({
-      userId,
-      username,
-      products,
-      shippingAddress: finalShippingAddress,
-      shippingFee,
-      total,
-      paymentMethod,
-    });
+  /**
+   * @desc    Cancel a single product from an order
+   * @route   DELETE /api/orders/:orderId/product/:productId
+   * @access  Private
+   */
+  const cancelOrderItem = async (req, res) => {
+    try {
+      const { orderId, productId } = req.params;
+      const order = await Order.findById(orderId);
 
-    const createdOrder = await order.save();
-    res.status(201).json(createdOrder);
-  } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
 
-/**
- * @desc    Get logged in user's orders
- * @route   GET /api/orders/myorders
- * @access  Private
+      if (order.userId.toString() !== req.user._id.toString()) {
+        return res.status(401).json({ success: false, message: 'Not authorized' });
+      }
+
+      const productToRemove = order.products.find(p => p.productId === productId);
+
+      if (!productToRemove) {
+        return res.status(404).json({ success: false, message: 'Product not found in order' });
+      }
+
+      // If this is the last product in the order, delete the whole order.
+      if (order.products.length === 1) {
+        await order.deleteOne();
+        // Send a specific response so the frontend knows the order was deleted.
+        return res.json({ success: true, orderDeleted: true });
+      } else {
+        // Otherwise, just remove the product and update the total.
+        order.total -= productToRemove.price * productToRemove.quantity;
+        order.products = order.products.filter(p => p.productId !== productId);
+        const updatedOrder = await order.save();
+        res.json({ success: true, order: updatedOrder });
+      }
+    } catch (error) {
+      console.error('Error cancelling order item:', error);
+      res.status(500).json({ success: false, message: 'Server Error' });
+    }
+  };
+
+  /**
+   * @desc    Get all orders (Admin only)
+   * @route   GET /api/orders
+   * @access  Private/Admin
+   */
+  const getAllOrders = async (req, res) => {
+    try {
+      const orders = await Order.find({})
+        .populate("userId", "username email") // optional: include user info
+        .sort({ createdAt: -1 });
+
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching all orders:", error);
+      res.status(500).json({ message: "Server Error" });
+    }
+  };
+
+
+  /**
+ * @desc    Update order status (Admin only)
+ * @route   PATCH /api/orders/:id/status
+ * @access  Private/Admin
  */
-const getMyOrders = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    res.status(500).json({ message: 'Server Error' });
-  }
-};
-
-/**
- * @desc    Delete an order
- * @route   DELETE /api/orders/:id
- * @access  Private
- */
-const deleteOrder = async (req, res) => {
-  try {
+    const { status } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Check if the user owns the order
-    if (order.userId.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ success: false, message: 'Not authorized' });
-    }
+    order.status = status || order.status;
+    const updatedOrder = await order.save();
 
-    await order.deleteOne();
-    res.json({ success: true, message: 'Order removed' });
+    res.json({ success: true, order: updatedOrder });
   } catch (error) {
-    console.error('Error deleting order:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error("Error updating order status:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
-/**
- * @desc    Cancel a single product from an order
- * @route   DELETE /api/orders/:orderId/product/:productId
- * @access  Private
- */
-const cancelOrderItem = async (req, res) => {
-  try {
-    const { orderId, productId } = req.params;
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    if (order.userId.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ success: false, message: 'Not authorized' });
-    }
-
-    const productToRemove = order.products.find(p => p.productId === productId);
-
-    if (!productToRemove) {
-      return res.status(404).json({ success: false, message: 'Product not found in order' });
-    }
-
-    // If this is the last product in the order, delete the whole order.
-    if (order.products.length === 1) {
-      await order.deleteOne();
-      // Send a specific response so the frontend knows the order was deleted.
-      return res.json({ success: true, orderDeleted: true });
-    } else {
-      // Otherwise, just remove the product and update the total.
-      order.total -= productToRemove.price * productToRemove.quantity;
-      order.products = order.products.filter(p => p.productId !== productId);
-      const updatedOrder = await order.save();
-      res.json({ success: true, order: updatedOrder });
-    }
-  } catch (error) {
-    console.error('Error cancelling order item:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
-module.exports = { createOrder, getMyOrders, deleteOrder, cancelOrderItem };
+  module.exports = { createOrder, getMyOrders, deleteOrder, cancelOrderItem, getAllOrders, updateOrderStatus};

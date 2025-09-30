@@ -58,40 +58,45 @@ export default function SettingsPage() {
   const [activeAddressId, setActiveAddressId] = useState(null);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      setProfile({
-        fullName: user.fullName || "",
-        username: user.username || "",
-        email: user.email || "",
-        avatar: user.avatar || "",
-      });
-      // Ensure every address has a unique ID for local state management.
-      const userAddresses = (Array.isArray(user.addresses) ? user.addresses : [])
-        .map(addr => ({ ...addr, id: addr.id || crypto.randomUUID() }));
-      setAddresses(userAddresses);
+  // ✅ Restore profile & addresses when user logs in
+useEffect(() => {
+  if (user) {
+    setProfile({
+      fullName: user.fullName || "",
+      username: user.username || "",
+      email: user.email || "",
+      avatar: user.avatar || "",
+    });
 
-      const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
-      if (defaultAddress) {
-        setActiveAddressId(defaultAddress.id);
-      } else {
-        setActiveAddressId(null);
+    // ✅ Always pull addresses from DB when available
+    let userAddresses = (Array.isArray(user.addresses) ? user.addresses : [])
+      .map(addr => ({ ...addr, id: addr.id || crypto.randomUUID() }));
+
+    // ✅ If DB has no addresses, fallback to localStorage
+    if (userAddresses.length === 0) {
+      const saved = localStorage.getItem("userAddresses"); // <-- added
+      if (saved) {
+        userAddresses = JSON.parse(saved);
       }
-
-      setPrefs({
-        newsletter: user.preferences?.newsletter ?? true,
-      });
     }
-  }, [user]);
 
-  // A new useEffect to manage activeAddressId when addresses change
-  useEffect(() => {
-    if (addresses.length > 0 && !addresses.find(addr => addr.id === activeAddressId)) {
-      setActiveAddressId(addresses[0].id);
-    } else if (addresses.length === 0) {
-      setActiveAddressId(null);
-    }
-  }, [addresses, activeAddressId]);
+    setAddresses(userAddresses);
+
+    const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+    setActiveAddressId(defaultAddress ? defaultAddress.id : null);
+
+    setPrefs({
+      newsletter: user.preferences?.newsletter ?? true,
+    });
+  }
+}, [user]);
+
+// ✅ Save addresses to localStorage whenever they change
+useEffect(() => {
+  if (addresses.length > 0) {
+    localStorage.setItem("userAddresses", JSON.stringify(addresses)); // <-- added
+  }
+}, [addresses]);
 
   // This useEffect hook listens for changes in the URL's 'tab' parameter
   // and updates the active tab in the component's state.

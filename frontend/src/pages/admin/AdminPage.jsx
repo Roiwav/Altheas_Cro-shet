@@ -6,12 +6,13 @@ import AdminNavbar from "../../components/admin/AdminNavbar.jsx"
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus } from "lucide-react";
 import logoSrc from '../../assets/images/icons/logo althea.jpg'; // Import the logo
-import { Dialog, Transition, Menu } from '@headlessui/react';
+import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
 import { toast } from 'react-toastify';
 
 export default function AdminPage() {
   const { isDarkMode } = useDarkMode();
   const { user } = useUser();
+  const token = localStorage.getItem("token");
   const [metrics, setMetrics] = useState({
     revenue: 0,
     incomingOrders: 0,
@@ -48,23 +49,51 @@ export default function AdminPage() {
   ];
 
   // Fetch orders from backend
-  const fetchOrders = () => {
-    setLoading(true);
-    fetch("/croshet_db/get-order.php")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success' && data.orders) {
-          setOrders(data.orders);
-        } else {
-          console.error("Invalid response structure:", data);
-        }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching orders:", error);
-        setLoading(false);
-      });
-  };
+  // const fetchOrders = () => {
+  //   const token = localStorage.getItem('token');
+  //   setLoading(true);
+  //   fetch("/api/v1/orders", {
+  //     headers: {
+  //       'Authorization': `Bearer ${token}`
+  //     }
+  //   })
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       // Assuming the backend returns an array of orders directly or under a 'orders' key
+  //       if (Array.isArray(data)) {
+  //         setOrders(data);
+  //       } else if (data && Array.isArray(data.orders)) {
+  //         setOrders(data.orders);
+  //       } else {
+  //         console.error("Fetched data is not an array:", data);
+  //         setOrders([]); // Set to empty array on failure
+  //       }
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error fetching orders:", error);
+  //     });
+  // };
+
+  useEffect(() => {
+  console.log("Orders from backend:", orders);
+}, [orders]);
+
+  useEffect(() => {
+  fetch("http://localhost:5001/api/orders", {
+    method: "GET",
+    credentials: "include", // include cookies if backend uses them
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`, // if JWT
+    },
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      setOrders(Array.isArray(data) ? data : data.orders || []);
+    })
+    .catch((err) => console.error("Error fetching orders:", err))
+    .finally(() => setLoading(false));
+}, []);
 
   useEffect(() => {
     // Calculate metrics from orders
@@ -82,10 +111,6 @@ export default function AdminPage() {
     });
   }, [orders]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
   // Save active tab to localStorage
   useEffect(() => {
     localStorage.setItem('adminActiveTab', activeTab);
@@ -101,25 +126,37 @@ export default function AdminPage() {
   }
 
   // Update order status via backend API
-  const updateOrderStatus = (orderId, newStatus) => {
-    const formData = new FormData();
-    formData.append("order_id", orderId);
-    formData.append("status", newStatus);
+  const updateOrderStatus = (orderId, formattedStatus) => {
+    const token = localStorage.getItem('token');
+    fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+      method: "PATCH",
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: formattedStatus }),
 
-    fetch("/croshet_db/update-order.php", {
-      method: "POST",
-      body: formData,
+
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          fetchOrders(); // Refresh after update
-        } else {
-          alert("Failed to update order: " + data.message);
-        }
-      })
-      .catch(() => {
-        alert("Error updating order status.");
+      .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {  
+        toast.error("Failed to update order: " + (data.message || "Unknown error"));
+        return;
+      } 
+
+      toast.success(`Order #${orderId} status updated to ${formattedStatus}`);
+      
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === orderId ? { ...order, status: formattedStatus } : order
+        )
+      );
+      
+    })
+      .catch((err) => {
+        console.error("Network error:", err); 
+        toast.error("Network error updating order status.");
       });
   };
 
@@ -127,7 +164,7 @@ export default function AdminPage() {
   const filteredOrders = orders.filter(order => {
     const query = searchQuery.toLowerCase();
     return (
-      order.id.toString().includes(query) ||
+      order._id.toString().includes(query) ||
       order.fullname.toLowerCase().includes(query) ||
       order.product_name.toLowerCase().includes(query) ||
       order.status.toLowerCase().includes(query)
@@ -195,7 +232,6 @@ export default function AdminPage() {
       processing: isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800',
       shipped: isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-800',
       delivered: isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800',
-      out_for_delivery: isDarkMode ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-800',
       rejected: isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800',
       cancelled: isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800',
     };
@@ -212,7 +248,7 @@ export default function AdminPage() {
   };
 
   const renderActions = (order) => {
-    const statuses = ['pending', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'rejected', 'cancelled'];
+    const statuses = ['pending', 'processing', 'shipped', 'delivered', 'rejected', 'cancelled'];
     return (
       <Menu as="div" className="relative inline-block text-left">
         <div>
@@ -237,7 +273,7 @@ export default function AdminPage() {
                 <Menu.Item key={status}>
                   {({ active }) => (
                     <button
-                      onClick={() => updateOrderStatus(order.id, status)}
+                      onClick={() => updateOrderStatus(order._id, status)}
                       className={`${active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-300' : 'text-gray-700')} group flex items-center w-full px-4 py-2 text-sm capitalize`}
                     >
                       {status}
@@ -268,16 +304,14 @@ export default function AdminPage() {
         <table className="w-full text-left">
           <thead className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
             <tr>{[
-                { key: 'id', label: 'Order ID' },
+                { key: 'orderNumber', label: 'Order ID' },
                 { key: 'fullname', label: 'Customer' },
-                { key: 'product_name', label: 'Product' },
-                { key: 'variation', label: 'Variation' },
-                { key: 'quantity', label: 'Quantity' },
+                { key: 'products', label: 'Product' },
                 { key: 'region', label: 'Region' },
                 { key: 'city', label: 'City' },
-                { key: 'shipping_fee', label: 'Shipping Fee' },
-                { key: 'total_price', label: 'Total' },
-                { key: 'created_at', label: 'Order Date' },
+                { key: 'shippingFee', label: 'Shipping Fee' },
+                { key: 'total', label: 'Total' },
+                { key: 'createdAt', label: 'Order Date' },
                 { key: 'status', label: 'Status' },
                 { key: null, label: 'Actions' },
               ].map(col => (
@@ -304,17 +338,15 @@ export default function AdminPage() {
               </tr>
             )}
             {orders.map((o) => (
-              <tr key={o.id} className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.id}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.fullname}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.product_name}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.variation}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.quantity}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.region}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.city}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>₱{parseFloat(o.shipping_fee).toLocaleString()}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>₱{parseFloat(o.total_price).toLocaleString()}</td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{new Date(o.created_at).toLocaleString()}</td>
+              <tr key={o._id} className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.orderNumber || o._id?.substring(0, 8)}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.username || o.userId?.fullname}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.products?.map(p => `${p.name} (x${p.quantity})`).join(", ")}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.shippingAddress?.state || o.region || "-"}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{o.shippingAddress?.city || o.city || "-"}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>₱{parseFloat(o.shippingFee || 0).toLocaleString()}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>₱{Number(o.total || 0).toLocaleString()}</td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{new Date(o.createdAt).toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap capitalize"><StatusBadge status={o.status} /></td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{renderActions(o)}</td>
               </tr>
@@ -395,13 +427,13 @@ export default function AdminPage() {
       const fetchProducts = async () => {
         setLoading(true);
         // Replace with your actual backend endpoint to fetch products
-        fetch('/croshet_db/get-products.php')
+        fetch('/api/v1/products')
           .then(response => response.json())
           .then(data => {
-            if (data.status === 'success' && data.products) {
+            if (Array.isArray(data.products)) {
               setProducts(data.products);
             } else {
-              console.error('Failed to fetch products:', data.message);
+              console.error('Failed to fetch products:', data.message || 'Invalid data structure');
             }
             setLoading(false);
           })
@@ -761,7 +793,7 @@ export default function AdminPage() {
                 {products.map(product => (
                   <tr key={product.id} className={isDarkMode ? 'hover:bg-gray-700/50' : ''}>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      {product.name}
+                      {product.name} 
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
                       ₱{parseFloat(product.price).toLocaleString()}
@@ -795,15 +827,14 @@ export default function AdminPage() {
   // Component for displaying settings
   const SettingsTab = ({ isDarkMode }) => {
     const ToggleSwitch = ({ enabled, onChange }) => (
-      <button
-        type="button"
+      <Switch
         className={`${enabled ? 'bg-pink-600' : 'bg-gray-200 dark:bg-gray-600'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2`}
-        role="switch"
-        aria-checked={enabled}
-        onClick={onChange}
+        checked={enabled}
+        onChange={onChange}
       >
+        <span className="sr-only">Toggle Setting</span>
         <span aria-hidden="true" className={`${enabled ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
-      </button>
+      </Switch>
     );
 
     const [settings, setSettings] = useState({
