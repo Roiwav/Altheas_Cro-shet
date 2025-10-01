@@ -26,7 +26,8 @@ import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
-import SettingsProvider from './context/SettingsProvider';
+import { useDarkMode } from './context/DarkModeContext.jsx';
+import NotFoundPage from './pages/main/NotFoundPage.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,9 @@ export default function App() {
       <Route path="/data-policy" element={<DataPolicy />} />
       <Route path="/service-terms" element={<ServiceTerm />} />
 
+      {/* AR Viewer Page without Layout */}
+      <Route path="/view-ar" element={<ARViewerPage />} />
+
       <Route element={<Layout />}>
         {/* Main Pages */}
                 <Route path="/" element={<HomePage />} />
@@ -70,7 +74,6 @@ export default function App() {
         <Route path="/about" element={<AboutUs />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/ar" element={<ARPage />} />
-        <Route path="/view-ar" element={<ARViewerPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         
         {/* User-specific Pages */}
@@ -80,9 +83,10 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         
-        {/* Catch-all for 404 Not Found */}
-        </Route>
-      </Routes>
-    </SettingsProvider>
+      </Route>
+
+      {/* Catch-all for 404 Not Found - This should be the last route */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }
