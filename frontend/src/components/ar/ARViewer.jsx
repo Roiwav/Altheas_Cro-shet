@@ -1,7 +1,8 @@
-import React, { Suspense, useState, useEffect, useCallback } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress } from '@react-three/drei';
+import React, { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { OrbitControls, Html, useProgress, Environment } from '@react-three/drei';
 import * as THREE from 'three';
+import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
 import FlowerModel from './FlowerModel';
 
 // Loading component
@@ -36,20 +37,40 @@ const ModelViewer = ({ autoRotate = true }) => {
   );
 };
 
-// --- 3D Scene Component ---
-const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
+// --- Dynamic Lighting Component ---
+const DynamicLighting = () => {
+  const lightRef = useRef();
+
+  useFrame(({ clock }) => {
+    if (lightRef.current) {
+      // Gently move the light in a circular path to create dynamic shadows
+      const elapsedTime = clock.getElapsedTime();
+      lightRef.current.position.x = 10 + Math.sin(elapsedTime * 0.2) * 3;
+      lightRef.current.position.z = 5 + Math.cos(elapsedTime * 0.2) * 3;
+    }
+  });
+
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight 
-        position={[10, 10, 5]} 
-        intensity={1}
+      <ambientLight intensity={0.8} />
+      <directionalLight
+        ref={lightRef}
+        position={[10, 10, 5]}
+        intensity={1.5}
         castShadow
-        shadow-mapSize-width={2048} 
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
       />
-      
-      <pointLight position={[10, 10, 10]} intensity={0.5} />
+      <pointLight position={[-10, -10, -10]} intensity={0.5} />
+    </>
+  );
+};
+
+// --- 3D Scene Component ---
+const Scene3D = React.memo(({ flowerType, color, arrangement, isAREnabled }) => {
+  return (
+    <>
+      <DynamicLighting />
       
       <Suspense fallback={null}>
         <FlowerModel 
@@ -62,11 +83,19 @@ const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
         />
       </Suspense>
       
-      {/* Add a ground plane for shadows */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#f0f0f0" />
-      </mesh>
+      {/* High-quality effects. Conditionally render ground plane for non-AR mode */}
+      <EffectComposer>
+        <SSAO
+          radius={0.4}
+          intensity={20}
+          luminanceInfluence={0.4}
+          color="black"
+        />
+        <ToneMapping />
+      </EffectComposer>
+
+      {/* Environment for realistic reflections */}
+      <Environment preset="city" />
     </>
   );
 });
@@ -107,7 +136,8 @@ const ARViewer = ({
   flowerType = 'rose',
   color = '#ff69b4',
   arrangement = 'single',
-  className = ''
+  className = '',
+  isAREnabled = false
 }) => {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
@@ -145,7 +175,7 @@ const ARViewer = ({
     try {
       gl.shadowMap.enabled = true;
       gl.shadowMap.type = THREE.PCFSoftShadowMap;
-      gl.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
+      gl.outputColorSpace = THREE.SRGBColorSpace;
       setIsReady(true);
     } catch (err) {
       console.error('WebGL initialization error:', err);
@@ -172,16 +202,15 @@ const ARViewer = ({
   
   return (
     <div 
-      className={`relative w-full h-full bg-gray-100 dark:bg-gray-900 ${className}`}
-      style={{
-        background: 'radial-gradient(circle at center, #f9fafb 0%, #f3f4f6 100%)',
-        borderRadius: '0.5rem',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-      }}
+      className={`relative w-full ${
+        isAREnabled 
+          ? 'h-full' 
+          : 'h-auto aspect-square max-h-[70vh] rounded-lg overflow-hidden shadow-lg'
+      } ${className}`}
     >
       <ErrorBoundary>
         <Canvas
-          shadows
+          shadows="soft"
           dpr={[1, 2]}
           camera={{ position: [0, 0, 5], fov: 50 }}
           gl={{
@@ -192,14 +221,19 @@ const ARViewer = ({
             depth: true
           }}
           onCreated={onCreated}
+          // Enable MSAA for smoother edges
+          gl-antialias="true"
+          gl-powerPreference="high-performance"
+          frameloop="demand" // Render on-demand for better performance
         >
           <Suspense fallback={<Loader />}>
             <Scene3D 
               flowerType={flowerType} 
               color={color}
               arrangement={arrangement}
+              isAREnabled={isAREnabled}
             />
-            <ModelViewer autoRotate={true} />
+            {!isAREnabled && <ModelViewer autoRotate={true} />}
           </Suspense>
         </Canvas>
       </ErrorBoundary>

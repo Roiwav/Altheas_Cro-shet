@@ -1,8 +1,9 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Smartphone, QrCode } from 'lucide-react';
 
 // Lazy load AR components
+const QRCodeDisplay = React.lazy(() => import('../../components/ar/QRCodeDisplay'));
 const ARViewer = React.lazy(() => import('../../components/ar/ARViewer'));
 
 function ARViewerPage() {
@@ -25,10 +26,6 @@ function ARViewerPage() {
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
         const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(userAgent);
         setIsMobile(isMobileDevice);
-
-        if (!isMobileDevice) {
-          throw new Error('AR mode is only available on mobile devices');
-        }
 
         // Check WebXR support
         if (!navigator.xr) {
@@ -113,6 +110,47 @@ function ARViewerPage() {
     );
   }
 
+  // If on desktop, show a QR code to continue on mobile
+  if (!isMobile) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-6 text-white bg-gray-900">
+        <div className="w-full max-w-md text-center bg-gray-800 shadow-2xl rounded-2xl">
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-5 text-pink-400 bg-pink-500 rounded-full bg-opacity-20">
+              <Smartphone className="w-8 h-8" />
+            </div>
+            <h2 className="mb-2 text-2xl font-bold">Continue on Your Phone</h2>
+            <p className="text-gray-300">Scan the QR code with your mobile device to view the flower in Augmented Reality.</p>
+          </div>
+          
+          <div className="p-6">
+            <Suspense fallback={
+              <div className="flex items-center justify-center w-full h-64 bg-gray-700 rounded-xl">
+                <div className="w-10 h-10 border-4 rounded-full border-t-pink-500 animate-spin"></div>
+              </div>
+            }>
+              <QRCodeDisplay
+                flowerType={flowerType}
+                color={color.substring(1)} // Remove '#' from color
+                arrangement={arrangement}
+                className="w-full"
+              />
+            </Suspense>
+          </div>
+
+          <div className="p-6 border-t border-gray-700">
+            <button
+              onClick={handleExitAR}
+              className="w-full px-6 py-3 font-medium transition-colors bg-pink-600 rounded-full hover:bg-pink-700"
+            >
+              Go Back to Customizer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="fixed inset-0 flex items-center justify-center p-6 text-white bg-black">
@@ -153,7 +191,7 @@ function ARViewerPage() {
             flowerType={flowerType} 
             color={color} 
             arrangement={arrangement}
-            arEnabled={true}
+            isAREnabled={true}
             className="ar-viewer"
           />
         </Suspense>

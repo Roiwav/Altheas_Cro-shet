@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // Available flower models with their configurations
@@ -60,25 +61,25 @@ const FLOWER_MODELS = {
 // Material configurations
 const MATERIALS = {
   petal: {
-    roughness: 0.7,
-    metalness: 0.1
+    roughness: 0.9, // Increased roughness for a soft, matte look
+    metalness: 0.0, // Non-metallic
   },
   leaf: {
-    roughness: 0.8,
-    metalness: 0.1
+    roughness: 0.95, // Very rough, diffuse surface
+    metalness: 0.0,
   },
   stem: {
-    roughness: 0.9,
-    metalness: 0.05
+    roughness: 0.95,
+    metalness: 0.0,
   },
   wrapper: {
-    roughness: 0.8,
-    metalness: 0.1,
+    roughness: 0.4, // Kept a bit shiny for a plastic/cellophane look
+    metalness: 0.0, // Still non-metallic
     color: '#FFFFFF'
   },
   diskfloret: {
-    roughness: 0.9,
-    metalness: 0.1,
+    roughness: 0.95,
+    metalness: 0.0,
     color: '#654321' // A brown color for the sunflower center
   }
 };
@@ -157,34 +158,6 @@ const FlowerModel = React.memo(({
     };
   }, [flowerType, arrangement, actions]);
   
-  // Memoize materials to prevent unnecessary re-renders
-  const materials = useMemo(() => {
-    const createMaterial = (type) => {
-      const config = MATERIALS[type] || MATERIALS.petal;
-      let baseColor;
-      if (type === 'petal') {
-        baseColor = color;
-      } else {
-        baseColor = config.color || (type === 'leaf' ? '#4CAF50' : '#8BC34A');
-      }
-
-      return new THREE.MeshStandardMaterial({
-        color: new THREE.Color(baseColor),
-        ...config,
-        transparent: true,
-        opacity: type === 'wrapper' ? 0.8 : 0.9
-      });
-    };
-    
-    return {
-      petal: createMaterial('petal'),
-      leaf: createMaterial('leaf'),
-      stem: createMaterial('stem'),
-      wrapper: createMaterial('wrapper'),
-      diskfloret: createMaterial('diskfloret'),
-    };
-  }, [color]);
-
   // Apply materials to the model
   useEffect(() => {
     if (!scene) return;
@@ -222,24 +195,33 @@ const FlowerModel = React.memo(({
           child.castShadow = castShadow;
           child.receiveShadow = receiveShadow;
           
+          // Clone the original material to preserve texture maps (like normal maps)
+          const originalMaterial = child.material;
+          if (!originalMaterial) return;
+
+          const newMaterial = originalMaterial.clone();
+          newMaterial.side = THREE.DoubleSide; // Ensure both sides render
+
           const name = child.name.toLowerCase();
 
-          // Prioritize wrapper material assignment for bouquets
-          if (name.includes('diskfloret')) {
-            child.material = materials.diskfloret;
-          } else if (arrangement === 'bouquet' && (name.includes('wrapper') || name.includes('wrap'))) {
-            child.material = materials.wrapper;
+          // Apply color and properties based on the part name
+          if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
+            newMaterial.color.set(color);
+            newMaterial.roughness = MATERIALS.petal.roughness;
+            newMaterial.metalness = MATERIALS.petal.metalness;
           } else if (name.includes('leaf') || name.includes('leaves')) {
-            child.material = materials.leaf;
+            newMaterial.roughness = MATERIALS.leaf.roughness;
+            newMaterial.metalness = MATERIALS.leaf.metalness;
           } else if (name.includes('stem') || name.includes('branch') || name.includes('stick')) {
-            child.material = materials.stem;
-          } else if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
-            child.material = materials.petal; // This is the main flower part
-          } else if (arrangement === 'single') {
-            // Fallback for any un-named parts, default to the selected flower color.
-            // This is useful for simple single-part models.
-            child.material = materials.petal;
+            newMaterial.roughness = MATERIALS.stem.roughness;
+            newMaterial.metalness = MATERIALS.stem.metalness;
+          } else if (arrangement === 'bouquet' && (name.includes('wrapper') || name.includes('wrap'))) {
+            newMaterial.transparent = true;
+            newMaterial.opacity = 0.8;
+            newMaterial.roughness = MATERIALS.wrapper.roughness;
           }
+          
+          child.material = newMaterial;
         }
       });
       
@@ -262,7 +244,18 @@ const FlowerModel = React.memo(({
     }
 
     return cleanup;
-  }, [scene, materials, animations, actions, castShadow, receiveShadow, modelConfig.scale, modelConfig.rotation]);
+  }, [scene, color, arrangement, flowerType, animations, actions, castShadow, receiveShadow, modelConfig.scale, modelConfig.rotation]);
+
+  // Add a gentle swaying animation for a more dynamic feel
+  useFrame(({ clock }) => {
+    if (group.current) {
+      const elapsedTime = clock.getElapsedTime();
+      // Gentle sway on Z-axis (back and forth)
+      group.current.rotation.z = modelConfig.rotation[2] + Math.sin(elapsedTime * 0.7) * 0.05;
+      // Gentle rotation on Y-axis (turning)
+      group.current.rotation.y = modelConfig.rotation[1] + Math.cos(elapsedTime * 0.5) * 0.05;
+    }
+  });
 
   
   return (
