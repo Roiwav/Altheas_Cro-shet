@@ -179,7 +179,7 @@ function ARViewerPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="fixed inset-0 z-[100] bg-black">
       {/* AR Viewport */}
       <div className="absolute inset-0">
         <Suspense fallback={
