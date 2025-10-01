@@ -11,12 +11,12 @@ const ArrangementSelector = lazy(() => import('../../components/ar/ArrangementSe
 const QRCodeDisplay = lazy(() => import('../../components/ar/QRCodeDisplay'));
 
 const defaultColors = {
-  rose: '#ffffff',
-  tulip: '#ffffff',
-  sunflower: '#ffffff',
-  lily: '#ffffff',
-  carnation: '#ffffff',
-  peony: '#ffffff',
+  rose: '#FFFFFF',
+  tulip: '#FFFFFF',
+  sunflower: '#FFFFFF',
+  lily: '#FFFFFF',
+  carnation: '#FFFFFF',
+  peony: '#FFFFFF',
 };
 
 const FLOWER_PRICES = {
@@ -61,7 +61,7 @@ const ARPage = () => {
   const navigate = useNavigate();
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
-  const [color, setColor] = useState(defaultColors[flowerType] || '#ffffff');
+  const [color, setColor] = useState('#FFFFFF');
   const [flowerCount, setFlowerCount] = useState(3); // New state for bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false);
@@ -115,7 +115,7 @@ const ARPage = () => {
 
   // Update color to default when flowerType changes
   useEffect(() => {
-    setColor(defaultColors[flowerType] || '#ffffff');
+    setColor('#FFFFFF');
   }, [flowerType]);
 
   // Reset sub-area when main shipping area changes
