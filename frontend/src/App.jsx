@@ -57,6 +57,9 @@ export default function App() {
       <Route path="/data-policy" element={<DataPolicy />} />
       <Route path="/service-terms" element={<ServiceTerm />} />
 
+      {/* AR Viewer Page without Layout */}
+      <Route path="/view-ar" element={<ARViewerPage />} />
+
       <Route element={<Layout />}>
         {/* Main Pages */}
                 <Route path="/" element={<HomePage />} />
@@ -69,7 +72,6 @@ export default function App() {
         <Route path="/about" element={<AboutUs />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/ar" element={<ARPage />} />
-        <Route path="/view-ar" element={<ARViewerPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         
         {/* User-specific Pages */}
