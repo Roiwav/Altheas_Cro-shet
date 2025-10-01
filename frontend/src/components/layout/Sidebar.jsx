@@ -5,7 +5,6 @@ import {
   Home,
   ShoppingBag,
   Info,
-  MessageSquare,
   Phone,
   Settings,
   Moon,
@@ -14,6 +13,8 @@ import {
   X,
   BookOpen,
   ShoppingCart,
+  LogOut,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { UserContext } from "../../context/UserContext.jsx";
@@ -94,16 +95,34 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
 
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
 
+  const handleSignOut = () => {
+    // Clear user session and redirect to home
+    localStorage.removeItem('token');
+    updateUser(null);
+    navigate('/');
+    setSidebarOpen(false);
+    toast.success('Successfully signed out');
+  };
+
   const Menus = [
     { title: "Home", icon: Home, path: "/home", action: () => isHomePage && smoothScrollToTop() },
     { title: "Shop Now", icon: ShoppingBag, path: "/shop" },
+    { title: "Gallery", icon: ImageIcon, path: "/gallery" },
     { title: "About Us", icon: Info, path: "/about", action: () => isHomePage && scrollToSection?.(aboutRef) },
     { title: "Contact Us", icon: Phone, path: "/contact", action: () => isHomePage && scrollToSection?.(contactRef) },
-    { title: "FAQ", icon: Info, path: "/faq", gap: true },
     { title: "Orders", icon: ShoppingBag, path: "/orders" },
     { title: "Blog", icon: BookOpen, path: "/blog", gap: true },
-    { title: "Feedback", icon: MessageSquare, path: "/feedback" },
     { title: "Settings", icon: Settings, path: "/settings" },
+    ...(user ? [
+      { 
+        title: "Sign Out", 
+        icon: LogOut, 
+        path: "#", 
+        action: handleSignOut,
+        gap: true,
+        className: 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+      }
+    ] : [])
   ];
 
   const defaultAvatar =
@@ -190,7 +209,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
                   <li key={idx} className={menu.mobileOnly ? 'lg:hidden' : ''}>
                     <button
                       onClick={handleClick}
-                      className={`flex items-center w-full text-left px-4 py-3 text-sm font-medium rounded-md transition-colors ${menu.gap ? "mt-4" : ""} text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${sidebarOpen || isHovered ? "px-4" : "px-2 justify-center"}`}
+                      className={`flex items-center w-full text-left px-4 py-3 text-sm font-medium rounded-md transition-colors ${menu.gap ? "mt-4" : ""} ${menu.className || 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'} ${sidebarOpen || isHovered ? "px-4" : "px-2 justify-center"}`}
                     >
                       <div className="relative">
                         <IconComponent className="w-6 h-6" />

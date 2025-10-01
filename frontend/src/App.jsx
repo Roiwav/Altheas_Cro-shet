@@ -26,7 +26,7 @@ import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
-import { useDarkMode } from './context/DarkModeContext.jsx';
+import SettingsProvider from './context/SettingsProvider';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,8 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <SettingsProvider>
+      <Routes>
       <Route element={<AdminRoute />}>
         <Route path="/admin" element={<AdminPage />} />
       </Route>
@@ -80,7 +81,8 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         
         {/* Catch-all for 404 Not Found */}
-      </Route>
-    </Routes>
+        </Route>
+      </Routes>
+    </SettingsProvider>
   );
 }

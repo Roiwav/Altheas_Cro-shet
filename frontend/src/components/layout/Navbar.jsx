@@ -2,9 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../../context/useUser";
-import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
-import { ShoppingCart, User, Menu, X, Moon, Sun } from "lucide-react";
+import { ShoppingCart, User, Menu, LayoutDashboard, LogOut } from "lucide-react";
 
 export default function Navbar({
   sidebarOpen,
@@ -12,10 +11,9 @@ export default function Navbar({
   isAuthPage = false,
 }) {
   const { user, isAuthenticated, logout, isAuthenticating } = useUser();
-  const { darkMode, toggleDarkMode } = useDarkMode();
-
-  // ✅ Only call useCart once
-  const { cartItems, clearCart } = useCart();
+  
+  // Get cart items for the cart icon counter
+  const { cartItems } = useCart();
 
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -56,12 +54,7 @@ export default function Navbar({
     navigate("/");
   };
 
-  const navLinks = [
-    { name: "Home", path: "/home" },
-    { name: "Shop", path: "/shop" },
-    { name: "Gallery", path: "/gallery" },
-    { name: "FAQ", path: "/faq" },
-  ];
+  const navLinks = [];
 
   return (
     <header
@@ -151,16 +144,18 @@ export default function Navbar({
                   <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
                     <Link
                       to="/dashboard"
-                      className="block text-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                       onClick={() => setIsOpen(false)}
                     >
-                      Dashboard
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      <span>Dashboard</span>
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
-                      Sign out
+                      <LogOut className="w-4 h-4 mr-2" />
+                      <span>Sign out</span>
                     </button>
                   </div>
                 )}
