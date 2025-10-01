@@ -27,6 +27,7 @@ import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import { useDarkMode } from './context/DarkModeContext.jsx';
+import NotFoundPage from './pages/main/NotFoundPage.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -81,8 +82,10 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         
-        {/* Catch-all for 404 Not Found */}
       </Route>
+
+      {/* Catch-all for 404 Not Found - This should be the last route */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
