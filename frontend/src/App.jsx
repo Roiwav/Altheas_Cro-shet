@@ -44,49 +44,45 @@ export default function App() {
     return <Loader />;
   }
 
-  return (
-    <SettingsProvider>
-      <Routes>
-      <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<AdminPage />} />
-      </Route>
+  return <Routes>
+    <Route element={<AdminRoute />}>
+      <Route path="/admin" element={<AdminPage />} />
+    </Route>
 
-      {/* Auth Pages without Layout */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/oauth/callback" element={<OAuthCallback />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/data-policy" element={<DataPolicy />} />
-      <Route path="/service-terms" element={<ServiceTerm />} />
+    {/* Auth Pages without Layout */}
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/signup" element={<SignupPage />} />
+    <Route path="/oauth/callback" element={<OAuthCallback />} />
+    <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Route path="/data-policy" element={<DataPolicy />} />
+    <Route path="/service-terms" element={<ServiceTerm />} />
 
-      {/* AR Viewer Page without Layout */}
-      <Route path="/view-ar" element={<ARViewerPage />} />
+    {/* AR Viewer Page without Layout */}
+    <Route path="/view-ar" element={<ARViewerPage />} />
 
-      <Route element={<Layout />}>
-        {/* Main Pages */}
-                <Route path="/" element={<HomePage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/shop" element={<ShopPage />} />
-        <Route path="/gallery" element={<GalleryPage />} />
-        <Route path="/faq" element={<FAQPage />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/ar" element={<ARPage />} />
-        <Route path="/portfolio" element={<PortfolioPage />} />
-        
-        {/* User-specific Pages */}
-        <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/cart" element={<UserDashboard />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        
-      </Route>
+    <Route element={<Layout />}>
+      {/* Main Pages */}
+              <Route path="/" element={<HomePage />} />
+      <Route path="/home" element={<HomePage />} />
+      <Route path="/shop" element={<ShopPage />} />
+      <Route path="/gallery" element={<GalleryPage />} />
+      <Route path="/faq" element={<FAQPage />} />
+      <Route path="/blog" element={<BlogPage />} />
+      <Route path="/feedback" element={<FeedbackPage />} />
+      <Route path="/about" element={<AboutUs />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/ar" element={<ARPage />} />
+      <Route path="/portfolio" element={<PortfolioPage />} />
+      
+      {/* User-specific Pages */}
+      <Route path="/dashboard" element={<UserDashboard />} />
+      <Route path="/cart" element={<UserDashboard />} />
+      <Route path="/orders" element={<OrdersPage />} />
+      <Route path="/checkout" element={<CheckoutPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+    </Route>
 
-      {/* Catch-all for 404 Not Found - This should be the last route */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  );
+    {/* Catch-all for 404 Not Found - This should be the last route */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>;
 }
