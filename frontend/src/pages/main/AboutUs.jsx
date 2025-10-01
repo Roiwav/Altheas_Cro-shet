@@ -112,16 +112,16 @@ const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
       </section>
 
       {/* Values Section */}
-      <section className="relative z-0 px-6 py-20 bg-gradient-to-br from-gray-50 to-pink-50 dark:from-gray-800 dark:to-gray-900">
+      <section className="relative z-0 px-6 py-16 bg-gradient-to-br from-gray-50 to-pink-50 md:py-20 dark:from-gray-800 dark:to-gray-900">
         <div className="w-full overflow-x-auto">
           <div className="mx-auto max-w-7xl">
-            <div className="mb-16 text-center">
+            <div className="mb-12 text-center md:mb-16">
               <div className="inline-block mb-6">
                 <span className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-100 rounded-full dark:bg-purple-900/30 dark:text-purple-400">
                   What We Stand For
                 </span>
               </div>
-              <h2 className="mb-6 text-4xl font-bold md:text-5xl">
+              <h2 className="mb-6 text-3xl font-bold md:text-4xl lg:text-5xl">
                 <span className="text-gray-900 dark:text-white">Our </span>
                 <span className="text-transparent bg-gradient-to-r from-pink-600 to-purple-600 dark:from-pink-400 dark:to-purple-400 bg-clip-text">Values</span>
               </h2>
@@ -158,14 +158,14 @@ const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
                   <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
                   
                   {/* Card Content */}
-                  <div className="relative flex flex-col p-8 transition-all duration-300 transform bg-white border border-gray-100 shadow-xl dark:bg-gray-900 rounded-3xl dark:shadow-gray-900/50 dark:border-gray-800 group-hover:-translate-y-2">
+                  <div className="relative flex flex-col p-6 transition-all duration-300 transform bg-white border border-gray-100 shadow-xl md:p-8 dark:bg-gray-900 rounded-3xl dark:shadow-gray-900/50 dark:border-gray-800 group-hover:-translate-y-2">
                     {/* Icon */}
-                    <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                      <item.icon size={28} className="text-white" />
+                    <div className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                      <item.icon size={24} className="text-white md:size-28" />
                     </div>
                     
                     {/* Content */}
-                    <h3 className="mb-4 text-xl font-bold text-gray-800 transition-colors duration-300 dark:text-white group-hover:text-gray-900 dark:group-hover:text-white">
+                    <h3 className="mb-3 text-lg font-bold text-gray-800 transition-colors duration-300 md:mb-4 md:text-xl dark:text-white group-hover:text-gray-900 dark:group-hover:text-white">
                       {item.title}
                     </h3>
                     <p className="leading-relaxed text-gray-600 dark:text-gray-400">
@@ -204,14 +204,11 @@ const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
             </p>
             
             <div className="flex flex-col justify-center gap-4 sm:flex-row">
-              <button className="px-8 py-4 font-semibold text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-2xl hover:shadow-xl hover:-translate-y-1">
-                Explore Our Shop
-              </button>
-              <Link 
-                to="/portfolio" 
-                className="px-8 py-4 font-semibold text-center text-pink-600 transition-all duration-300 transform border-2 border-pink-500 dark:border-pink-400 dark:text-pink-400 hover:bg-pink-500 hover:text-white dark:hover:bg-pink-400 dark:hover:text-gray-900 rounded-2xl hover:shadow-lg hover:-translate-y-1"
+              <Link
+                to="/shop"
+                className="px-8 py-4 font-semibold text-center text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-2xl hover:shadow-xl hover:-translate-y-1"
               >
-                View Portfolio
+                Explore Our Shop
               </Link>
             </div>
           </div>

@@ -59,6 +59,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/blog" className="transition hover:text-white" onClick={handleLinkClick}>
+                  Blog
+                </Link>
+              </li>
+              <li>
                 <Link to="/about" className="transition hover:text-white" onClick={handleLinkClick}>
                   About Us
                 </Link>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { useUser } from '../../context/useUser';
 import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, Save, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
 
 // Lazy load AR components
@@ -59,6 +60,7 @@ const defaultCity = "Calamba City";
 const ARPage = () => {
   const { type: initialType } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useUser();
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
   const [color, setColor] = useState('#FFFFFF');
@@ -158,10 +160,10 @@ const ARPage = () => {
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 lg:ml-[var(--sidebar-width,5rem)] pt-16 pb-28 lg:pb-0 transition-all duration-300 ease-in-out">
-      <main className="container px-4 py-6 mx-auto md:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8 text-center">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pt-16 pb-28 lg:pb-0 transition-all duration-300 ease-in-out ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''}`}>
+      <main className={`px-4 py-6 md:px-6 lg:px-8 ${isAuthenticated ? 'container mx-auto' : ''}`}>
+        {/* Page Header */} 
+        <div className="mb-6 text-center lg:mb-8">
           <h1 className="text-3xl font-bold text-gray-900 md:text-4xl lg:text-5xl dark:text-white">
             Flower Customizer
           </h1>
@@ -177,15 +179,15 @@ const ARPage = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
+        <div className="grid grid-cols-1 gap-6 mx-auto lg:grid-cols-2 lg:gap-8 xl:grid-cols-5 xl:max-w-7xl">
           {/* Main AR Viewer */}
-          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
+          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
             <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
               <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">Drag to rotate • Scroll to zoom • Pinch to zoom on mobile</p>
             </div>
             
-            <div className="relative w-full h-[50vh] lg:h-[600px] bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center">
+            <div className="relative w-full h-[50vh] lg:h-[65vh] bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center">
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center space-y-4">
                   <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
@@ -203,13 +205,13 @@ const ARPage = () => {
           </div>
 
           {/* Controls Panel */}
-          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">
+          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">
             <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Customization</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">Personalize your flower design</p>
             </div>
             
-            <div className="p-4 space-y-6 md:p-5">
+            <div className="p-4 space-y-4 md:p-5 lg:space-y-5">
               {/* Flower Type Selection */}
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Flower Type</h3>
@@ -363,7 +365,7 @@ const ARPage = () => {
               </AnimatePresence>
               
               {/* Price Display */}
-              <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">Total Price:</h3>
                 <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
                   {currencyFormatter.format(totalPrice)}
@@ -371,7 +373,7 @@ const ARPage = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="hidden pt-6 mt-6 space-y-3 border-t border-gray-200 dark:border-gray-700 lg:block">
+              <div className="hidden pt-4 mt-4 space-y-3 border-t border-gray-200 lg:block lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <button
                   onClick={handleGenerateQR}
                   className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg"
