@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   LogOut,
   Image as ImageIcon,
+  HelpCircle,
 } from "lucide-react";
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { UserContext } from "../../context/UserContext.jsx";
@@ -104,43 +105,48 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     toast.success('Successfully signed out');
   };
 
-  const Menus = [
-    { title: "Home", icon: Home, path: "/home", action: () => isHomePage && smoothScrollToTop() },
-    { title: "Shop Now", icon: ShoppingBag, path: "/shop" },
-    { title: "Gallery", icon: ImageIcon, path: "/gallery" },
-    { title: "About Us", icon: Info, path: "/about", action: () => isHomePage && scrollToSection?.(aboutRef) },
-    { title: "Contact Us", icon: Phone, path: "/contact", action: () => isHomePage && scrollToSection?.(contactRef) },
-    { title: "Orders", icon: ShoppingBag, path: "/orders" },
-    { title: "Blog", icon: BookOpen, path: "/blog", gap: true },
-    { title: "Settings", icon: Settings, path: "/settings" },
-    ...(user ? [
-      { 
-        title: "Sign Out", 
-        icon: LogOut, 
-        path: "#", 
-        action: handleSignOut,
-        gap: true,
-        className: 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-      }
-    ] : [])
-  ];
+  const Menus = user
+    ? [
+        // Logged-in user menu
+        { title: "Home", icon: Home, path: "/home", action: () => isHomePage && smoothScrollToTop() },
+        { title: "Shop", icon: ShoppingBag, path: "/shop" },
+        { title: "Gallery", icon: ImageIcon, path: "/gallery" },
+        { title: "Blog", icon: BookOpen, path: "/blog" },
+        { title: "Orders", icon: ShoppingBag, path: "/orders", gap: true },
+        { title: "Settings", icon: Settings, path: "/settings"},
+        { title: "About Us", icon: Info, path: "/about", action: () => isHomePage && scrollToSection?.(aboutRef) },
+        { title: "Contact Us", icon: Phone, path: "/contact", action: () => isHomePage && scrollToSection?.(contactRef) },
+        { title: "FAQ", icon: HelpCircle, path: "/faq" },
+      ]
+    : [
+        // Guest menu (for mobile)
+        { title: "Home", icon: Home, path: "/home", action: () => isHomePage && smoothScrollToTop() },
+        { title: "Shop", icon: ShoppingBag, path: "/shop" },
+        { title: "About", icon: Info, path: "/about", action: () => isHomePage && scrollToSection?.(aboutRef) },
+        { title: "Gallery", icon: ImageIcon, path: "/gallery" },
+        { title: "Contact", icon: Phone, path: "/contact", action: () => isHomePage && scrollToSection?.(contactRef) },
+      ];
 
   const defaultAvatar =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
+
+  // For desktop, hide the sidebar if the user is not logged in.
+  // For mobile, it will be controlled by the `sidebarOpen` state.
+  const isHiddenOnDesktopForGuest = !user ? 'lg:hidden' : '';
 
   return (
     <>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 lg:hidden"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-screen z-50 transition-all duration-300 ease-in-out
+        className={`fixed left-0 top-0 h-screen z-50 transition-all duration-300 ease-in-out ${isHiddenOnDesktopForGuest}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
           ${isHovered || sidebarOpen ? 'w-72' : 'w-20'}
           bg-white dark:bg-gray-900 shadow-lg`}
@@ -151,40 +157,29 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
           {/* Sidebar Header */}
           {/* Avatar + Fullname */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3">
-              <img
-                src={avatar || defaultAvatar}
-                alt="User Avatar"
-                className="w-10 h-10 rounded-full object-cover cursor-pointer"
-                onClick={handleAvatarClick}
-              />
-              <span
-                className={`text-lg font-semibold text-gray-800 dark:text-gray-200 ${(isHovered || sidebarOpen) ? "block" : "hidden"}`}
-              >
-                {user?.username || user?.fullName || user?.email || "Guest User"}
-              </span>
-              <input
-                id="avatarUpload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-            </div>
+            {user ? (
+              <div className="flex items-center space-x-3">
+                <img
+                  src={avatar || defaultAvatar}
+                  alt="User Avatar"
+                  className="object-cover w-10 h-10 rounded-full cursor-pointer"
+                  onClick={handleAvatarClick}
+                />
+                <span
+                  className={`text-lg font-semibold text-gray-800 dark:text-gray-200 ${(isHovered || sidebarOpen) ? "block" : "hidden"}`}
+                >
+                  {user?.username || user?.fullName || user?.email}
+                </span>
+                <input
+                  id="avatarUpload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+            ) : <div className="h-10"></div>}
             <div className="flex items-center gap-2 lg:hidden">
-              <Link
-                to="/checkout"
-                onClick={() => setSidebarOpen(false)}
-                className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
-                aria-label="Shopping Cart"
-              >
-                <ShoppingCart size={24} />
-                {totalQuantity > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
-                    {totalQuantity}
-                  </span>
-                )}
-              </Link>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className={`p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 transition-opacity ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -196,7 +191,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4 scrollbar-hide">
+          <nav className="flex-1 py-4 overflow-y-auto scrollbar-hide">
             <ul className="space-y-1">
               {Menus.map((menu, idx) => {
                 const IconComponent = menu.icon;
@@ -249,8 +244,8 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
             </ul>
           </nav>
 
-          {/* Dark Mode */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Dark Mode Toggle */}
+          <div className="p-4 mt-auto border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={toggleDarkMode}
               className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"

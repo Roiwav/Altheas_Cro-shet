@@ -3,9 +3,9 @@ import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
+import DarkModeToggle from "./DarkModeToggle";
 
-export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function Layout({ sidebarOpen, setSidebarOpen }) {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const location = useLocation();
 
@@ -24,6 +24,7 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      <DarkModeToggle sidebarOpen={sidebarOpen} />
       <Sidebar
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
