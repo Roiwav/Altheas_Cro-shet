@@ -70,7 +70,7 @@ const orderSchema = new Schema({
     status: {
         type: String,
         enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-        default: 'Pending'
+        default: 'pending'
     }
 }, {
     timestamps: true // This adds `createdAt` and `updatedAt` fields automatically
