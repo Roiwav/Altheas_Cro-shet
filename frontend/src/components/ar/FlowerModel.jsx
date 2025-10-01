@@ -228,7 +228,8 @@ const FlowerModel = React.memo(({
             newMaterial.metalness = MATERIALS.diskfloret.metalness;
             child.material = newMaterial;
           } else if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
-            // Modify the cloned material to set the color while preserving the original texture maps for a rough look.
+            // Discard the original color texture map to apply a solid color, but keep other maps (like normalMap) for texture.
+            newMaterial.map = null; 
             newMaterial.color.set(color);
             newMaterial.roughness = MATERIALS.petal.roughness;
             newMaterial.metalness = MATERIALS.petal.metalness;
