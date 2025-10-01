@@ -1,9 +1,9 @@
 import React from 'react';
 import { useUser } from '../../context/useUser';
-import { LogOut, Search, Menu, Sun, Moon } from 'lucide-react';
 import { useDarkMode } from '../../context/DarkModeContext.jsx';
+import { LogOut, Menu, Sun, Moon } from 'lucide-react';
 
-const AdminNavbar = ({ showSearch, searchQuery, setSearchQuery, setSidebarOpen }) => {
+const AdminNavbar = ({ setSidebarOpen }) => {
   const { logout } = useUser();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   
@@ -17,29 +17,7 @@ const AdminNavbar = ({ showSearch, searchQuery, setSearchQuery, setSidebarOpen }
         <span className="sr-only">Open sidebar</span>
         <Menu className="h-6 w-6" aria-hidden="true" />
       </button>
-      <div className="flex-1 px-4 flex justify-between">
-        <div className="flex-1 flex">
-
-          {/* Search Bar */}
-          {showSearch && (
-            <div className="w-full flex md:ml-0">
-              <label htmlFor="search-field" className="sr-only">Search</label>
-              <div className={`relative w-full ${isDarkMode ? 'text-gray-400 focus-within:text-gray-300' : 'text-gray-400 focus-within:text-gray-600'}`}>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5" />
-              </div>
-              <input
-                id="search-field"
-                type="text"
-                placeholder="Search by Order ID, Customer, or Product..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`block w-full h-full pl-10 pr-3 py-2 border-transparent placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-0 focus:border-transparent sm:text-sm ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'text-gray-900'}`}
-              />
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="flex-1 px-4 flex justify-end">
         <div className="ml-4 flex items-center md:ml-6">
           <button
             onClick={toggleDarkMode}
