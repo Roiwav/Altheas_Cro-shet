@@ -67,10 +67,12 @@ const MATERIALS = {
   leaf: {
     roughness: 0.95, // Very rough, diffuse surface
     metalness: 0.0,
+    color: '#4CAF50', // A standard green for leaves
   },
   stem: {
     roughness: 0.95,
     metalness: 0.0,
+    color: '#8BC34A', // A lighter green for stems
   },
   wrapper: {
     roughness: 0.4, // Kept a bit shiny for a plastic/cellophane look
@@ -204,24 +206,34 @@ const FlowerModel = React.memo(({
 
           const name = child.name.toLowerCase();
 
-          // Apply color and properties based on the part name
-          if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
-            newMaterial.color.set(color);
-            newMaterial.roughness = MATERIALS.petal.roughness;
-            newMaterial.metalness = MATERIALS.petal.metalness;
-          } else if (name.includes('leaf') || name.includes('leaves')) {
-            newMaterial.roughness = MATERIALS.leaf.roughness;
-            newMaterial.metalness = MATERIALS.leaf.metalness;
-          } else if (name.includes('stem') || name.includes('branch') || name.includes('stick')) {
-            newMaterial.roughness = MATERIALS.stem.roughness;
-            newMaterial.metalness = MATERIALS.stem.metalness;
-          } else if (arrangement === 'bouquet' && (name.includes('wrapper') || name.includes('wrap'))) {
+          // Prioritize non-petal parts first to ensure they always have the correct color.
+          if (arrangement === 'bouquet' && (name.includes('wrapper') || name.includes('wrap'))) {
+            // Wrappers are always white and semi-transparent
+            newMaterial.color.set(MATERIALS.wrapper.color);
             newMaterial.transparent = true;
             newMaterial.opacity = 0.8;
             newMaterial.roughness = MATERIALS.wrapper.roughness;
+          } else if (name.includes('leaf') || name.includes('leaves')) {
+            newMaterial.color.set(MATERIALS.leaf.color);
+            newMaterial.roughness = MATERIALS.leaf.roughness;
+            newMaterial.metalness = MATERIALS.leaf.metalness;
+          } else if (name.includes('stem') || name.includes('branch') || name.includes('stick')) {
+            newMaterial.color.set(MATERIALS.stem.color);
+            newMaterial.roughness = MATERIALS.stem.roughness;
+            newMaterial.metalness = MATERIALS.stem.metalness;
+          } else if (name.includes('diskfloret')) {
+            // Special case for sunflower center
+            newMaterial.color.set(MATERIALS.diskfloret.color);
+            newMaterial.roughness = MATERIALS.diskfloret.roughness;
+            newMaterial.metalness = MATERIALS.diskfloret.metalness;
+            child.material = newMaterial;
+          } else if (name.includes('petal') || name.includes('flower') || name.includes(flowerType)) {
+            // Modify the cloned material to set the color while preserving the original texture maps for a rough look.
+            newMaterial.color.set(color);
+            newMaterial.roughness = MATERIALS.petal.roughness;
+            newMaterial.metalness = MATERIALS.petal.metalness;
+            child.material = newMaterial;
           }
-          
-          child.material = newMaterial;
         }
       });
       
