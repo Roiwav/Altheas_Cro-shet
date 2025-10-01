@@ -1,6 +1,6 @@
 // src/pages/main/CheckoutPage.jsx
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ShoppingBag, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -8,6 +8,7 @@ import codIcon from '../../assets/images/icons/cash-on-delivery.png';
 import gcashIcon from '../../assets/images/icons/gcash.png';
 import { useCart } from "../../context/CartContext.jsx";
 import { useUser } from "../../context/useUser.js";
+import useSettings from "../../hooks/useSettings";
 
 export default function CheckoutPage() {
     const location = useLocation();
@@ -29,39 +30,44 @@ export default function CheckoutPage() {
 
     const singleProduct = location.state?.product;
 
-    // Shipping fees data (could be moved to a shared utility file later)
-    const shippingFees = {
-        "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
-        "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
-        "Davao City": 34, "Cagayan de Oro": 33,
-    };
-
     const [paymentMethod, setPaymentMethod] = useState('COD');
+    const { settings } = useSettings();
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     // Use the cartItems from context directly, or the single product if it's a "Buy Now" flow.
     const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
     useEffect(() => {
-  if (isAuthenticated) {
-    let addresses = user?.addresses || [];
+        // Shipping fees data (moved inside useEffect to avoid dependency issues)
+        const shippingFees = {
+            "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
+            "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
+            "Davao City": 34, "Cagayan de Oro": 33,
+        };
 
-    // ✅ If DB has no addresses, fallback to localStorage
-    if (addresses.length === 0) {
-      const saved = localStorage.getItem("userAddresses");
-      if (saved) {
-        addresses = JSON.parse(saved);
-      }
-    }
+        if (isAuthenticated) {
+            let addresses = user?.addresses || [];
 
-    if (addresses.length > 0) {
-      // ✅ Find the default, else use first one
-      const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
+            // If DB has no addresses, fallback to localStorage
+            if (addresses.length === 0) {
+                const saved = localStorage.getItem("userAddresses");
+                if (saved) {
+                    try {
+                        addresses = JSON.parse(saved);
+                    } catch (e) {
+                        console.error("Error parsing saved addresses:", e);
+                    }
+                }
+            }
 
-      setShippingAddress(defaultAddress);
-      setShippingFee(shippingFees[defaultAddress.city] || 0);
-    }
-  }
-}, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
+            if (addresses.length > 0) {
+                // Find the default, else use first one
+                const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
+
+                setShippingAddress(defaultAddress);
+                setShippingFee(shippingFees[defaultAddress.city] || 0);
+            }
+        }
+    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
 
     const subtotal = checkoutItems.reduce(
         (sum, item) => sum + (item.price * (item.quantity || 1)),
@@ -78,6 +84,11 @@ export default function CheckoutPage() {
             return;
         }
 
+        if (paymentMethod === 'GCash' && !settings?.gcashPayment) {
+            toast.error("GCash payment is currently unavailable. Please choose another payment method.");
+            return;
+        }
+
         setIsPlacingOrder(true);
 
         try {
@@ -91,7 +102,7 @@ export default function CheckoutPage() {
                         console.error('Item is missing productId and _id:', item);
                     }
                     return {
-                        productId: id, // Ensure this is a string, as expected by the backend
+                        productId: id,
                         name: item.name,
                         price: item.price,
                         quantity: item.quantity || 1,
@@ -115,28 +126,34 @@ export default function CheckoutPage() {
             });
 
             if (response.ok) {
-                // If it wasn't a "Buy Now" single product, clear the main cart.
                 if (!singleProduct) {
                     clearCart(); 
                 }
                 toast.success("Your order has been placed successfully!");
-                navigate("/orders"); // Navigate to orders page to see the new orders
+                navigate("/orders");
             } else {
                 let errorMessage = "The order could not be placed.";
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.message || errorMessage;
-                } catch (e) { /* Ignore JSON parsing errors */ }
-                toast.error(errorMessage);
+                } catch (e) {
+                    console.error("Error parsing error response:", e);
+                }
+                throw new Error(errorMessage);
             }
-        } catch (err) {
-            console.error("Failed to place order(s):", err);
-            toast.error(err.message || "An unexpected server error occurred. Please try again.");
+        } catch (error) {
+            console.error('Error placing order:', error);
+            toast.error(error.message || 'Failed to place order. Please try again.');
         } finally {
             setIsPlacingOrder(false);
         }
     };
-    
+
+    const handleIncreaseQuantity = async (item) => {
+        const newQty = (item.quantity || 1) + 1;
+        await updateQuantity(getId(item), newQty);
+    };
+
     const handleDecreaseQuantity = async (item) => {
         const newQty = (item.quantity || 1) - 1;
         if (newQty > 0) {
@@ -146,11 +163,6 @@ export default function CheckoutPage() {
             await removeFromCart(getId(item));
             toast.success("Item removed from cart.");
         }
-    };
-
-    const handleIncreaseQuantity = async (item) => {
-        const newQty = (item.quantity || 1) + 1;
-        await updateQuantity(getId(item), newQty);
     };
 
     const handleRemoveItem = async (itemId) => {
@@ -264,17 +276,20 @@ export default function CheckoutPage() {
                                         <img src={codIcon} alt="Cash on Delivery" className="ml-3 h-6 w-auto" />
                                         <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">Cash on Delivery (COD)</span>
                                     </label>
-                                    <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-700/50 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="paymentMethod"
-                                            value="GCash"
-                                            checked={paymentMethod === 'GCash'}
-                                            onChange={() => setPaymentMethod('GCash')}
-                                            className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300"
-                                        />
-                                        <img src={gcashIcon} alt="GCash" className="ml-3 h-6 w-auto" />
-                                    </label>
+                                    {settings?.gcashPayment && (
+                                        <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-700/50 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="paymentMethod"
+                                                value="GCash"
+                                                checked={paymentMethod === 'GCash'}
+                                                onChange={() => setPaymentMethod('GCash')}
+                                                className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300"
+                                            />
+                                            <img src={gcashIcon} alt="GCash" className="ml-3 h-6 w-auto" />
+                                            <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">GCash</span>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
 

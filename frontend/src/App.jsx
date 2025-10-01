@@ -45,7 +45,8 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <SettingsProvider>
+      <Routes>
       <Route element={<AdminRoute />}>
         <Route path="/admin" element={<AdminPage />} />
       </Route>
