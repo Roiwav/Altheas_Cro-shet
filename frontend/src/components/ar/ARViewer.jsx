@@ -233,7 +233,8 @@ const ARViewer = ({
               arrangement={arrangement}
               isAREnabled={isAREnabled}
             />
-            {!isAREnabled && <ModelViewer autoRotate={true} />}
+            {/* Always enable viewer controls, but disable auto-rotate in AR mode for better manual control */}
+            <ModelViewer autoRotate={!isAREnabled} />
           </Suspense>
         </Canvas>
       </ErrorBoundary>
