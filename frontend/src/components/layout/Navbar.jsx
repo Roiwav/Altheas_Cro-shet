@@ -54,27 +54,35 @@ export default function Navbar({
     navigate("/");
   };
 
-  const navLinks = [];
+  const navLinks = !isAuthenticated ? [
+    { name: "Home", path: "/home" },
+    { name: "Shop", path: "/shop" },
+    { name: "About", path: "/about" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Contact", path: "/contact" },
+  ] : [];
 
   return (
     <header
-      className={`fixed top-0 right-0 z-40 transition-all duration-300 left-0 lg:left-[var(--sidebar-width,5rem)] ${
+      className={`fixed top-0 right-0 z-40 transition-all duration-300 left-0 ${
+        isAuthenticated ? 'lg:left-[var(--sidebar-width,5rem)]' : ''
+      } ${
         scrolled
           ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md"
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
           {/* Left & Center Group */}
           <div className="flex items-center">
             {/* Mobile menu button */}
             <div
-              className="lg:hidden mr-4"
+              className="mr-4 lg:hidden"
             >
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 focus:outline-none"
+                className="p-2 text-gray-700 rounded-md dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 focus:outline-none"
               >
                 <Menu size={24} />
               </button>
@@ -84,37 +92,38 @@ export default function Navbar({
               className={`flex-shrink-0 ${sidebarOpen ? "hidden lg:block" : "block"}`}
             >
               <Link to="/" className="flex items-center">
-                <span className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
+                <span className="text-xl font-bold text-pink-600 sm:text-2xl dark:text-pink-400">
                   Althea Cro-shet
                 </span>
               </Link>
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={`px-3 py-2 text-sm font-medium ${
-                  location.pathname === link.path
-                    ? "text-pink-600 dark:text-pink-400"
-                    : "text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
-          </nav>
-
+          {/* Desktop Navigation - Show only when not authenticated */}
+          {!isAuthenticated && (
+            <nav className="items-center hidden space-x-8 lg:flex">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    location.pathname === link.path
+                      ? "text-pink-600 dark:text-pink-400"
+                      : "text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+          )}
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
             {/* Cart */}
             {!isAuthPage && (
               <Link
                 to="/checkout"
-                className="relative p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 hidden lg:inline-flex"
+                className="relative inline-flex p-2 text-gray-700 rounded-full hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
                 aria-label="Shopping Cart"
               >
                 <ShoppingCart size={20} />
@@ -125,13 +134,12 @@ export default function Navbar({
                 )}
               </Link>
             )}
-
             {/* User Menu */}
             {isAuthenticating ? null : isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="flex items-center space-x-1 p-2 rounded-full text-gray-700 hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none"
+                  className="flex items-center p-2 space-x-1 text-gray-700 rounded-full hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400 focus:outline-none"
                   aria-label="User menu"
                 >
                   <User size={20} />
@@ -141,7 +149,7 @@ export default function Navbar({
                 </button>
 
                 {isOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
+                  <div className="absolute right-0 z-50 w-48 py-1 mt-2 bg-white rounded-md shadow-lg dark:bg-gray-800">
                     <Link
                       to="/dashboard"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -152,7 +160,7 @@ export default function Navbar({
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       <span>Sign out</span>

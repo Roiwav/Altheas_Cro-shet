@@ -1,5 +1,6 @@
 // src/pages/main/GalleryPage.jsx
 import React, { useState } from "react";
+import { useUser } from "../../context/useUser.js";
 // Gallery images
 import img1 from '../../assets/images/gallery/image1.jpg';
 import img2 from '../../assets/images/gallery/image2.jpg';
@@ -16,6 +17,7 @@ import img12 from '../../assets/images/gallery/image12.jpg';
 
 export default function GalleryPage() {
   const [modalImage, setModalImage] = useState(null);
+  const { user } = useUser();
 
   const images = [
     { id: 1, src: img1, alt: 'Beautiful Handmade 1' },
@@ -39,33 +41,30 @@ export default function GalleryPage() {
         dark:bg-gradient-to-br dark:from-[#2C2C54] dark:via-[#474787] dark:to-[#40407a]
       `}
     >
-      <div className="max-w-7xl mx-auto py-10 px-4 md:pr-4 md:pl-[calc(var(--sidebar-width,5rem)+1rem)] transition-[padding-left] duration-300 ease-in-out"
-      >
+      <div className={`max-w-7xl mx-auto py-10 px-4 ${
+        user ? 'md:pr-4 md:pl-[calc(var(--sidebar-width,5rem)+1rem)]' : ''
+      } transition-[padding-left] duration-300 ease-in-out`}>
         {/* Title */}
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white text-center mb-12 drop-shadow-md">
+        <h1 className="mb-12 text-4xl font-extrabold text-center text-white sm:text-5xl drop-shadow-md">
           Our Lovely Gallery
         </h1>
 
         {/* Image Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {images.map((image, index) => (
             <div
               key={image.id}
               onClick={() => setModalImage(image)}
-              className="group cursor-pointer overflow-hidden rounded-2xl 
-                         bg-white/70 dark:bg-gray-800/70 
-                         backdrop-blur-sm shadow-lg hover:shadow-2xl 
-                         transform hover:scale-105 transition-all duration-300
-                         animate-fade-in-up"
+              className="overflow-hidden transition-all duration-300 transform shadow-lg cursor-pointer group rounded-2xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm hover:shadow-2xl hover:scale-105 animate-fade-in-up"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <img
                 src={image.src}
                 alt={image.alt}
-                className="w-full h-64 object-cover group-hover:opacity-90 transition-opacity duration-300"
+                className="object-cover w-full h-64 transition-opacity duration-300 group-hover:opacity-90"
               />
-              <div className="p-4 bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm text-center">
-                <p className="text-gray-800 dark:text-gray-200 font-medium truncate">
+              <div className="p-4 text-center bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm">
+                <p className="font-medium text-gray-800 truncate dark:text-gray-200">
                   {image.alt}
                 </p>
               </div>
@@ -77,26 +76,20 @@ export default function GalleryPage() {
         {modalImage && (
           <div
             onClick={() => setModalImage(null)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in"
           >
             <div
-              className="relative max-w-3xl w-full rounded-2xl overflow-hidden shadow-2xl 
-                         bg-white dark:bg-gray-900
-                         animate-scale-in"
+              className="relative w-full max-w-3xl overflow-hidden bg-white shadow-2xl rounded-2xl dark:bg-gray-900 animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <img
                 src={modalImage.src}
                 alt={modalImage.alt}
-                className="w-full h-auto object-contain"
+                className="object-contain w-full h-auto"
               />
               <button
                 onClick={() => setModalImage(null)}
-                className="absolute top-4 right-4 
-                           bg-white/50 dark:bg-gray-800/50
-                           hover:bg-white/80 dark:hover:bg-gray-700/80
-                           text-gray-800 dark:text-gray-200 
-                           rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-300"
+                className="absolute flex items-center justify-center w-10 h-10 text-gray-800 transition-colors duration-300 rounded-full top-4 right-4 bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-700/80 dark:text-gray-200"
               >
                 ✕
               </button>

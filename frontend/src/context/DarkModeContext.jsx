@@ -35,7 +35,7 @@ export const DarkModeProvider = ({ children }) => {
   };
 
   const value = {
-    isDarkMode: darkMode,
+    darkMode,
     setDarkMode,
     toggleDarkMode
   };
