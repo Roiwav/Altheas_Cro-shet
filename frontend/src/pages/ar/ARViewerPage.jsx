@@ -198,7 +198,7 @@ function ARViewerPage() {
       </div>
       
       {/* AR Controls */}
-      <div className="absolute z-10 flex flex-col space-y-3 top-4 right-4">
+      <div className="absolute z-20 flex flex-col space-y-3 top-4 right-4">
         <button
           onClick={handleExitAR}
           className="flex items-center justify-center w-12 h-12 text-white transition-all bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 backdrop-blur-sm"
