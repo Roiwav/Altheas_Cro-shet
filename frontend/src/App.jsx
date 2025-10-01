@@ -26,7 +26,6 @@ import SettingsPage from './pages/user/SettingsPage';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
-import { useDarkMode } from './context/DarkModeContext.jsx';
 import NotFoundPage from './pages/main/NotFoundPage.jsx';
 
 export default function App() {

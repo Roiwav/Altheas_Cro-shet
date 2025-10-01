@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, Fragment } from "react";
 import { Navigate } from "react-router-dom";
 import { useUser } from "../../context/useUser";
-import useSettings from "../../hooks/useSettings";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
 import AdminNavbar from "../../components/admin/AdminNavbar.jsx"
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight } from "lucide-react";
@@ -337,7 +337,7 @@ export default function AdminPage() {
             }`}
           >
             <span>Actions</span>
-            <ChevronDown className="ml-2 -mr-1 h-4 w-4" aria-hidden="true" />
+            <ChevronDown className="w-4 h-4 ml-2 -mr-1" aria-hidden="true" />
           </Menu.Button>
         </div>
 
@@ -381,7 +381,7 @@ export default function AdminPage() {
                         <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${status.color}`} />
                         <span className="flex-1 text-left">{status.label}</span>
                         {order.status === status.value && (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="w-4 h-4 text-green-500" />
                         )}
                       </button>
                     )}
@@ -434,13 +434,13 @@ export default function AdminPage() {
                     {col.key ? (
                       <button 
                         onClick={() => requestSort(col.key)} 
-                        className="flex items-center space-x-1 w-full text-left hover:text-pink-500 transition-colors"
+                        className="flex items-center w-full space-x-1 text-left transition-colors hover:text-pink-500"
                       >
                         <span className="truncate">{col.label}</span>
                         {sortConfig.key === col.key && (
                           sortConfig.direction === 'ascending' 
-                            ? <ArrowUp className="w-3 h-3 flex-shrink-0" /> 
-                            : <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                            ? <ArrowUp className="flex-shrink-0 w-3 h-3" /> 
+                            : <ArrowDown className="flex-shrink-0 w-3 h-3" />
                         )}
                       </button>
                     ) : (
@@ -525,7 +525,7 @@ export default function AdminPage() {
         </div>
 
         {/* Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-6`}>
             <div className="flex items-center justify-between">
               <div>
@@ -568,33 +568,33 @@ export default function AdminPage() {
         {/* Quick Actions */}
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-6`}>
           <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <button 
               onClick={() => setActiveTab('orders')}
-              className="flex flex-col items-center justify-center p-4 rounded-lg border border-dashed border-gray-300 hover:border-pink-500 hover:bg-pink-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-pink-500 hover:bg-pink-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <ShoppingCart className="w-6 h-6 text-pink-600 dark:text-pink-400 mb-2" />
+              <ShoppingCart className="w-6 h-6 mb-2 text-pink-600 dark:text-pink-400" />
               <span className="text-sm font-medium">View All Orders</span>
             </button>
             <button 
               onClick={() => setActiveTab('products')}
-              className="flex flex-col items-center justify-center p-4 rounded-lg border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <Box className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
+              <Box className="w-6 h-6 mb-2 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium">Manage Products</span>
             </button>
             <button 
               onClick={() => setActiveTab('feedback')}
-              className="flex flex-col items-center justify-center p-4 rounded-lg border border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-green-500 hover:bg-green-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <MessageSquare className="w-6 h-6 text-green-600 dark:text-green-400 mb-2" />
+              <MessageSquare className="w-6 h-6 mb-2 text-green-600 dark:text-green-400" />
               <span className="text-sm font-medium">View Feedback</span>
             </button>
             <button 
               onClick={() => setActiveTab('settings')}
-              className="flex flex-col items-center justify-center p-4 rounded-lg border border-dashed border-gray-300 hover:border-purple-500 hover:bg-purple-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-purple-500 hover:bg-purple-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <SettingsIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 mb-2" />
+              <SettingsIcon className="w-6 h-6 mb-2 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-medium">Settings</span>
             </button>
           </div>
@@ -609,7 +609,7 @@ export default function AdminPage() {
     
     return (
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Orders</h2>
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -618,7 +618,7 @@ export default function AdminPage() {
           </div>
           <div className="w-full sm:w-64">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Search className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
               </div>
               <input
@@ -851,11 +851,11 @@ export default function AdminPage() {
   
     return (
       <div className="space-y-8">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Products</h2>
           <button
             onClick={() => setShowAddProductForm(!showAddProductForm)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
           >
             <Plus className="w-5 h-5 mr-2" />
             {showAddProductForm ? 'Cancel Add Product' : 'Add New Product'}
@@ -865,15 +865,15 @@ export default function AdminPage() {
         {showAddProductForm && (
           <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-6 mb-8`}>
             <h3 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add New Product</h3>
-            <form onSubmit={handleNewProductSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <form onSubmit={handleNewProductSubmit} className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               {/* Image Uploader */}
-              <div className="lg:col-span-1 space-y-4">
+              <div className="space-y-4 lg:col-span-1">
                 <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Image</label>
                 <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-300'} border-dashed rounded-md`}>
                   <div className="space-y-1 text-center">
                     {newImagePreview ? (
                       <div>
-                        <img src={newImagePreview} alt="Product preview" className="mx-auto h-48 w-auto rounded-md object-contain" />
+                        <img src={newImagePreview} alt="Product preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
                         <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">
                           Remove Image
                         </button>
@@ -896,7 +896,7 @@ export default function AdminPage() {
               </div>
   
               {/* Product Details */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="space-y-6 lg:col-span-2">
                 <div>
                   <label htmlFor="productName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
                   <input type="text" id="productName" name="productName" value={editFormData.productName || ''} onChange={handleEditFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
@@ -905,7 +905,7 @@ export default function AdminPage() {
                   <label htmlFor="description" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
                   <textarea id="description" name="description" rows="4" value={editFormData.description || ''} onChange={handleEditFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}></textarea>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <label htmlFor="price" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Price (₱)</label>
                     <input type="number" id="price" name="price" value={editFormData.price || ''} onChange={handleEditFormChange} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
@@ -918,8 +918,8 @@ export default function AdminPage() {
               </div>
   
               {/* Form Actions */}
-              <div className="lg:col-span-3 flex justify-end">
-                <button type="submit" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+              <div className="flex justify-end lg:col-span-3">
+                <button type="submit" className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
                   <UploadCloud className="w-5 h-5 mr-2" />
                   Add Product
                 </button>
@@ -944,7 +944,7 @@ export default function AdminPage() {
             </Transition.Child>
 
             <div className="fixed inset-0 overflow-y-auto">
-              <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <div className="flex items-center justify-center min-h-full p-4 text-center">
                 <Transition.Child
                   as={Fragment}
                   enter="ease-out duration-300"
@@ -958,7 +958,7 @@ export default function AdminPage() {
                     <Dialog.Title as="h3" className={`text-lg font-medium leading-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Edit Product: {editingProduct?.name}
                     </Dialog.Title>
-                    <form onSubmit={handleEditProductSubmit} className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <form onSubmit={handleEditProductSubmit} className="grid grid-cols-1 gap-6 mt-4 lg:grid-cols-2">
                       {/* Image Uploader for Edit */}
                       <div className="space-y-4">
                         <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Image</label>
@@ -966,7 +966,7 @@ export default function AdminPage() {
                           <div className="space-y-1 text-center">
                             {newImagePreview ? (
                               <div>
-                                <img src={newImagePreview} alt="Product preview" className="mx-auto h-48 w-auto rounded-md object-contain" />
+                                <img src={newImagePreview} alt="Product preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
                                 <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">
                                   Remove Image
                                 </button>
@@ -1011,7 +1011,7 @@ export default function AdminPage() {
                       </div>
 
                       {/* Form Actions */}
-                      <div className="mt-4 lg:col-span-2 flex justify-end space-x-3">
+                      <div className="flex justify-end mt-4 space-x-3 lg:col-span-2">
                         <button
                           type="button"
                           className={`inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700 focus-visible:ring-blue-500' : 'border-gray-300 text-gray-700 hover:bg-gray-50 focus-visible:ring-blue-500'}`}
@@ -1021,7 +1021,7 @@ export default function AdminPage() {
                         </button>
                         <button
                           type="submit"
-                          className="inline-flex justify-center rounded-md border border-transparent bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                          className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
                         >
                           Save Changes
                         </button>
@@ -1056,10 +1056,10 @@ export default function AdminPage() {
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
                       ₱{parseFloat(product.price).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                       <button
                         onClick={() => handleEditClick(product)}
-                        className="text-pink-600 hover:text-pink-800 mr-2"
+                        className="mr-2 text-pink-600 hover:text-pink-800"
                         title="Edit Product"
                       >
                         Edit
@@ -1084,7 +1084,7 @@ export default function AdminPage() {
 
   // Component for displaying settings
   const SettingsTab = ({ isDarkMode }) => {
-    const { settings, updateSettings } = useSettings();
+    const { settings, updateSettings } = React.useContext(SettingsContext);
     
     const ToggleSwitch = ({ enabled, onChange, label, description }) => (
       <div className="flex items-start space-x-4">
@@ -1299,9 +1299,9 @@ export default function AdminPage() {
     const cardClasses = `p-4 rounded-lg ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'} border`;
 
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
             <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>System Settings</h2>
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1326,7 +1326,7 @@ export default function AdminPage() {
                 label="Maintenance Mode"
                 description="When enabled, only administrators can access the store"
               />
-              <div className="border-t border-gray-200 dark:border-gray-600 my-2"></div>
+              <div className="my-2 border-t border-gray-200 dark:border-gray-600"></div>
               <ToggleSwitch 
                 enabled={settings.registration} 
                 onChange={() => handleToggle('registration')}
@@ -1353,7 +1353,7 @@ export default function AdminPage() {
                 label="Cash on Delivery (COD)"
                 description="Allow customers to pay when they receive their order"
               />
-              <div className="border-t border-gray-200 dark:border-gray-600 my-2"></div>
+              <div className="my-2 border-t border-gray-200 dark:border-gray-600"></div>
               <ToggleSwitch 
                 enabled={settings.gcashPayment} 
                 onChange={() => handleToggle('gcashPayment')}
@@ -1464,7 +1464,7 @@ export default function AdminPage() {
                             </span>
                           ))}
                           {zone.cities.length > 5 && (
-                            <span className="text-xs text-gray-500 self-center">
+                            <span className="self-center text-xs text-gray-500">
                               +{zone.cities.length - 5} more
                             </span>
                           )}
@@ -1478,7 +1478,7 @@ export default function AdminPage() {
                               rows="3"
                               placeholder="Enter cities, separated by commas"
                             />
-                            <div className="flex justify-end space-x-2 mt-2">
+                            <div className="flex justify-end mt-2 space-x-2">
                               <button
                                 onClick={() => setEditingCities(null)}
                                 className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
@@ -1578,7 +1578,7 @@ export default function AdminPage() {
                                 <div className="flex items-center">
                                   {method.price > 0 ? (
                                     <div className="relative rounded-md shadow-sm w-28">
-                                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                         <span className="text-gray-500 sm:text-sm">₱</span>
                                       </div>
                                       <input
@@ -1604,7 +1604,7 @@ export default function AdminPage() {
                       </div>
                       
                       {/* Free Shipping Threshold */}
-                      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="pt-4 mt-6 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
                           <div>
                             <h5 className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -1614,8 +1614,8 @@ export default function AdminPage() {
                               Minimum order amount for free shipping
                             </p>
                           </div>
-                          <div className="relative rounded-md shadow-sm w-32">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <div className="relative w-32 rounded-md shadow-sm">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                               <span className="text-gray-500 sm:text-sm">₱</span>
                             </div>
                             <input
@@ -1631,7 +1631,7 @@ export default function AdminPage() {
                       </div>
                       
                       {/* Zone Actions */}
-                      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                      <div className="flex justify-between pt-4 mt-6 border-t border-gray-200 dark:border-gray-700">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1640,7 +1640,7 @@ export default function AdminPage() {
                           }}
                           className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         >
-                          <Trash2 className="h-4 w-4 mr-1" />
+                          <Trash2 className="w-4 h-4 mr-1" />
                           Delete Zone
                         </button>
                         <div className="space-x-2">
@@ -1676,13 +1676,13 @@ export default function AdminPage() {
               ))}
               
               {/* Add New Zone */}
-              <div className="mt-6 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+              <div className="p-6 mt-6 text-center border border-gray-300 border-dashed rounded-lg dark:border-gray-600">
                 <button
                   type="button"
                   onClick={handleAddShippingZone}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-pink-700 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-800/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-pink-700 bg-pink-100 border border-transparent rounded-md shadow-sm hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-800/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
                 >
-                  <Plus className="-ml-1 mr-2 h-5 w-5" />
+                  <Plus className="w-5 h-5 mr-2 -ml-1" />
                   Add Shipping Zone
                 </button>
                 <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1730,7 +1730,7 @@ export default function AdminPage() {
               ) : (
                 feedbacks.map((feedback) => (
                   <tr key={feedback.id} className={isDarkMode ? 'hover:bg-gray-700/50' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
                       <div className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{feedback.name}</div>
                       <div className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{feedback.email}</div>
                     </td>
@@ -1740,10 +1740,10 @@ export default function AdminPage() {
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {new Date(feedback.created_at).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                       <button
                         onClick={() => handleDeleteFeedback(feedback.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors flex items-center"
+                        className="flex items-center text-red-600 transition-colors hover:text-red-800"
                         title="Delete Feedback"
                       >
                         <Trash2 className="w-4 h-4 mr-1" /> Delete
@@ -1788,7 +1788,7 @@ export default function AdminPage() {
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Newsletter Subscribers</h2>
           <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {subscribers.length} {subscribers.length === 1 ? 'subscriber' : 'subscribers'}
@@ -1797,8 +1797,8 @@ export default function AdminPage() {
 
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow overflow-x-auto`}>
           {isLoadingSubscribers ? (
-            <div className="flex justify-center items-center p-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+            <div className="flex items-center justify-center p-12">
+              <div className="w-8 h-8 border-b-2 border-pink-500 rounded-full animate-spin"></div>
             </div>
           ) : subscribers.length === 0 ? (
             <div className={`p-12 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1810,7 +1810,7 @@ export default function AdminPage() {
                 <tr>
                   <th 
                     scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase cursor-pointer"
                     onClick={() => requestSort('email')}
                   >
                     <span className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
@@ -1819,14 +1819,14 @@ export default function AdminPage() {
                   </th>
                   <th 
                     scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase cursor-pointer"
                     onClick={() => requestSort('subscribedAt')}
                   >
                     <span className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                       Subscribed On {renderSortIndicator('subscribedAt')}
                     </span>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase">
                     <span className={isDarkMode ? 'text-gray-300' : 'text-gray-500'}>Status</span>
                   </th>
                 </tr>
@@ -1881,7 +1881,7 @@ export default function AdminPage() {
         disabled={currentPage === 1}
         className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
       >
-        <ArrowLeft className="h-4 w-4 mr-1" />
+        <ArrowLeft className="w-4 h-4 mr-1" />
         <span>Previous</span>
       </button>
       <span className={`text-sm px-3 py-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -1893,7 +1893,7 @@ export default function AdminPage() {
         className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
       >
         <span>Next</span>
-        <ArrowRight className="h-4 w-4 ml-1" />
+        <ArrowRight className="w-4 h-4 ml-1" />
       </button>
     </div>
   );
@@ -1902,9 +1902,9 @@ export default function AdminPage() {
   
   const SidebarContent = () => (
         <div className={`flex flex-col h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <div className="flex items-center h-16 flex-shrink-0 px-4 space-x-2">
+          <div className="flex items-center flex-shrink-0 h-16 px-4 space-x-2">
             <img
-              className="h-8 w-auto"
+              className="w-auto h-8"
               src={logoSrc}
               alt="Althea's Cro-shet Logo"
             />
@@ -1966,7 +1966,7 @@ export default function AdminPage() {
             <div className="fixed inset-0 bg-gray-600 bg-opacity-75" />
           </Transition.Child>
 
-          <div className="fixed inset-0 flex z-40">
+          <div className="fixed inset-0 z-40 flex">
             <Transition.Child
               as={Fragment}
               enter="transition ease-in-out duration-300 transform"
@@ -1986,14 +1986,14 @@ export default function AdminPage() {
                   leaveFrom="opacity-100"
                   leaveTo="opacity-0"
                 >
-                  <div className="absolute top-0 right-0 -mr-12 pt-2">
+                  <div className="absolute top-0 right-0 pt-2 -mr-12">
                     <button
                       type="button"
-                      className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                      className="flex items-center justify-center w-10 h-10 ml-1 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                       onClick={() => setSidebarOpen(false)}
                     >
                       <span className="sr-only">Close sidebar</span>
-                      <X className="h-6 w-6 text-white" aria-hidden="true" />
+                      <X className="w-6 h-6 text-white" aria-hidden="true" />
                     </button>
                   </div>
                 </Transition.Child>
@@ -2021,13 +2021,13 @@ export default function AdminPage() {
           setSearchQuery={setSearchQuery}
           setSidebarOpen={setSidebarOpen}
         />
-        <main className="flex-1 relative z-0 focus:outline-none">
+        <main className="relative z-0 flex-1 focus:outline-none">
           {/* Header */}
           <div className="p-4 md:p-8">
             <div className="flex justify-end mb-4">
               {loading && (
                 <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="w-4 h-4 border-b-2 border-blue-600 rounded-full animate-spin"></div>
                   <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading...</span>
                 </div>
               )}
@@ -2037,7 +2037,7 @@ export default function AdminPage() {
             {showSearch && (
               <div className="relative mb-4 md:hidden">
                 <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <Search className="h-5 w-5 text-gray-400" />
+                  <Search className="w-5 h-5 text-gray-400" />
                 </div>
                 <input
                   type="text"

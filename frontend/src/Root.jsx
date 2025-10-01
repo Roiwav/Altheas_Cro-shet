@@ -3,6 +3,7 @@ import { ToastContainer } from "react-toastify";
 import App from "./App.jsx";
 import { CartProvider } from "./context/CartContext.jsx";
 import { TestimonialsProvider } from "./context/TestimonialsContext.jsx";
+import SettingsProvider from "./context/SettingsContext.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
 import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext.jsx";
 
@@ -33,12 +34,14 @@ export default function Root() {
   return (
     <DarkModeProvider>
       <UserProvider initialUser={initialUser}>
-        <TestimonialsProvider>
-          <CartProvider>
-            <App />
-            <DynamicToastContainer />
-          </CartProvider>
-        </TestimonialsProvider>
+        <SettingsProvider>
+          <TestimonialsProvider>
+            <CartProvider>
+              <App />
+              <DynamicToastContainer />
+            </CartProvider>
+          </TestimonialsProvider>
+        </SettingsProvider>
       </UserProvider>
     </DarkModeProvider>
   );
