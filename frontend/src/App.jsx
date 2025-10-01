@@ -84,11 +84,11 @@ export default function App() {
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-        </Route>
+    </Route>
 
-        {/* Catch-all for 404 Not Found - This should be the last route */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </>
+    {/* Catch-all for 404 Not Found - This should be the last route */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+</>
   );
 }
