@@ -246,7 +246,7 @@ export default function ShopPage() {
   return (
     <>
       {/* The Navbar and Sidebar are now provided by the main Layout component */}
-      <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 px-6 md:px-20 pb-16 ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
+      <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 ${isAuthenticated ? 'px-6 md:px-20 lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         {/* View, Search & Pagination */}
         <div className="flex flex-col flex-wrap items-center justify-between gap-4 mb-8 md:flex-row">
           {/* Left side: Filters */}

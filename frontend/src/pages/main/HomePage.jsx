@@ -129,7 +129,7 @@ function HomePage() {
               Shop Now!
             </Link>
             <Link 
-              to="/shop" 
+              to="/gallery" 
               className="flex items-center px-8 py-4 text-lg font-medium text-pink-600 transition-all duration-300 border-2 border-pink-500 rounded-full group dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20"
             >
               Explore Collection

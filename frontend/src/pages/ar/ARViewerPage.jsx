@@ -1,12 +1,14 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { X, AlertTriangle, Smartphone, QrCode } from 'lucide-react';
+import { useUser } from '../../context/useUser';
 
 // Lazy load AR components
 const QRCodeDisplay = React.lazy(() => import('../../components/ar/QRCodeDisplay'));
 const ARViewer = React.lazy(() => import('../../components/ar/ARViewer'));
 
 function ARViewerPage() {
+  const { isAuthenticated } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -94,7 +96,7 @@ function ARViewerPage() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center text-white bg-black">
+      <div className={`fixed inset-0 flex items-center justify-center text-white bg-black ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         <div className="max-w-md p-6 text-center">
           <div className="w-16 h-16 mx-auto mb-6 border-4 rounded-full border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
           <h2 className="mb-2 text-xl font-medium">Preparing AR Experience</h2>
@@ -113,7 +115,7 @@ function ARViewerPage() {
   // If on desktop, show a QR code to continue on mobile
   if (!isMobile) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center p-6 text-white bg-gray-900">
+      <div className={`fixed inset-0 flex items-center justify-center p-6 text-white bg-gray-900 ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         <div className="w-full max-w-md text-center bg-gray-800 shadow-2xl rounded-2xl">
           <div className="p-6 border-b border-gray-700">
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-5 text-pink-400 bg-pink-500 rounded-full bg-opacity-20">
@@ -153,7 +155,7 @@ function ARViewerPage() {
 
   if (error) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center p-6 text-white bg-black">
+      <div className={`fixed inset-0 flex items-center justify-center p-6 text-white bg-black ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         <div className="max-w-md text-center">
           <div className="flex items-center justify-center w-16 h-16 mx-auto mb-6 bg-red-500 rounded-full bg-opacity-20">
             <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -179,7 +181,7 @@ function ARViewerPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black">
+    <div className={`fixed inset-0 z-[100] bg-black ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
       {/* AR Viewport */}
       <div className="absolute inset-0">
         <Suspense fallback={
