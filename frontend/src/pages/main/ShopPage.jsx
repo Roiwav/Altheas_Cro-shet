@@ -41,6 +41,15 @@ const shippingFees = {
 const defaultRegion = "South Luzon";
 const defaultCity = "Calamba City";
 
+// Categories for filtering
+const categories = [
+  "All",
+  "Bouquet",
+  "Single Stem",
+  "Arrangement",
+  "Custom",
+];
+
 // Placeholder image
 const placeholderImage =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
@@ -59,12 +68,16 @@ export default function ShopPage() {
   const [page, setPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState("list"); // 'list' or 'grid'
+  const [sortBy, setSortBy] = useState("default");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   
   // ✅ Use CartContext state for region and city
   const [localRegion, setLocalRegion] = useState(defaultRegion);
   const [localCity, setLocalCity] = useState(defaultCity);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [selectedVariation, setSelectedVariation] = useState("");
+  const [modalQuantity, setModalQuantity] = useState(1);
 
   // This effect sets the initial shipping info when the page loads or user changes.
   useEffect(() => {
@@ -91,6 +104,8 @@ export default function ShopPage() {
     } else {
       setSelectedVariation("");
     }
+    // Reset quantity to 1 whenever the modal opens for a new product
+    setModalQuantity(1);
   }, [selectedProduct]);
 
   useEffect(() => window.scrollTo(0, 0), []);
@@ -98,7 +113,7 @@ export default function ShopPage() {
   // Reset page to 1 when search query changes
   useEffect(() => {
     setPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, sortBy, selectedCategory]);
 
   // This useEffect hook syncs the local shipping choices with the CartContext.
   useEffect(() => {
@@ -125,17 +140,42 @@ export default function ShopPage() {
     setShippingFee(fee);
   }, [localRegion, localCity, isAuthenticated, user, selectedAddressId, setShippingAddress, setShippingFee]);
   
-  // Filter products based on search query
-  const filteredProducts = productList.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter and sort products
+  const processedProducts = React.useMemo(() => {
+    let products = [...productList];
+
+    // Filter by category
+    if (selectedCategory !== "All") {
+      products = products.filter(p => p.category === selectedCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery.length >= 3) {
+      products = products.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Sort products
+    switch (sortBy) {
+      case "price-asc":
+        products.sort((a, b) => a.price - b.price);
+        break;
+      case "price-desc":
+        products.sort((a, b) => b.price - a.price);
+        break;
+      // Add more sorting options here if needed (e.g., by name)
+    }
+
+    return products;
+  }, [productList, searchQuery, selectedCategory, sortBy]);
 
   const itemsPerPage = 20;
-  const paginatedProducts = filteredProducts.slice(
+  const paginatedProducts = processedProducts.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const totalPages = Math.ceil(processedProducts.length / itemsPerPage);
 
   // Get product image safely
   const getImageSrc = (product) => {
@@ -156,10 +196,13 @@ export default function ShopPage() {
 
     try {
       // addToCart already handles saving the cart to the backend
-      const success = await addToCart(productToAdd, 1);
-      if (success) {
-        toast.success(`${product.name} added to cart!`);
-      }
+      await addToCart(productToAdd, modalQuantity);
+      toast.success(`${product.name} added to cart!`, {
+        position: "top-center", // Better for mobile
+        autoClose: 2000,       // Shorter duration
+        hideProgressBar: true,
+      });
+
       setSelectedProduct(null);
     } catch (err) {
       toast.error("Failed to add to cart.");
@@ -192,7 +235,7 @@ export default function ShopPage() {
       price: selectedProduct.price,
       image: getImageSrc(selectedProduct),
       variation: selectedVariation,
-      quantity: 1,
+      quantity: modalQuantity,
       shippingFee,
       shippingAddress,
     };
@@ -203,28 +246,61 @@ export default function ShopPage() {
   return (
     <>
       {/* The Navbar and Sidebar are now provided by the main Layout component */}
-      <main className="relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 px-6 md:px-20 pb-16 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
+      <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 px-6 md:px-20 pb-16 ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         {/* View, Search & Pagination */}
-        <div className="flex flex-col sm:flex-row justify-end items-center mb-8 gap-4 flex-wrap">
+        <div className="flex flex-col flex-wrap items-center justify-between gap-4 mb-8 md:flex-row">
+          {/* Left side: Filters */}
+          <div className="flex items-center w-full gap-4 md:w-auto">
+            {/* Category Filter */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 text-gray-900 transition-all bg-white border border-gray-300 rounded-full dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            >
+              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+
+            {/* Sort By */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 text-gray-900 transition-all bg-white border border-gray-300 rounded-full dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            >
+              <option value="default">Sort by: Default</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+            </select>
+          </div>
+
+          {/* Right side: Search and View Toggle */}
+          <div className="flex items-center justify-end w-full gap-4 md:w-auto">
+            {/* View Toggle */}
+            <div className="flex items-center p-1 bg-gray-200 rounded-full dark:bg-gray-700">
+              <button onClick={() => setView('list')} className={`p-2 rounded-full transition-colors ${view === 'list' ? 'bg-white dark:bg-gray-900 text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                <FaList />
+              </button>
+              <button onClick={() => setView('grid')} className={`p-2 rounded-full transition-colors ${view === 'grid' ? 'bg-white dark:bg-gray-900 text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                <FaThLarge />
+              </button>
+            </div>
+
           {/* Search Bar */}
           <div className="relative w-full sm:w-auto">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <FaSearch className="absolute text-gray-400 -translate-y-1/2 left-4 top-1/2" />
             <input
               type="text"
               placeholder="Search for flowers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-80 px-4 py-2 pl-12 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2 pl-12 text-gray-900 transition-all bg-white border border-gray-300 rounded-full sm:w-80 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>
 
+          </div>
         </div>
 
         {/* Products */}
-        <motion.div
-          layout
-          className="grid grid-cols-1 gap-10"
-        >
+        <motion.div layout className={`grid ${view === 'grid' ? 'grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6' : 'grid-cols-1 lg:grid-cols-2 gap-6'}`}>
           <AnimatePresence>
             {paginatedProducts.map((product) => (
               <motion.div
@@ -234,32 +310,44 @@ export default function ShopPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
-                className="relative group border p-4 rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all flex flex-col md:flex-row gap-6"
+                className={`relative group border rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all flex overflow-hidden ${view === 'grid' ? 'flex-col' : 'flex-row items-center'}`}
               >
-                <motion.img
-                  layout
-                  src={getImageSrc(product)}
-                  alt={product.name}
-                  className="rounded-lg flex-shrink-0 w-full md:w-1/3 h-72 object-contain bg-gray-100 dark:bg-gray-700"
-                />
-                <motion.div layout className="md:w-2/3 flex flex-col">
+                <div className={`flex-shrink-0 bg-gray-100 dark:bg-gray-700 ${view === 'grid' ? 'h-48 sm:h-64 w-full' : 'w-32 h-32 rounded-full mx-4'}`}>
+                  <motion.img
+                    layoutId={`product-image-${product.id}`}
+                    src={getImageSrc(product)}
+                    alt={product.name}
+                    className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${view === 'grid' ? 'object-contain' : 'object-cover rounded-full'}`}
+                  />
+                </div>
+                <motion.div layout className="flex flex-col flex-grow p-4">
                   <h3 className="text-xl font-bold text-gray-800 dark:text-white">{product.name}</h3>
-                  <p className="text-lg text-blue-700 dark:text-blue-400 font-semibold">{currencyFormatter.format(product.price)}</p>
-                  <AnimatePresence initial={false}>
-                    <motion.p
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
-                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                      transition={{ duration: 0.4, ease: "easeInOut" }}
-                      className="text-gray-600 dark:text-gray-300 flex-grow"
-                    >
-                      {product.description}
-                    </motion.p>
-                  </AnimatePresence>
+                  <p className="mt-1 text-lg font-semibold text-blue-700 dark:text-blue-400">{currencyFormatter.format(product.price)}</p>
+                  
+                  {view === 'list' && (
+                    <AnimatePresence initial={false}>
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        transition={{ duration: 0.4, ease: "easeInOut" }}
+                        className="flex-grow text-gray-600 dark:text-gray-300"
+                      >
+                        {product.description}
+                      </motion.p>
+                    </AnimatePresence>
+                  )}
+
+                  {view === 'grid' && (
+                     <p className="flex-grow mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        {product.description.substring(0, 80)}{product.description.length > 80 && '...'}
+                     </p>
+                  )}
+
                   <AnimatePresence>
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-4 mt-auto">
-                      <button onClick={() => setSelectedProduct(product)} className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
-                        <FaShoppingCart className="mr-2 h-4 w-4" />
+                      <button onClick={() => setSelectedProduct(product)} className="inline-flex items-center px-4 py-2 text-white transition-colors bg-pink-600 rounded-lg hover:bg-pink-700">
+                        <FaShoppingCart className="w-4 h-4 mr-2" />
                         Add to Cart
                       </button>
                     </motion.div>
@@ -270,10 +358,10 @@ export default function ShopPage() {
           </AnimatePresence>
         </motion.div>
 
-        {paginatedProducts.length === 0 && searchQuery && (
-          <div className="text-center py-20">
+        {paginatedProducts.length === 0 && searchQuery.length >= 3 && (
+          <div className="py-20 text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">No Products Found</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Your search for "{searchQuery}" did not match any products.
             </p>
           </div>
@@ -281,22 +369,22 @@ export default function ShopPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center md:justify-end mt-16">
+          <div className="flex justify-center mt-16 md:justify-end">
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 hover:bg-gray-300 disabled:opacity-40 transition-opacity"
+                className="px-4 py-2 transition-opacity bg-gray-200 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 hover:bg-gray-300 disabled:opacity-40"
               >
                 Previous
               </button>
-              <span className="text-gray-600 dark:text-gray-400 font-semibold">
+              <span className="font-semibold text-gray-600 dark:text-gray-400">
                 {page} / {totalPages}
               </span>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-opacity"
+                className="px-4 py-2 text-white transition-opacity bg-blue-500 rounded-full hover:bg-blue-600 disabled:opacity-40"
               >
                 Next
               </button>
@@ -309,7 +397,7 @@ export default function ShopPage() {
       <AnimatePresence>
         {selectedProduct && (
           <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -320,7 +408,7 @@ export default function ShopPage() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
             >
-              <div className="bg-gray-100 dark:bg-gray-700 p-6 flex items-center justify-center md:w-1/2">
+              <div className="flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-700 md:w-1/2">
                 <img
                   src={getImageSrc(selectedProduct)}
                   alt={selectedProduct.name}
@@ -328,35 +416,64 @@ export default function ShopPage() {
                 />
               </div>
 
-              <div className="p-6 md:w-1/2 space-y-6 flex flex-col justify-between bg-white dark:bg-gray-800">
+              <div className="flex flex-col justify-between p-6 space-y-6 bg-white md:w-1/2 dark:bg-gray-800">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">{selectedProduct.name}</h2>
-                  <p className="text-2xl text-red-600 dark:text-red-500 font-bold mt-3">
+                  <h2 className="text-2xl font-bold text-gray-800 md:text-3xl dark:text-white">{selectedProduct.name}</h2>
+                  <p className="mt-3 text-2xl font-bold text-red-600 dark:text-red-500">
                     {currencyFormatter.format(selectedProduct.price)}
                   </p>
                 </div>
 
-                {selectedProduct.variations && selectedProduct.variations.length > 0 && (
-                  <div className="pt-4">
-                    <label htmlFor="variation-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Select Variation
+                <div className="pt-4 space-y-4">
+                  {selectedProduct.variations && selectedProduct.variations.length > 0 && (
+                    <div>
+                      <label htmlFor="variation-select" className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Select Variation
+                      </label>
+                      <select
+                        id="variation-select"
+                        value={selectedVariation}
+                        onChange={(e) => setSelectedVariation(e.target.value)}
+                        className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-pink-500"
+                      >
+                        {selectedProduct.variations.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="quantity-input" className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Quantity
                     </label>
-                    <select
-                      id="variation-select"
-                      value={selectedVariation}
-                      onChange={(e) => setSelectedVariation(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500"
-                    >
-                      {selectedProduct.variations.map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
+                        className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-r-0 border-gray-300 rounded-l-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500"
+                      >
+                        -
+                      </button>
+                      <input
+                        id="quantity-input"
+                        type="number"
+                        value={modalQuantity}
+                        onChange={(e) => setModalQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="w-16 py-2 text-center text-gray-900 bg-white border-t border-b border-gray-300 dark:text-white dark:bg-gray-700 dark:border-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setModalQuantity(q => q + 1)}
+                        className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-l-0 border-gray-300 rounded-r-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
                 
-                <div className="border-y py-4 text-sm text-gray-600 dark:text-gray-300 flex-grow">
+                <div className="flex-grow py-4 text-sm text-gray-600 border-y dark:text-gray-300">
                   <p>
                     {selectedProduct.description}
                   </p>
@@ -365,13 +482,13 @@ export default function ShopPage() {
                 <div className="flex gap-4">
                   <button
                     onClick={() => handleAddToCart(selectedProduct)}
-                    className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-orange-600 transition"
+                    className="flex-1 py-3 text-lg font-semibold text-white transition bg-pink-600 rounded-lg hover:bg-pink-700"
                   >
                     Add to Cart
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition"
+                    className="flex-1 py-3 text-lg font-semibold text-red-600 transition bg-transparent border border-red-600 rounded-lg hover:bg-red-600 hover:text-white dark:text-red-400 dark:border-red-400 dark:hover:bg-red-400 dark:hover:text-white"
                   >
                     Buy Now
                   </button>
@@ -380,7 +497,7 @@ export default function ShopPage() {
 
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-2xl font-bold"
+                className="absolute text-2xl font-bold text-gray-400 top-3 right-3 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               >
                 &times;
               </button>
