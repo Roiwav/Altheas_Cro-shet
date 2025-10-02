@@ -18,14 +18,14 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
-import { UserContext } from "../../context/UserContext.jsx";
+import { useUser } from "../../context/useUser.js";
 import { useCart } from "../../context/CartContext.jsx";
 
 export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, scrollToSection, aboutRef, contactRef }) {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, updateUser } = useContext(UserContext);
+  const { user, updateUser } = useUser();
   const { cartItems } = useCart();
 
   const totalQuantity = Array.isArray(cartItems)
@@ -168,7 +168,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
                 <span
                   className={`text-lg font-semibold text-gray-800 dark:text-gray-200 ${(isHovered || sidebarOpen) ? "block" : "hidden"}`}
                 >
-                  {user?.username || user?.fullName || user?.email}
+                  {user?.fullName || user?.username || user?.email}
                 </span>
                 <input
                   id="avatarUpload"
