@@ -268,7 +268,7 @@ export default function ContactPage() {
                         title: "Phone",
                         content: "+63 9936 006 006",
                         color: "from-blue-500 to-cyan-500",
-                        href: "tel:+631234567890",
+                        href: "tel:+63 9936 006 006",
                       },
                       {
                         icon: Mail,

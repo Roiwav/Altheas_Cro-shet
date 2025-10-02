@@ -81,16 +81,10 @@ export default function SignUpPage() {
         throw new Error("Registration failed. Please try again.");
       }
 
-      // ✅ Auto-login: store token & set user
-      login(data.token);
-      toast.success("Welcome! Your account has been created.");
-      
-      // Redirect to the appropriate page based on the role
-      if (role === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+        // Redirect to login page after successful registration
+      toast.success("Account created successfully! Please sign in.");
+      navigate("/login", { replace: true });
+
     } catch (err) {
       const message =
         err.response?.data?.message || err.message || "Registration failed.";
@@ -140,21 +134,21 @@ export default function SignUpPage() {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden signup-container">
-        <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20 dark:border-gray-700/50 relative z-10">
+      <div className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden signup-container">
+        <div className="relative z-10 w-full max-w-md overflow-hidden border shadow-2xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl border-white/20 dark:border-gray-700/50">
           <Link
             to="/"
-            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors z-20"
+            className="absolute z-20 text-gray-500 transition-colors top-4 right-4 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
             aria-label="Close"
           >
-            <X className="h-6 w-6" />
+            <X className="w-6 h-6" />
           </Link>
           <div className="p-8 sm:p-10">
-            <div className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                <User className="h-8 w-8 text-white" />
+            <div className="mb-8 text-center">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 shadow-lg bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl">
+                <User className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+              <h2 className="text-3xl font-bold text-transparent text-gray-900 dark:text-white bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text">
                 Create Account
               </h2>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -163,7 +157,7 @@ export default function SignUpPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 mb-6 rounded-lg">
+              <div className="p-4 mb-6 border-l-4 border-red-500 rounded-lg bg-red-50 dark:bg-red-900/30">
                 <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
@@ -174,7 +168,7 @@ export default function SignUpPage() {
                 name="fullName"
                 value={formData.fullName}
                 placeholder="Enter your fullname"
-                icon={<User className="h-5 w-5 text-gray-400" />}
+                icon={<User className="w-5 h-5 text-gray-400" />}
                 onChange={handleChange}
               />
               <InputField
@@ -182,7 +176,7 @@ export default function SignUpPage() {
                 name="username"
                 value={formData.username}
                 placeholder="Enter your username"
-                icon={<User className="h-5 w-5 text-gray-400" />}
+                icon={<User className="w-5 h-5 text-gray-400" />}
                 onChange={handleChange}
               />
               <InputField
@@ -191,7 +185,7 @@ export default function SignUpPage() {
                 type="email"
                 value={formData.email}
                 placeholder="Enter your email"
-                icon={<Mail className="h-5 w-5 text-gray-400" />}
+                icon={<Mail className="w-5 h-5 text-gray-400" />}
                 onChange={handleChange}
               />
               <PasswordField
@@ -217,7 +211,7 @@ export default function SignUpPage() {
                   type="checkbox"
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                 />
                 <label
                   htmlFor="terms"
@@ -247,7 +241,7 @@ export default function SignUpPage() {
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-2">
-                    <Loader2 className="animate-spin h-5 w-5" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Creating Account...</span>
                   </div>
                 ) : (
@@ -258,11 +252,11 @@ export default function SignUpPage() {
               <button
                 onClick={() => handleOAuthLogin("google")}
                 type="button"
-                className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mt-6"
+                className="flex items-center justify-center w-full gap-3 px-4 py-3 mt-6 text-sm font-medium text-gray-700 transition-colors duration-200 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {/* Google SVG */}
                 <svg
-                  className="h-5 w-5"
+                  className="w-5 h-5"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -286,7 +280,7 @@ export default function SignUpPage() {
                 <span>Continue with Google</span>
               </button>
 
-              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+              <div className="mt-6 text-sm text-center text-gray-600 dark:text-gray-400">
                 Already have an account?{" "}
                 <Link
                   to="/login"
@@ -315,11 +309,11 @@ function InputField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
       </label>
       <div className="relative mt-1">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
           {icon}
         </div>
         <input
@@ -328,7 +322,7 @@ function InputField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="block w-full pl-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+          className="block w-full py-3 pl-10 text-gray-900 placeholder-gray-500 border border-gray-200 rounded-xl dark:border-gray-700 bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 dark:text-white dark:placeholder-gray-400"
         />
       </div>
     </div>
@@ -339,12 +333,12 @@ function InputField({
 function PasswordField({ label, name, value, show, setShow, onChange }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
       </label>
       <div className="relative mt-1">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Lock className="h-5 w-5 text-gray-400" />
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <Lock className="w-5 h-5 text-gray-400" />
         </div>
         <input
           name={name}
@@ -352,14 +346,14 @@ function PasswordField({ label, name, value, show, setShow, onChange }) {
           value={value}
           onChange={onChange}
           placeholder="••••••"
-          className="block w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+          className="block w-full py-3 pl-10 pr-10 text-gray-900 placeholder-gray-500 border border-gray-200 rounded-xl dark:border-gray-700 bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 dark:text-white dark:placeholder-gray-400"
         />
         <button
           type="button"
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
           onClick={() => setShow(!show)}
         >
-          {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
         </button>
       </div>
     </div>

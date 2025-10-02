@@ -348,7 +348,7 @@ export default function ShopPage() {
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-4 mt-auto">
                       <button onClick={() => setSelectedProduct(product)} className="inline-flex items-center px-4 py-2 text-white transition-colors bg-pink-600 rounded-lg hover:bg-pink-700">
                         <FaShoppingCart className="w-4 h-4 mr-2" />
-                        Add to Cart
+                    
                       </button>
                     </motion.div>
                   </AnimatePresence>

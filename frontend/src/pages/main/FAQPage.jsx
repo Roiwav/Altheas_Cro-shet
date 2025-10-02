@@ -120,24 +120,18 @@ const FAQPage = () => {
       title: 'Call Us',
       description: 'Mon-Fri, 9am-5pm PHT',
       contact: '+63 9936 006 006',
-      link: 'tel:+631234567890'
+      link: 'tel:+63 9936 006 006'
     },
-    {
-      icon: <MessageCircle className="w-6 h-6 text-pink-600" />,
-      title: 'Live Chat',
-      description: 'Chat with our support team',
-      contact: 'Click to start chat',
-      link: '#chat'
-    }
+
   ];
 
   return (
     <div className="relative z-10 min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-24 lg:pt-32 pb-12 px-4 sm:px-6 lg:px-8 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Frequently Asked Questions</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+        <div className="mb-16 text-center">
+          <h1 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">Frequently Asked Questions</h1>
+          <p className="max-w-3xl mx-auto text-xl text-gray-600 dark:text-gray-300">
             Find answers to common questions about our products, ordering process, shipping, and more.
           </p>
         </div>
@@ -150,10 +144,10 @@ const FAQPage = () => {
               placeholder="Search questions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)} // Add onChange
-              className="w-full px-6 py-4 pl-12 text-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              className="w-full px-6 py-4 pl-12 text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
             <svg
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
+              className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-4 top-1/2"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
@@ -169,15 +163,15 @@ const FAQPage = () => {
         </div>
 
         {/* FAQ Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+        <div className="grid grid-cols-1 gap-8 mb-20 md:grid-cols-2">
           {filteredCategories.length === 0 ? (
-            <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-12">
+            <div className="py-12 text-center text-gray-500 col-span-full dark:text-gray-400">
               No questions found.
             </div>
           ) : (
             filteredCategories.map((category, categoryIndex) => (
-              <div key={category.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
+              <div key={category.id} className="overflow-hidden transition-all duration-300 bg-white shadow-sm dark:bg-gray-800 rounded-xl hover:shadow-md">
+                <div className="flex items-center p-6 border-b border-gray-200 dark:border-gray-700">
                   {category.icon}
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{category.title}</h2>
                 </div>
@@ -191,7 +185,7 @@ const FAQPage = () => {
                     return (
                       <div key={index} className="p-6">
                         <button
-                          className="flex justify-between items-center w-full text-left"
+                          className="flex items-center justify-between w-full text-left"
                           onClick={() => toggleAccordion(questionIndex)}
                         >
                           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -220,35 +214,35 @@ const FAQPage = () => {
         </div>
 
         {/* Contact Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Still have questions?</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+        <div className="p-8 mb-16 bg-white shadow-sm dark:bg-gray-800 rounded-2xl">
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">Still have questions?</h2>
+            <p className="max-w-2xl mx-auto text-xl text-gray-600 dark:text-gray-300">
               Our customer support team is here to help you with any questions or concerns.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
             {contactMethods.map((method, index) => (
               <a
                 key={index}
                 href={method.link}
                 target={method.link.startsWith('http') ? '_blank' : undefined}
                 rel={method.link.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="group bg-gray-50 dark:bg-gray-700 rounded-xl p-6 text-center hover:bg-pink-50 dark:hover:bg-gray-600 transition-colors duration-300"
+                className="p-6 text-center transition-colors duration-300 group bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-pink-50 dark:hover:bg-gray-600"
               >
                 <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-full group-hover:bg-pink-200 dark:group-hover:bg-pink-800/50 transition-colors duration-300">
+                  <div className="p-3 transition-colors duration-300 bg-pink-100 rounded-full dark:bg-pink-900/30 group-hover:bg-pink-200 dark:group-hover:bg-pink-800/50">
                     {method.icon}
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                <h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">
                   {method.title}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                   {method.description}
                 </p>
-                <p className="text-pink-600 dark:text-pink-400 font-medium">
+                <p className="font-medium text-pink-600 dark:text-pink-400">
                   {method.contact}
                 </p>
               </a>
@@ -257,14 +251,14 @@ const FAQPage = () => {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-2xl p-8 text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Shopping?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto text-pink-100">
+        <div className="p-8 text-center text-white bg-gradient-to-r from-pink-500 to-pink-600 rounded-2xl">
+          <h2 className="mb-4 text-3xl font-bold">Ready to Start Shopping?</h2>
+          <p className="max-w-2xl mx-auto mb-8 text-xl text-pink-100">
             Browse our collection of handcrafted crochet items and find your perfect piece today.
           </p>
           <a
             href="/shop"
-            className="inline-block bg-white text-pink-600 hover:bg-gray-100 font-medium px-8 py-3 rounded-lg shadow-md transition-colors duration-300"
+            className="inline-block px-8 py-3 font-medium text-pink-600 transition-colors duration-300 bg-white rounded-lg shadow-md hover:bg-gray-100"
           >
             Shop Now
           </a>

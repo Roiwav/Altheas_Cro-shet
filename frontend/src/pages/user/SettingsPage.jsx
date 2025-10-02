@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
-import { UserContext } from "../../context/UserContext.jsx";
+import { useUser } from "../../context/useUser.js";
 
 // Data for city and region dropdowns
 const cityToRegionMap = {
@@ -34,7 +34,7 @@ const cities = Object.keys(cityToRegionMap);
 
 
 export default function SettingsPage() {
-  const { user, token, updateUser } = useContext(UserContext);
+  const { user, token, updateUser } = useUser();
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const [searchParams] = useSearchParams();
@@ -155,6 +155,13 @@ useEffect(() => {
 
       const data = await res.json();
       updateUser(data.user);
+      // Manually update the local profile state with the response from the server
+      setProfile({
+        fullName: data.user.fullName || "",
+        username: data.user.username || "",
+        email: data.user.email || "",
+        avatar: data.user.avatar || "",
+      });
       setProfilePassword("");
       toast.success("Profile updated");
     } catch (err) {
@@ -320,10 +327,10 @@ useEffect(() => {
 
   return (
     <div className="relative z-10 bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
-      <div className="container mx-auto max-w-5xl">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Account Settings</h1>
+      <div className="container max-w-5xl mx-auto">
+      <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
 
-      <div className="flex space-x-2 overflow-x-auto no-scrollbar mb-6">
+      <div className="flex mb-6 space-x-2 overflow-x-auto no-scrollbar">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -340,31 +347,31 @@ useEffect(() => {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
+      <div className="p-6 bg-white border border-gray-100 shadow-xl dark:bg-gray-800 rounded-2xl dark:border-gray-700">
         {activeTab === "profile" && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <img
                 src={profile.avatar || defaultAvatar}
                 alt="Avatar"
-                className="w-20 h-20 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                className="object-cover w-20 h-20 border border-gray-200 rounded-full dark:border-gray-700"
               />
               <div>
-                <label htmlFor="avatarUpload" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+                <label htmlFor="avatarUpload" className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 cursor-pointer rounded-xl dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">
                   <ImageIcon className="w-4 h-4" />
                   Change avatar
                 </label>
                 <input id="avatarUpload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">PNG, JPG up to 2MB</p>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 2MB</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Full name">
                 <input
                   value={profile.fullName}
                   onChange={() => {}}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   placeholder=""
                   readOnly
                   title="Full name changes are not available here. Contact support to update."
@@ -374,18 +381,18 @@ useEffect(() => {
                 <input
                   value={profile.username}
                   onChange={(e) => setProfile((p) => ({ ...p, username: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   placeholder=""
                 />
               </Field>
               <Field label="Email">
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <Mail className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                   <input
                     type="email"
                     value={profile.email}
                     onChange={() => {}}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full py-2 pr-3 text-gray-900 bg-white border border-gray-200 pl-9 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                     placeholder="you@example.com"
                     readOnly
                     title="Email changes are not available here. Contact support to update."
@@ -394,20 +401,20 @@ useEffect(() => {
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Confirm password">
                 <input
                   type="password"
                   value={profilePassword}
                   onChange={(e) => setProfilePassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   placeholder="Enter your account password to confirm"
                 />
               </Field>
             </div>
 
             <div className="flex justify-end">
-              <button onClick={saveProfile} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white">
+              <button onClick={saveProfile} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
                 <Save className="w-4 h-4" /> Save changes
               </button>
             </div>
@@ -416,17 +423,17 @@ useEffect(() => {
 
         {activeTab === "addresses" && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Addresses</h2>
-              <button onClick={addAddress} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">
+              <button onClick={addAddress} className="inline-flex items-center gap-2 px-4 py-2 text-gray-800 bg-gray-100 rounded-xl dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">
                 <Plus className="w-4 h-4" /> Add address
               </button>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex flex-col items-center gap-4 md:flex-row">
               <Field label="Saved Addresses">
                 <select
-                  className="w-full md:w-64 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 md:w-64 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   value={activeAddressId === null ? "" : activeAddressId}
                   onChange={(e) => {
                     setActiveAddressId(e.target.value);
@@ -446,7 +453,7 @@ useEffect(() => {
                 </select>
               </Field>
               {activeAddress && !isEditingAddress && (
-                <button onClick={() => setIsEditingAddress(true)} className="text-pink-600 dark:text-pink-400 hover:underline text-sm font-medium">
+                <button onClick={() => setIsEditingAddress(true)} className="text-sm font-medium text-pink-600 dark:text-pink-400 hover:underline">
                   Edit
                 </button>
               )}
@@ -454,21 +461,21 @@ useEffect(() => {
             {activeAddress && isEditingAddress && (
               <div className="space-y-4">
                 <div key={activeAddress.id} className={`p-4 rounded-xl border ${activeAddress.isDefault ? "border-pink-500" : "border-gray-200 dark:border-gray-700"}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <Field label="Label">
-                      <input value={activeAddress.label || ""} onChange={(e) => updateAddress(activeAddress.id, "label", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Home / Office" />
+                      <input value={activeAddress.label || ""} onChange={(e) => updateAddress(activeAddress.id, "label", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Home / Office" />
                     </Field>
                     <Field label="Line 1">
-                      <input value={activeAddress.line1 || ""} onChange={(e) => updateAddress(activeAddress.id, "line1", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Street address" />
+                      <input value={activeAddress.line1 || ""} onChange={(e) => updateAddress(activeAddress.id, "line1", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Street address" />
                     </Field>
                     <Field label="Line 2">
-                      <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="Apartment, Barangay" />
+                      <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Apartment, Barangay" />
                     </Field>
                     <Field label="City">
                       <select
                         value={activeAddress.city || ""}
                         onChange={(e) => handleCityChange(activeAddress.id, e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                       >
                         <option value="" disabled>Select a city</option>
                         {cities.map(city => (
@@ -480,24 +487,24 @@ useEffect(() => {
                       <input
                         value={activeAddress.state || ""}
                         readOnly
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-3 py-2 text-gray-500 bg-gray-100 border border-gray-200 cursor-not-allowed rounded-xl dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
                       />
                     </Field>
                     <Field label="Postal code">
-                      <input value={activeAddress.postalCode || ""} onChange={(e) => updateAddress(activeAddress.id, "postalCode", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.postalCode || ""} onChange={(e) => updateAddress(activeAddress.id, "postalCode", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                     </Field>
                     <Field label="Country">
-                      <input value={activeAddress.country || ""} onChange={(e) => updateAddress(activeAddress.id, "country", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                      <input value={activeAddress.country || ""} onChange={(e) => updateAddress(activeAddress.id, "country", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                     </Field>
                   </div>
-                  <div className="flex justify-between items-center mt-3">
+                  <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-3">
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer dark:text-gray-300">
                         <input type="radio" name="defaultAddress" checked={!!activeAddress.isDefault} onChange={() => setDefaultAddress(activeAddress.id)} />
                         Set as default
                       </label>
                     </div>
-                    <button onClick={() => removeAddress(activeAddress.id)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+                    <button onClick={() => removeAddress(activeAddress.id)} className="inline-flex items-center gap-2 px-3 py-2 text-red-600 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
                       <Trash2 className="w-4 h-4" /> Remove
                     </button>
                   </div>
@@ -505,19 +512,19 @@ useEffect(() => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
               <Field label="Confirm password">
                 <input
                   type="password"
                   value={addressesPassword}
                   onChange={(e) => setAddressesPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   placeholder="Enter your account password to confirm"
                 />
               </Field>
             </div>
             <div className="flex justify-end">
-              <button onClick={saveAddresses} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white">
+              <button onClick={saveAddresses} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
                 <Save className="w-4 h-4" /> Save addresses
               </button>
             </div>
@@ -526,19 +533,19 @@ useEffect(() => {
 
         {activeTab === "security" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Current password">
-                <input type="password" value={security.currentPassword} onChange={(e) => setSecurity((s) => ({ ...s, currentPassword: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                <input type="password" value={security.currentPassword} onChange={(e) => setSecurity((s) => ({ ...s, currentPassword: e.target.value }))} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </Field>
               <Field label="New password">
-                <input type="password" value={security.newPassword} onChange={(e) => setSecurity((s) => ({ ...s, newPassword: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                <input type="password" value={security.newPassword} onChange={(e) => setSecurity((s) => ({ ...s, newPassword: e.target.value }))} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </Field>
               <Field label="Confirm new password">
-                <input type="password" value={security.confirmPassword} onChange={(e) => setSecurity((s) => ({ ...s, confirmPassword: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                <input type="password" value={security.confirmPassword} onChange={(e) => setSecurity((s) => ({ ...s, confirmPassword: e.target.value }))} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </Field>
             </div>
             <div className="flex justify-end">
-              <button onClick={changePassword} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white">
+              <button onClick={changePassword} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
                 <Lock className="w-4 h-4" /> Change password
               </button>
             </div>
@@ -547,35 +554,35 @@ useEffect(() => {
 
         {activeTab === "preferences" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Theme</h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="p-4 border border-gray-200 rounded-xl dark:border-gray-700">
+                <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Theme</h3>
                 <label className="inline-flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={darkMode} onChange={toggleDarkMode} />
                   <span className="text-gray-700 dark:text-gray-300">Enable dark mode</span>
                 </label>
               </div>
-              <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Notifications</h3>
+              <div className="p-4 border border-gray-200 rounded-xl dark:border-gray-700">
+                <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Notifications</h3>
                 <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <input type="checkbox" checked={prefs.newsletter} onChange={(e) => setPrefs((p) => ({ ...p, newsletter: e.target.checked }))} />
                   <Bell className="w-4 h-4" /> Email newsletter
                 </label>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
               <Field label="Confirm password">
                 <input
                   type="password"
                   value={prefsPassword}
                   onChange={(e) => setPrefsPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   placeholder="Enter your account password to confirm"
                 />
               </Field>
             </div>
             <div className="flex justify-end">
-              <button onClick={savePreferences} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white">
+              <button onClick={savePreferences} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
                 <Save className="w-4 h-4" /> Save preferences
               </button>
             </div>
@@ -590,7 +597,7 @@ useEffect(() => {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>
+      <span className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
       {children}
     </label>
   );
