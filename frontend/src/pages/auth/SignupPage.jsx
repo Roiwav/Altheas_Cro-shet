@@ -219,18 +219,12 @@ export default function SignUpPage() {
                 >
                   I agree to the{" "}
                   <Link
-                    to="/data-policy"
-                    className="text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
-                  >
-                    Data Policy
-                  </Link>{" "}
-                  and{" "}
-                  <Link
                     to="/service-terms"
                     className="text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
                   >
                     Service Terms
-                  </Link>
+                  </Link>{" "}
+                  of Althea's Crochet{" "}
                 </label>
               </div>
 
@@ -284,7 +278,7 @@ export default function SignUpPage() {
                 Already have an account?{" "}
                 <Link
                   to="/login"
-                  className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+                  className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 underline"
                 >
                   Sign in
                 </Link>

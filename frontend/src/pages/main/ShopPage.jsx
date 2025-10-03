@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/pages/main/ShopPage.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -168,7 +169,7 @@ export default function ShopPage() {
     }
 
     return products;
-  }, [productList, searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy]);
 
   const itemsPerPage = 20;
   const paginatedProducts = processedProducts.slice(
