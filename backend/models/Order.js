@@ -22,6 +22,11 @@ const orderProductSchema = new Schema({
         min: 1
     },
     variation: String,
+
+     color: { // ✅ Add this field to capture the AR flower color
+        type: String
+     },
+     
     image: {
         type: String
     }

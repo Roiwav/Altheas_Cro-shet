@@ -1,9 +1,12 @@
 // src/pages/auth/ResetPassword.jsx
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import EyeIcon from '../../assets/images/icons/eye.png';
-import EyeSlashIcon from '../../assets/images/icons/hidden.png';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const API_URL = `${API_BASE_URL}/api/v1/auth`;
+ 
 function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -26,25 +29,22 @@ function ResetPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost/croshet_db/reset-password.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
+      const { data } = await axios.post(`${API_URL}/reset-password`, {
+        token,
+        password,
       });
 
-      const data = await res.json();
-
       if (data.success) {
-        setMessage('Password successfully reset! Redirecting to login...');
+        setMessage(data.message || 'Password successfully reset! Redirecting to login...');
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       } else {
-        setError(data.message || 'Something went wrong.');
+        throw new Error(data.message || 'Something went wrong.');
       }
     } catch (err) {
-      console.error(err);
-      setError('Request failed.');
+      const message = err.response?.data?.message || err.message || 'Failed to reset password. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -59,71 +59,51 @@ function ResetPassword() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-teal-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">Reset Password</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+      <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl p-8 sm:p-10">
+        <h2 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+          Reset Password
+        </h2>
 
-        <div className="relative">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            placeholder="New Password"
-            autoComplete="new-password"
-            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-pink-400 pr-10"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            type="button"
-            className="absolute top-1/2 right-3 transform -translate-y-1/2"
-            onClick={togglePasswordVisibility}
-          >
-            <img
-              src={showPassword ? EyeSlashIcon : EyeIcon}
-              alt="Toggle"
-              className="w-5 h-5"
+        {message && <p className="text-green-600 mb-4 text-center">{message}</p>}
+        {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              New Password
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your new password"
+              autoComplete="new-password"
+              className="block w-full pl-4 pr-10 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
             />
-          </button>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full flex justify-center items-center gap-2 bg-pink-500 text-white py-2 rounded hover:bg-pink-600 transition mt-4 ${
-            loading ? 'opacity-70 cursor-not-allowed' : ''
-          }`}
-        >
-          {loading && (
-            <svg
-              className="animate-spin h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
+            <button
+              type="button"
+              className="absolute top-9 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              onClick={togglePasswordVisibility}
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              ></path>
-            </svg>
-          )}
-          {loading ? 'Resetting...' : 'Reset Password'}
-        </button>
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
 
-        {message && <p className="text-green-600 mt-4 text-center">{message}</p>}
-        {error && <p className="text-red-600 mt-4 text-center">{error}</p>}
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
+            {loading ? (
+              <div className="flex items-center"><Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" /> Resetting...</div>
+            ) : (
+              <span>Reset Password</span>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

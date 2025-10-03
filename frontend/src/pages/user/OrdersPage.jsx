@@ -326,9 +326,9 @@ const OrdersPage = () => {
                             </Link>
                             <p className="ml-4">{currencyFormatter.format(item.price * item.quantity)}</p>
                           </div>
-                          {item.variation && (
+                          {item.color && (
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                              Variation: {item.variation}
+                              Color: {item.color}
                             </p>
                           )}
                           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

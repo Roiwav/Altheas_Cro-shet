@@ -20,6 +20,17 @@ const defaultColors = {
   peony: '#FFFFFF',
 };
 
+const COLOR_NAMES = {
+  "#ff69b4": "Hot Pink",
+  "#ff0000": "Red",
+  "#ff8c00": "Dark Orange",
+  "#ffd700": "Gold",
+  "#32cd32": "Lime Green",
+  "#1e90ff": "Dodger Blue",
+  "#8a2be2": "Blue Violet",
+  "#ffffff": "White",
+};
+
 const FLOWER_PRICES = {
   rose: { single: 150, bouquet: 1500 },
   tulip: { single: 120, bouquet: 1200 },
@@ -48,12 +59,13 @@ const ARPage = () => {
 
   // Handle place order
   const handlePlaceOrder = useCallback(() => {
+    const colorName = COLOR_NAMES[color.toLowerCase()] || color;
     navigate('/checkout', { state: 
       { flowerType, 
-        color, 
+        color: colorName,
         arrangement, 
         totalPrice, 
-        quantity} 
+        quantity}   
       });
   }, [flowerType, color, arrangement, totalPrice, quantity, navigate]);
 

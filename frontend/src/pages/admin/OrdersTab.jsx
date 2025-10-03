@@ -10,6 +10,15 @@ const OrdersTab = ({ isDarkMode }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'descending' });
+  const [statusFilter, setStatusFilter] = useState("");
+  const [selectedOrders, setSelectedOrders] = useState([]);
+
+  // Helper to format currency
+  const currencyFormatter = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+  });
+  
 
   useEffect(() => {
     setLoading(true);
@@ -61,7 +70,16 @@ const OrdersTab = ({ isDarkMode }) => {
       });
   };
 
-  const filteredOrders = useMemo(() => {
+  const updateMultipleStatuses = (newStatus) => {
+    if (selectedOrders.length === 0) {
+      toast.error("No orders selected.");
+      return;
+    }
+    selectedOrders.forEach(orderId => updateOrderStatus(orderId, newStatus));
+    setSelectedOrders([]); // clear selection after update
+  };
+
+  const searchedOrders = useMemo(() => {
     if (!orders) return [];
     const trimmedQuery = searchQuery.trim();
     if (!trimmedQuery) return orders;
@@ -69,12 +87,12 @@ const OrdersTab = ({ isDarkMode }) => {
     return orders.filter(order => {
       if (!order) return false;
       if (order._id?.toLowerCase().includes(query)) return true;
-      if (order.fullname?.toLowerCase().includes(query)) return true;
-      if (order.email?.toLowerCase().includes(query)) return true;
-      if (order.phoneNumber?.includes(query)) return true;
+      if (order.username?.toLowerCase().includes(query)) return true;
+      if (order.userId?.email?.toLowerCase().includes(query)) return true;
       if (order.status?.toLowerCase().includes(query)) return true;
-      if (order.products?.some(p => p.name?.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query)))) return true;
-      if (order.product_name?.toLowerCase().includes(query)) return true;
+      if (order.products?.some(p => p.name?.toLowerCase().includes(query))) return true;
+      // Fallback for older single-product orders
+      if (order.product_name?.toLowerCase().includes(query)) return true; 
       if (order.shippingAddress) {
         const { address, city, state, postalCode, country } = order.shippingAddress;
         if ((address && address.toLowerCase().includes(query)) || (city && city.toLowerCase().includes(query)) || (state && state.toLowerCase().includes(query)) || (postalCode && postalCode.includes(query)) || (country && country.toLowerCase().includes(query))) return true;
@@ -84,6 +102,11 @@ const OrdersTab = ({ isDarkMode }) => {
       return false;
     });
   }, [orders, searchQuery]);
+
+  const filteredOrders = useMemo(() => {
+    if (!statusFilter) return searchedOrders;
+    return searchedOrders.filter(order => order.status?.toLowerCase() === statusFilter.toLowerCase());
+  }, [searchedOrders, statusFilter]);
 
   const sortedAndFilteredOrders = useMemo(() => {
     if (!sortConfig.key) return filteredOrders;
@@ -200,8 +223,9 @@ const OrdersTab = ({ isDarkMode }) => {
   );
 
   const columns = [
+    { key: 'select', label: '', width: 'w-6' },
     { key: 'orderNumber', label: 'Order ID', width: 'w-24' },
-    { key: 'fullname', label: 'Customer', width: 'w-40' },
+    { key: 'username', label: 'Customer', width: 'w-40' },
     { key: 'products', label: 'Product', width: 'w-48' },
     { key: 'region', label: 'Region', width: 'w-24' },
     { key: 'shippingFee', label: 'Shipping', width: 'w-20' },
@@ -220,29 +244,88 @@ const OrdersTab = ({ isDarkMode }) => {
             Manage and track customer orders
           </p>
         </div>
-        <div className="w-full sm:w-64">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+        
+        <div className="flex space-x-3">
+          <div className="w-full sm:w-64">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search orders..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Search orders..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-            />
           </div>
+
+          {/* ✅ STATUS FILTER DROPDOWN */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={`block sm:w-40 px-3 py-2 border rounded-md shadow-sm ${
+              isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="rejected">Rejected</option>
+          </select>
         </div>
       </div>
+
+
+      {selectedOrders.length > 0 && (
+        <div className="flex space-x-2 mb-4">
+          <button
+            onClick={() => updateMultipleStatuses("processing")}
+            className="px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 text-sm"
+          >
+            Mark as Processing ({selectedOrders.length})
+          </button>
+          <button
+            onClick={() => updateMultipleStatuses("shipped")}
+            className="px-3 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 text-sm"
+          >
+            Mark as Shipped ({selectedOrders.length})
+          </button>
+          <button
+            onClick={() => updateMultipleStatuses("delivered")}
+            className="px-3 py-1 rounded-md bg-green-500 text-white hover:bg-green-600 text-sm"
+          >
+            Mark as Delivered ({selectedOrders.length})
+          </button>
+        </div>
+      )}
 
       <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
+                  {/* ✅ Checkbox header */}
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedOrders(paginatedOrders.map((o) => o._id));
+                      } else {
+                        setSelectedOrders([]);
+                      }
+                    }}
+                  />
+                </th>
+
                 {columns.map(col => (
-                  <th key={col.key || 'actions'} className={`px-3 py-2 text-left text-xs font-medium ${col.width} ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <th key={col.key || 'actions'} className={`px-4 py-3 text-left text-xs font-medium ${col.width} ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     {col.key ? (
                       <button onClick={() => requestSort(col.key)} className="flex items-center w-full space-x-1 text-left transition-colors hover:text-pink-500">
                         <span className="truncate">{col.label}</span>
@@ -258,50 +341,71 @@ const OrdersTab = ({ isDarkMode }) => {
             <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
               {loading ? (
                 <tr>
-                  <td colSpan={columns.length} className={`px-3 py-10 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <td colSpan={columns.length + 1} className={`px-4 py-10 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     Loading orders...
                   </td>
                 </tr>
               ) : paginatedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className={`px-3 py-4 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <td colSpan={columns.length + 1} className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     {searchQuery ? 'No orders match your search.' : 'No orders found.'}
                   </td>
                 </tr>
               ) : (
                 paginatedOrders.map((o) => (
                   <tr key={o._id} className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}>
-                    <td className={`px-3 py-2 truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`} title={o.orderNumber || o._id}>
+                    {/* ✅ Checkbox per row */}
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrders.includes(o._id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOrders((prev) => [...prev, o._id]);
+                        } else {
+                          setSelectedOrders((prev) => prev.filter((id) => id !== o._id));
+                        }
+                      }}
+                    />
+                  </td>
+
+
+                    <td className={`px-4 py-3 truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`} title={o.orderNumber || o._id}>
                       {o.orderNumber || o._id?.substring(0, 8)}
                     </td>
-                    <td className={`px-3 py-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      <div className="truncate" title={o.username || o.userId?.fullname}>
-                        {o.username || o.userId?.fullname}
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      <div className="truncate" title={o.username}>
+                        {o.username}
                       </div>
                     </td>
-                    <td className={`px-3 py-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      <div className="truncate" title={o.products?.map(p => `${p.name} (x${p.quantity})`).join(", ")}>
-                        {o.products?.map(p => `${p.name} (x${p.quantity})`).join(", ")}
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      <div className="max-w-xs truncate" title={o.products?.map(p => `${p.name} (x${p.quantity}) ${p.color ? `[${p.color}]` : ''}`).join(', ')}>
+                        {o.products?.map((p, idx) => (
+                          <div key={idx}>
+                            <span>{p.name} (x{p.quantity})</span>
+                            {p.color && <span className="text-xs text-gray-500 ml-1">[{p.color}]</span>}
+                          </div>
+                        ))}
                       </div>
                     </td>
-                    <td className={`px-3 py-2 truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`} title={o.shippingAddress?.state || o.region || "-"}>
-                      {o.shippingAddress?.state || o.region || "-"}
+                    <td className={`px-4 py-3 truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`} title={o.shippingAddress?.state || "-"}>
+                      {o.shippingAddress?.state || "-"}
                     </td>
-                    <td className={`px-3 py-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      ₱{parseFloat(o.shippingFee || 0).toLocaleString()}
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      {currencyFormatter.format(o.shippingFee || 0)}
                     </td>
-                    <td className={`px-3 py-2 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      ₱{Number(o.total || 0).toLocaleString()}
+                    <td className={`px-4 py-3 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {currencyFormatter.format(o.total || 0)}
                     </td>
-                    <td className={`px-3 py-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {new Date(o.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-3">
                       <div className="w-full">
                         <StatusBadge status={o.status} />
                       </div>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-3">
                       <div className="flex justify-end">
                         {renderActions(o)}
                       </div>
@@ -313,7 +417,7 @@ const OrdersTab = ({ isDarkMode }) => {
           </table>
         </div>
         {paginatedOrders.length > 0 && (
-          <div className={`px-6 py-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
+          <div className={`px-4 py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Showing {Math.min((currentPage - 1) * itemsPerPage + 1, sortedAndFilteredOrders.length)} to {Math.min(currentPage * itemsPerPage, sortedAndFilteredOrders.length)} of {sortedAndFilteredOrders.length} orders
             </p>

@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
+import axios from 'axios';
 
-const FORGOT_URL = import.meta.env.VITE_FORGOT_PASSWORD_URL || 'http://localhost/croshet_db/forgot-password.php';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -21,25 +23,19 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(FORGOT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+      const { data } = await axios.post(`${API_URL}/forgot-password`, {
+        email,
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok && (data.success ?? true)) {
-        setMessage('A password reset link has been sent to your email.');
+      if (data.success) {
+        setMessage(data.message || 'A password reset link has been sent to your email.');
         setEmail('');
       } else {
-        setError(data.message || 'Something went wrong. Please try again.');
+        throw new Error(data.message || 'Something went wrong. Please try again.');
       }
-    } catch {
-      setError('Failed to send reset link. Please try again.');
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Failed to send reset link. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

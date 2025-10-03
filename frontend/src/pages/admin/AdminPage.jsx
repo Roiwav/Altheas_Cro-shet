@@ -27,7 +27,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); // Number of items per page
