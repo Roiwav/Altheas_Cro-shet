@@ -31,8 +31,6 @@ export default function CheckoutPage() {
 
     const singleProduct = location.state?.product;
 
-    const arOrder = location.state && !location.state.product ? location.state : null;
-
     // Shipping fees data (could be moved to a shared utility file later)
     const shippingFees = {
         "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
@@ -43,22 +41,7 @@ export default function CheckoutPage() {
     const [paymentMethod, setPaymentMethod] = useState('COD');
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     // Use the cartItems from context directly, or the single product if it's a "Buy Now" flow.
-    const checkoutItems = singleProduct ? [singleProduct]
-
-    : arOrder
-        ? [{
-            name: `${arOrder.arrangement} ${arOrder.flowerType}`,
-            price: arOrder.totalPrice, 
-            quantity: arOrder.quantity,
-            variation: `Color: ${arOrder.color}`,
-            shippingAddress: {
-                city: arOrder.shippingSubArea,
-                state: arOrder.shippingArea,
-                line1: arOrder.streetAddress
-            },
-            shippingFee: arOrder.shippingFee || 0,
-        }]
-    : cartItems;
+    const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
     useEffect(() => {
   if (isAuthenticated) {
@@ -86,12 +69,7 @@ export default function CheckoutPage() {
         (sum, item) => sum + (item.price * (item.quantity || 1)),
         0
     );
-    const totalCost = subtotal + 
-    (singleProduct 
-        ? singleProduct.shippingFee 
-        : arOrder
-        ? (arOrder.shippingFee || 0)
-        : shippingFee);
+    const totalCost = subtotal + (singleProduct ? singleProduct.shippingFee : shippingFee);
 
     const handlePlaceOrder = async () => {
         if (!isAuthenticated) {
@@ -115,7 +93,7 @@ export default function CheckoutPage() {
                         console.error('Item is missing productId and _id:', item);
                     }
                     return {
-                        productId: id || 'Custom-Flower', // Ensure this is a string, as expected by the backend
+                        productId: id, // Ensure this is a string, as expected by the backend
                         name: item.name,
                         price: item.price,
                         quantity: item.quantity || 1,
@@ -123,20 +101,8 @@ export default function CheckoutPage() {
                         variation: item.variation,
                     };
                 }),
-                shippingAddress: singleProduct 
-                ? singleProduct.shippingAddress 
-                : arOrder
-                ? {
-                    city: arOrder.shippingSubArea,
-                    state: arOrder.shippingArea,
-                    line1: arOrder.streetAddress
-                }
-                : shippingAddress,
-                shippingFee: singleProduct 
-                ? singleProduct.shippingFee 
-                : arOrder
-                ? arOrder.shippingFee || 0
-                : shippingFee,
+                shippingAddress: singleProduct ? singleProduct.shippingAddress : shippingAddress,
+                shippingFee: singleProduct ? singleProduct.shippingFee : shippingFee,
                 total: totalCost,
                 paymentMethod: paymentMethod,
             };
@@ -152,7 +118,7 @@ export default function CheckoutPage() {
 
             if (response.ok) {
                 // If it wasn't a "Buy Now" single product, clear the main cart.
-                if (!singleProduct && !arOrder) {
+                if (!singleProduct) {
                     clearCart(); 
                 }
                 toast.success("Your order has been placed successfully!");
