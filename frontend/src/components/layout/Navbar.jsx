@@ -56,10 +56,8 @@ export default function Navbar({
 
   const navLinks = !isAuthenticated ? [
     { name: "Home", path: "/home" },
-    { name: "Shop", path: "/shop" },
-    { name: "About", path: "/about" },
-    { name: "Gallery", path: "/gallery" },
-    { name: "Contact", path: "/contact" },
+    { name: "About Us", path: "/about" },
+    { name: "Contact Us", path: "/contact" },
   ] : [];
 
   return (
@@ -172,15 +170,8 @@ export default function Navbar({
               <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-pink-600 hover:text-white hover:bg-pink-600 dark:text-pink-400 dark:hover:bg-pink-700 rounded-md transition-colors border border-pink-600 dark:border-pink-400"
-                >
+                  className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"                >
                   Sign In
-                </Link>
-                <Link
-                  to="/signup"
-                  className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"
-                >
-                  Sign Up
                 </Link>
               </div>
             )}

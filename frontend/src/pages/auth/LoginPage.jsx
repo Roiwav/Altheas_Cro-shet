@@ -42,6 +42,7 @@ export default function LoginPage() {
         login(parsedUser, token); // Use the login function from context
         toast.success("Successfully logged in with Google!");
         navigate(from, { replace: true });
+      // eslint-disable-next-line no-unused-vars
       } catch (e) {
         toast.error("Failed to process login data.");
       }
@@ -294,7 +295,7 @@ export default function LoginPage() {
               Don&apos;t have an account?{" "}
               <Link
                 to="/signup"
-                className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200"
+                className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200 underline"
               >
                 Create an account
               </Link>
