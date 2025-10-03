@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../../context/useUser';
-import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, Save, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
 
 // Lazy load AR components
 const ARViewer = lazy(() => import('../../components/ar/ARViewer'));
@@ -29,34 +29,6 @@ const FLOWER_PRICES = {
   peony: { single: 250, bouquet: 2500 },
 };
 
-const SHIPPING_OPTIONS = {
-  standard: { name: 'Standard', price: 50 },
-  pickup: { name: 'Store Pickup', price: 0 },
-};
-
-const regions = {
-  "Metro Manila": ["Manila", "Quezon City"],
-  "South Luzon": ["Calamba City", "Batangas City"],
-  "North Luzon": ["Baguio", "Dagupan"],
-  Visayas: ["Cebu City", "Iloilo City"],
-  Mindanao: ["Davao City", "Cagayan de Oro"],
-};
-const shippingFees = {
-  "Manila": 25,
-  "Quezon City": 20,
-  "Calamba City": 36,
-  "Batangas City": 30,
-  "Baguio": 35,
-  "Dagupan": 32,
-  "Cebu City": 28,
-  "Iloilo City": 30,
-  "Davao City": 34,
-  "Cagayan de Oro": 33,
-};
-
-const defaultRegion = "South Luzon";
-const defaultCity = "Calamba City";
-
 const ARPage = () => {
   const { type: initialType } = useParams();
   const navigate = useNavigate();
@@ -67,42 +39,27 @@ const ARPage = () => {
   const [flowerCount, setFlowerCount] = useState(3); // New state for bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [shippingMethod, setShippingMethod] = useState('pickup');
-  const [shippingArea, setShippingArea] = useState(defaultRegion);
-  const [shippingSubArea, setShippingSubArea] = useState(defaultCity);
-  const [streetAddress, setStreetAddress] = useState('');
-  const [savedAddresses, setSavedAddresses] = useState([]);
-  const [selectedAddressId, setSelectedAddressId] = useState('new');
-
-  // Handle save as draft
-  const handleSaveDraft = useCallback(() => {
-    const draft = { flowerType, color, arrangement, streetAddress, savedAt: new Date().toISOString() };
-    localStorage.setItem('flowerDraft', JSON.stringify(draft));
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-  }, [flowerType, color, arrangement, streetAddress]);
-
+  
   // Handle generate QR code
   const handleGenerateQR = useCallback(() => {
     setShowQR(true);
-    handleSaveDraft();
-  }, [handleSaveDraft]);
+  }, []);
 
   // Handle place order
   const handlePlaceOrder = useCallback(() => {
-    handleSaveDraft();
-    navigate('/checkout', { state: { flowerType, color, arrangement, totalPrice, quantity, shippingMethod, shippingArea, shippingSubArea, streetAddress } });
-  }, [flowerType, color, arrangement, totalPrice, quantity, shippingMethod, shippingArea, shippingSubArea, streetAddress, handleSaveDraft, navigate]);
+    navigate('/checkout', { state: 
+      { flowerType, 
+        color, 
+        arrangement, 
+        totalPrice, 
+        quantity} 
+      });
+  }, [flowerType, color, arrangement, totalPrice, quantity, navigate]);
 
   // Calculate price when flower type or arrangement changes
   useEffect(() => {
     const prices = FLOWER_PRICES[flowerType] || { single: 0 };
-    const methodCost = SHIPPING_OPTIONS[shippingMethod]?.price || 0;
-    const areaCost = shippingMethod !== 'pickup' 
-      ? (shippingFees[shippingSubArea] || 0) 
-      : 0;
     let basePrice = 0;
 
     if (arrangement === 'bouquet') {
@@ -112,50 +69,13 @@ const ARPage = () => {
       basePrice = prices.single || 0;
     }
 
-    setTotalPrice((basePrice * quantity) + methodCost + areaCost);
-  }, [flowerType, arrangement, flowerCount, quantity, shippingMethod, shippingArea, shippingSubArea]);
+    setTotalPrice(basePrice * quantity);
+  }, [flowerType, arrangement, flowerCount, quantity]);
 
   // Update color to default when flowerType changes
   useEffect(() => {
     setColor('#FFFFFF');
   }, [flowerType]);
-
-  // Reset sub-area when main shipping area changes
-  useEffect(() => {
-    const firstSubArea = regions[shippingArea]?.[0] || '';
-    setShippingSubArea(firstSubArea);
-  }, [shippingArea]);
-
-  // Load saved addresses on component mount
-  useEffect(() => {
-    try {
-      const storedAddresses = localStorage.getItem('userAddresses');
-      if (storedAddresses) {
-        const parsedAddresses = JSON.parse(storedAddresses);
-        // Ensure parsedAddresses is an array before setting state
-        if (Array.isArray(parsedAddresses)) {
-          setSavedAddresses(parsedAddresses);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load or parse saved addresses:", error);
-    }
-  }, []);
-
-  // Update address fields when a saved address is selected
-  useEffect(() => {
-    const selectedAddr = savedAddresses.find(addr => addr.id === selectedAddressId);
-    if (selectedAddr) {
-      setShippingArea(selectedAddr.region || defaultRegion);
-      setShippingSubArea(selectedAddr.city || defaultCity);
-      setStreetAddress(selectedAddr.street || '');
-    } else if (selectedAddressId === 'new') {
-      // Optionally reset fields when user decides to enter a new address
-      setShippingArea(defaultRegion);
-      setShippingSubArea(defaultCity);
-      setStreetAddress('');
-    }
-  }, [selectedAddressId, savedAddresses]);
 
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
@@ -171,13 +91,6 @@ const ARPage = () => {
             Create and visualize your perfect crochet flower in AR.
           </p>
         </div>
-
-        {isSaved && (
-          <div className="mb-4 py-1.5 px-4 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm flex items-center justify-center space-x-2">
-            <Check className="w-4 h-4" />
-            <span>Your design has been saved!</span>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 gap-6 mx-auto lg:grid-cols-2 lg:gap-8 xl:grid-cols-5 xl:max-w-7xl">
           {/* Main AR Viewer */}
@@ -247,15 +160,6 @@ const ARPage = () => {
                     transition={{ duration: 0.3 }}
                     className="space-y-1 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Number of Flowers</h3>
-                      <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">{flowerCount}</span>
-                    </div>
-                    <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Choose how many flowers to include</p>
-                    <input
-                      type="range" min="1" max="12" step="1" value={flowerCount}
-                      onChange={(e) => setFlowerCount(Number(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-pink-500 dark:accent-pink-400" />
                   </Motion.div>
                 )}
               </AnimatePresence>
@@ -298,71 +202,6 @@ const ARPage = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Shipping Options */}
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Shipping Method</h3>
-                <select
-                  value={shippingMethod}
-                  onChange={(e) => setShippingMethod(e.target.value)}
-                  className="w-full px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
-                >
-                  {Object.entries(SHIPPING_OPTIONS).map(([key, { name }]) => (
-                    <option key={key} value={key}>{name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Shipping Area - Conditional Dropdown */}
-              <AnimatePresence>
-                {shippingMethod !== 'pickup' && (
-                  <Motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-1 overflow-hidden"
-                  >
-                    {savedAddresses.length > 0 && (
-                      <div className="pb-4 mb-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Select Address</h3>
-                        <select value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="w-full px-3 py-2 mt-1 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
-                          <option value="new">-- Enter New Address --</option>
-                          {savedAddresses.map((addr) => (
-                            <option key={addr.id} value={addr.id}>
-                              {addr.label} ({addr.street}, {addr.city})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Shipping Region</h3>
-                        <select value={shippingArea} onChange={(e) => setShippingArea(e.target.value)} className="w-full px-3 py-2 mt-1 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
-                          {Object.keys(regions).map((region) => (
-                            <option key={region} value={region}>{region}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Shipping Area</h3>
-                        <select value={shippingSubArea} onChange={(e) => setShippingSubArea(e.target.value)} className="w-full px-3 py-2 mt-1 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
-                          {(regions[shippingArea] || []).map((city) => (
-                            <option key={city} value={city}>{city}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Street Address</h3>
-                        <input type="text" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="e.g., 123 Flower St, Brgy. Sampaguita" className="w-full px-3 py-2 mt-1 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
-                        />
-                      </div>
-                    </div>
-                  </Motion.div>
-                )}
-              </AnimatePresence>
               
               {/* Price Display */}
               <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
@@ -389,14 +228,6 @@ const ARPage = () => {
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Place Order Now
                 </button>
-                
-                <button
-                  onClick={handleSaveDraft}
-                  className="w-full flex items-center justify-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 font-medium rounded-lg border border-gray-200 dark:border-gray-700 transition-colors duration-200"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Save as Draft
-                </button>
               </div>
             </div>
             
@@ -409,12 +240,6 @@ const ARPage = () => {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <span>Try different color combinations for unique looks</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-3.5 w-3.5 text-pink-500 mr-1.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Save your favorite designs to your account</span>
                 </li>
               </ul>
             </div>
