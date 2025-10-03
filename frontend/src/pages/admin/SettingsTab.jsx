@@ -243,13 +243,6 @@ const SettingsTab = ({ isDarkMode }) => {
         <div className={sectionBodyClasses}>
           <div className={`${cardClasses} space-y-6`}>
             <ToggleSwitch
-              enabled={settings.cod}
-              onChange={() => handleToggle('cod')}
-              label="Cash on Delivery (COD)"
-              description="Allow customers to pay when they receive their order"
-            />
-            <div className="my-2 border-t border-gray-200 dark:border-gray-600"></div>
-            <ToggleSwitch
               enabled={settings.gcashPayment}
               onChange={() => handleToggle('gcashPayment')}
               label="GCash Payment"

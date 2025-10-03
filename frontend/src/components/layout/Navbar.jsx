@@ -170,7 +170,8 @@ export default function Navbar({
               <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"                >
+                  className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md transition-colors shadow-md hover:shadow-lg"
+                >
                   Sign In
                 </Link>
               </div>
