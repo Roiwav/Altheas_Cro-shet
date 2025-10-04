@@ -1,7 +1,7 @@
-// src/pages/main/CartPage.jsx (UPDATED - prevent duplicates & disable minus at quantity 1)
+// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
 import { useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { SettingsContext } from "../../context/SettingsContext.jsx";
@@ -110,7 +110,7 @@ export default function CartPage() {
         }
     };
 
-    // Navigate to CheckoutPage instead of placing order directly
+    // Navigate to CheckoutPage for authenticated users, signup for guests
     const handleProceedToCheckout = (specificItems = null) => {
         const itemsToOrder = specificItems || selectedCheckoutItems;
         
@@ -124,7 +124,19 @@ export default function CartPage() {
             return;
         }
 
-        // Navigate to CheckoutPage with selected items
+        // ✅ NEW: Check if user is authenticated for bulk checkout
+        if (!isAuthenticated) {
+            toast.info("Please sign up to checkout your items. Your cart will be saved to your account!");
+            navigate("/signup", {
+                state: { 
+                    from: "cart-bulk-checkout",
+                    cartItems: itemsToOrder
+                }
+            });
+            return;
+        }
+
+        // Navigate to CheckoutPage with selected items (authenticated users only)
         navigate("/checkout", { 
             state: { 
                 cartItems: itemsToOrder,
@@ -135,9 +147,24 @@ export default function CartPage() {
         });
     };
 
-    // Buy Now logic for individual items (same as ShopPage)
+    // ✅ UPDATED: Buy Now logic - redirect guests to signup
     const handleBuyNowIndividual = (item) => {
         if (!item) return;
+        
+        // ✅ NEW: Check if user is authenticated for individual buy now
+        if (!isAuthenticated) {
+            toast.info("Please sign up to purchase items directly. Your cart will be saved to your account!");
+            navigate("/signup", {
+                state: { 
+                    from: "cart-buy-now",
+                    product: {
+                        ...item,
+                        shippingFee: singleProduct ? singleProduct.shippingFee : shippingFee
+                    }
+                }
+            });
+            return;
+        }
         
         const currentShippingFee = singleProduct ? singleProduct.shippingFee : shippingFee;
         
@@ -169,7 +196,6 @@ export default function CartPage() {
         navigate("/checkout", { state: { product: productForCheckout } });
     };
     
-    // ✅ UPDATED: Handle decrease quantity - disable at quantity 1, don't remove item
     const handleDecreaseQuantity = async (item) => {
         const currentQty = item.quantity || 1;
         
@@ -221,6 +247,31 @@ export default function CartPage() {
                     </div>
                 </div>
 
+                {/* ✅ NEW: Guest user info banner for cart page */}
+                {!isAuthenticated && checkoutItems.length > 0 && (
+                    <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <UserPlus className="text-orange-600 dark:text-orange-400" />
+                                <div>
+                                    <p className="font-medium text-orange-900 dark:text-orange-100">
+                                        You're shopping as a guest
+                                    </p>
+                                    <p className="text-sm text-orange-700 dark:text-orange-300">
+                                        Sign up to checkout your {checkoutItems.length} item(s) and save your cart to your account!
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => navigate("/signup", { state: { from: "cart-page" } })}
+                                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                            >
+                                Sign Up
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {checkoutItems.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Left Column - Product Details */}
@@ -258,7 +309,7 @@ export default function CartPage() {
                                         const itemId = getId(item);
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;
-                                        const isMinQuantity = currentQty <= 1; // ✅ Check if at minimum quantity
+                                        const isMinQuantity = currentQty <= 1;
                                         
                                         return (
                                             <div key={itemId} className={`p-6 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
@@ -299,7 +350,6 @@ export default function CartPage() {
                                                             {!singleProduct && !arOrder && (
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                                                        {/* ✅ UPDATED: Disable minus button when quantity is 1 */}
                                                                         <button 
                                                                             onClick={() => handleDecreaseQuantity(item)}
                                                                             disabled={isMinQuantity}
@@ -338,14 +388,18 @@ export default function CartPage() {
                                                                     {currencyFormatter.format(item.price * currentQty)}
                                                                 </span>
                                                             </div>
-                                                            {/* Individual Buy Now Button for each product */}
+                                                            {/* ✅ UPDATED: Individual Buy Now Button - different for guests */}
                                                             {!singleProduct && !arOrder && (
                                                                 <button
                                                                     onClick={() => handleBuyNowIndividual(item)}
-                                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 border border-red-600"
+                                                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 border ${
+                                                                        isAuthenticated
+                                                                            ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+                                                                            : 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600'
+                                                                    }`}
                                                                 >
                                                                     <ShoppingBag className="w-4 h-4" />
-                                                                    Buy Now
+                                                                    {isAuthenticated ? 'Buy Now' : 'Sign Up to Buy'}
                                                                 </button>
                                                             )}
                                                         </div>
@@ -397,7 +451,10 @@ export default function CartPage() {
                                             <div className="text-center py-6">
                                                 <p className="text-gray-500 dark:text-gray-400">No items selected</p>
                                                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                                                    Select 2+ items for bulk checkout, or use "Buy Now" for individual items
+                                                    {isAuthenticated 
+                                                        ? "Select 2+ items for bulk checkout, or use 'Buy Now' for individual items"
+                                                        : "Sign up to checkout items, or use 'Sign Up to Buy' for individual items"
+                                                    }
                                                 </p>
                                             </div>
                                         )}
@@ -408,10 +465,17 @@ export default function CartPage() {
                                 {selectedItems.size >= 2 && (
                                     <button
                                         onClick={() => handleProceedToCheckout()}
-                                        className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
+                                        className={`w-full py-4 font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 ${
+                                            isAuthenticated
+                                                ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+                                                : 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white'
+                                        }`}
                                     >
                                         <ShoppingBag className="w-6 h-6" />
-                                        Proceed to Checkout ({selectedItems.size} items)
+                                        {isAuthenticated 
+                                            ? `Proceed to Checkout (${selectedItems.size} items)`
+                                            : `Sign Up to Checkout (${selectedItems.size} items)`
+                                        }
                                     </button>
                                 )}
 
@@ -419,7 +483,10 @@ export default function CartPage() {
                                 {selectedItems.size === 1 && (
                                     <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl text-center">
                                         <p className="text-yellow-700 dark:text-yellow-300 text-sm font-medium">
-                                            Select one more item for bulk checkout, or use "Buy Now" to purchase this item individually.
+                                            {isAuthenticated
+                                                ? "Select one more item for bulk checkout, or use 'Buy Now' to purchase this item individually."
+                                                : "Select one more item for bulk checkout, or use 'Sign Up to Buy' to purchase this item individually."
+                                            }
                                         </p>
                                     </div>
                                 )}
