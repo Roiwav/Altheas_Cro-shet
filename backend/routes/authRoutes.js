@@ -1,53 +1,30 @@
 const express = require("express");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { verifyToken } = require("../middleware/authMiddleware.js");
+const { verifyToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// =============================
-// REGISTER (Auto Login)
-// =============================
+// REGISTER
 router.post("/register", async (req, res) => {
   try {
     const { fullName, username, email, password } = req.body;
-
-    if (!fullName || !username || !email || !password) {
+    if (!fullName || !username || !email || !password)
       return res.status(400).json({ message: "All fields are required" });
-    }
 
-    // Check existing username
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
+    if (await User.findOne({ username }))
       return res.status(400).json({ message: "Username already exists" });
-    }
-
-    // Check existing email
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
+    if (await User.findOne({ email }))
       return res.status(400).json({ message: "Email already registered" });
-    }
 
-    // Determine user role
-    let role = 'customer';
-    if (username === 'admin' && email === 'admin@gmail.com' && password === 'admin123') {
-      role = 'admin';
-    }
+    let role = "customer";
+    if (username === "admin" && email === "admin@gmail.com" && password === "admin123")
+      role = "admin";
 
-    // Create new user (password will be hashed by pre("save") in schema)
-    const user = await User.create({
-      fullName,
-      username,
-      email,
-      password,
-      role, // Assign the determined role
-    });
-
-    // 🔑 Auto login: generate JWT immediately
-    // Add the user's role to the JWT payload
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
-      expiresIn: "7d",
-    });
+    const user = await User.create({ fullName, username, email, password, role });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.status(201).json({
       message: "User registered successfully",
@@ -58,110 +35,73 @@ router.post("/register", async (req, res) => {
         email: user.email,
         username: user.username,
         avatar: user.avatar || "",
-        role: user.role, // Include the role in the response
-      },
+        role: user.role
+      }
     });
   } catch (err) {
-    console.error("Register error:", err);
-
-    // Handle duplicate key error from MongoDB
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyValue)[0];
-      return res.status(400).json({ message: `${field} already exists` });
-    }
-
+    console.error(err);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });
 
-// =============================
 // LOGIN
-// =============================
 router.post("/login", async (req, res) => {
   try {
     const { email, username, identifier, password } = req.body;
-
-    if (!password) {
+    const loginId = (email || identifier || username || "").trim();
+    if (!loginId || !password)
       return res.status(400).json({ message: "Email/Username and password are required" });
-    }
 
-    // Determine login identifier
-    let loginId = (email || identifier || username || "").trim();
-    if (!loginId) {
-      return res.status(400).json({ message: "Email/Username and password are required" });
-    }
-
-    // Normalize email to lowercase when it looks like an email
-    const looksLikeEmail = loginId.includes("@");
-    if (looksLikeEmail) loginId = loginId.toLowerCase();
-
-    // Find by email or username depending on the identifier
-    const query = looksLikeEmail
-      ? { email: loginId }
-      : { username: loginId };
-
+    const query = loginId.includes("@") ? { email: loginId.toLowerCase() } : { username: loginId };
     const user = await User.findOne(query);
-    if (!user) {
+    if (!user || !(await user.matchPassword(password)))
       return res.status(400).json({ message: "Invalid email/username or password" });
-    }
 
-    // Compare password using schema method
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email/username or password" });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || "fallbackSecret", {
-      expiresIn: "7d",
-    });
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        username: user.username,
-        avatar: user.avatar || "",
-        role: user.role, // Include the role in the response
-      },
-    });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "", role: user.role } });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });
 
-// =============================
-// CHANGE PASSWORD
-// =============================
-router.post("/change-password", verifyToken, async (req, res) => {
+// FORGOT PASSWORD
+router.post("/forgot-password", async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required", success: false });
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "Email not found", success: false });
 
-    const user = await User.findById(req.user.id);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const isMatch = await user.matchPassword(currentPassword);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Incorrect current password" });
-    }
-
-    user.password = newPassword; // The 'pre-save' hook in User.js will hash it
+    const token = crypto.randomBytes(32).toString("hex");
+    user.resetToken = token;
+    user.tokenExpiry = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    res.status(200).json({ message: "Password changed successfully" });
+    res.json({ success: true, message: "Reset link generated", token, name: user.fullName });
   } catch (err) {
-    console.error("Change Password error:", err);
-    res.status(500).json({ message: "Server error, please try again later" });
+    console.error("Forgot Password Error:", err);
+    res.status(500).json({ message: "Failed to generate reset link.", success: false });
+  }
+});
+
+// RESET PASSWORD
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    const user = await User.findOne({ resetToken: token, tokenExpiry: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ message: "Invalid or expired token", success: false });
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetToken = undefined;
+    user.tokenExpiry = undefined;
+    await user.save();
+
+    res.json({ success: true, message: "Password reset successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error, please try again later", success: false });
   }
 });
 

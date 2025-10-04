@@ -40,7 +40,6 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/v1/testimonials", testimonialRoutes);
-app.use('/', (req,res)=> {return res.json(`Welcome to Althea's Croshetb API`)})
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)

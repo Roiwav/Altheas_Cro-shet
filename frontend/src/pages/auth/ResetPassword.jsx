@@ -1,4 +1,3 @@
-// src/pages/auth/ResetPassword.jsx
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -18,9 +17,7 @@ function ResetPassword() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(prev => !prev);
-  };
+  const togglePasswordVisibility = () => setShowPassword(prev => !prev);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,34 +26,23 @@ function ResetPassword() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post(`${API_URL}/reset-password`, {
-        token,
-        password,
-      });
+      const { data } = await axios.post(`${API_URL}/reset-password`, { token, password });
 
       if (data.success) {
         setMessage(data.message || 'Password successfully reset! Redirecting to login...');
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         throw new Error(data.message || 'Something went wrong.');
       }
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Failed to reset password. Please try again.';
-      setError(message);
+      const msg = err.response?.data?.message || err.message || 'Failed to reset password. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!token) {
-    return (
-      <p className="text-red-600 text-center mt-10">
-        Invalid or missing token.
-      </p>
-    );
-  }
+  if (!token) return <p className="text-red-600 text-center mt-10">Invalid or missing token.</p>;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
