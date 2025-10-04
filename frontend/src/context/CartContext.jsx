@@ -1,4 +1,4 @@
-// src/context/CartContext.jsx (UPDATED - fixed duplicate prevention)
+// src/context/CartContext.jsx (FIXED - localStorage fallback when backend doesn't have cart endpoints)
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
@@ -20,184 +20,281 @@ export const CartProvider = ({ children }) => {
     const [shippingFee, setShippingFee] = useState(0);
     const [isCartLoading, setIsCartLoading] = useState(true);
 
-    const API_BASE = "http://localhost:5001/api/v1";
+    const API_BASE = "http://localhost:5001/api";
 
-    // ✅ FIXED: Improved getId function to handle variations consistently
+    // Improved getId function to handle variations consistently
     const getId = useCallback((product) => {
         const baseId = product.productId || product._id || product.id;
         const variation = product.variation || "";
         
-        // Always include variation in the ID, even if empty
         return `${baseId}${variation ? `-${variation}` : ""}`;
     }, []);
 
-    // Generic function to save the cart to the backend
+    // ✅ FIXED: Use localStorage as primary storage, backend as backup
     const saveCart = useCallback(async (items, currentShippingAddress, currentShippingFee) => {
         setIsCartLoading(true);
         const userId = user?.id;
-        const guestId = Cookies.get(GUEST_CART_ID_COOKIE);
 
-        let url = `${API_BASE}/cart?`;
-        if (userId) {
-            url += `userId=${userId}`;
-        } else if (guestId) {
-            url += `guestId=${guestId}`;
+        console.log("💾 Saving cart:", { 
+            itemCount: items.length, 
+            userId: userId ? `${userId.substring(0,8)}...` : null,
+            isAuthenticated 
+        });
+
+        // ✅ PRIMARY: Always save to localStorage (works for both guest and authenticated users)
+        const cartData = {
+            items,
+            shippingAddress: currentShippingAddress,
+            shippingFee: currentShippingFee,
+            timestamp: Date.now(),
+            userId: userId || null // Track which user this belongs to
+        };
+
+        if (isAuthenticated && userId) {
+            // Save to user-specific localStorage key
+            localStorage.setItem(`user-cart-${userId}`, JSON.stringify(cartData));
+            console.log("✅ Cart saved to user localStorage");
+        } else {
+            // Save to guest localStorage key
+            localStorage.setItem('guest-cart', JSON.stringify(cartData));
+            console.log("✅ Cart saved to guest localStorage");
         }
 
-        try {
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+        // Update React state
+        setCartItems(items);
+        setShippingAddress(currentShippingAddress || null);
+        setShippingFee(currentShippingFee || 0);
+
+        // ✅ SECONDARY: Try to backup to backend if endpoints exist (optional)
+        if (isAuthenticated && userId && token) {
+            try {
+                const url = `${API_BASE}/cart?userId=${userId}`;
+                const requestBody = {
                     username: user?.username,
                     items,
                     shippingAddress: currentShippingAddress,
                     shippingFee: currentShippingFee
-                }),
-            });
+                };
 
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error(`❌ Backend error response: ${errorText}`);
-                throw new Error(`HTTP ${res.status}`);
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (res.ok) {
+                    console.log("✅ Cart also backed up to backend");
+                } else if (res.status === 404) {
+                    console.log("ℹ️ Backend cart endpoints not implemented yet - using localStorage only");
+                } else {
+                    console.warn("⚠️ Backend cart save failed:", res.status);
+                }
+            } catch (err) {
+                console.log("ℹ️ Backend cart save skipped:", err.message);
             }
-
-            const data = await res.json();
-            console.log("✅ Cart saved to backend:", data);
-
-            // If it was a new guest cart, the backend returns a guestId. We need to save it in a cookie.
-            if (!userId && !guestId && data.guestId) {
-                Cookies.set(GUEST_CART_ID_COOKIE, data.guestId, { expires: 365 });
-            }
-
-            // Update local state
-            setCartItems(data.items || []);
-            setShippingAddress(data.shippingAddress || null);
-            setShippingFee(data.shippingFee || 0);
-
-            return data;
-        } catch (err) {
-            console.error("❌ Failed saving cart:", err);
-            toast.error("Could not update cart.");
-            throw err;
-        } finally {
-            setIsCartLoading(false);
         }
-    }, [user]);
 
-    // Load cart from backend
+        setIsCartLoading(false);
+        return cartData;
+    }, [user, token, isAuthenticated]);
+
+    // ✅ FIXED: Load cart from localStorage, try backend as fallback
     const loadCart = useCallback(async () => {
         setIsCartLoading(true);
         const userId = user?.id;
-        const guestId = Cookies.get(GUEST_CART_ID_COOKIE);
 
-        if (!userId && !guestId) {
-            console.log("➡️ No user or guest ID, initializing empty cart.");
+        console.log("📂 Loading cart:", { 
+            userId: userId ? `${userId.substring(0,8)}...` : null,
+            isAuthenticated 
+        });
+
+        let cartData = null;
+
+        // ✅ PRIMARY: Load from localStorage first
+        try {
+            if (isAuthenticated && userId) {
+                // Try user-specific cart first
+                const userCartJson = localStorage.getItem(`user-cart-${userId}`);
+                if (userCartJson) {
+                    cartData = JSON.parse(userCartJson);
+                    console.log("📱 Loaded user cart from localStorage:", cartData.items?.length || 0, "items");
+                }
+            } else {
+                // Load guest cart
+                const guestCartJson = localStorage.getItem('guest-cart');
+                if (guestCartJson) {
+                    cartData = JSON.parse(guestCartJson);
+                    console.log("📱 Loaded guest cart from localStorage:", cartData.items?.length || 0, "items");
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse cart from localStorage:", e);
+        }
+
+        // ✅ SECONDARY: Try backend as fallback (if localStorage failed)
+        if (!cartData && isAuthenticated && userId && token) {
+            try {
+                const url = `${API_BASE}/cart?userId=${userId}`;
+                const res = await fetch(url, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (res.ok) {
+                    cartData = await res.json();
+                    console.log("📱 Loaded cart from backend:", cartData.items?.length || 0, "items");
+                    
+                    // Save to localStorage for future use
+                    localStorage.setItem(`user-cart-${userId}`, JSON.stringify(cartData));
+                } else if (res.status === 404) {
+                    console.log("ℹ️ Backend cart endpoints not implemented yet");
+                } else {
+                    console.warn("⚠️ Backend cart load failed:", res.status);
+                }
+            } catch (err) {
+                console.log("ℹ️ Backend cart load skipped:", err.message);
+            }
+        }
+
+        // Apply loaded cart data or use defaults
+        if (cartData) {
+            setCartItems(cartData.items || []);
+            setShippingAddress(cartData.shippingAddress || null);
+            setShippingFee(cartData.shippingFee || 0);
+        } else {
             setCartItems([]);
             setShippingAddress(null);
             setShippingFee(0);
-            setIsCartLoading(false);
+        }
+
+        setIsCartLoading(false);
+    }, [user, token, isAuthenticated]);
+
+    // ✅ IMPROVED: Manual merge function for localStorage-based carts
+    const manualMergeGuestCart = useCallback(async (userId) => {
+        console.log("🔄 Starting localStorage cart merge for user:", userId.substring(0,8) + '...');
+        
+        const guestCartJson = localStorage.getItem('guest-cart');
+        const userCartJson = localStorage.getItem(`user-cart-${userId}`);
+        
+        let guestItems = [];
+        let userItems = [];
+        let mergedShippingAddress = null;
+        let mergedShippingFee = 0;
+
+        // Parse guest cart
+        if (guestCartJson) {
+            try {
+                const guestCart = JSON.parse(guestCartJson);
+                guestItems = guestCart.items || [];
+                mergedShippingAddress = guestCart.shippingAddress;
+                mergedShippingFee = guestCart.shippingFee || 0;
+                console.log("👻 Found guest cart:", guestItems.length, "items");
+            } catch (e) {
+                console.error("Failed to parse guest cart:", e);
+            }
+        }
+
+        // Parse user cart
+        if (userCartJson) {
+            try {
+                const userCart = JSON.parse(userCartJson);
+                userItems = userCart.items || [];
+                // Prefer user's shipping info if available
+                if (userCart.shippingAddress) {
+                    mergedShippingAddress = userCart.shippingAddress;
+                    mergedShippingFee = userCart.shippingFee || 0;
+                }
+                console.log("👤 Found user cart:", userItems.length, "items");
+            } catch (e) {
+                console.error("Failed to parse user cart:", e);
+            }
+        }
+
+        if (guestItems.length === 0 && userItems.length === 0) {
+            console.log("ℹ️ No cart items to merge");
             return;
         }
 
-        let url = `${API_BASE}/cart?`;
-        if (userId) {
-            url += `userId=${userId}`;
-        } else if (guestId) {
-            url += `guestId=${guestId}`;
+        // Merge items (combine quantities for duplicates)
+        const mergedItems = [...userItems];
+
+        for (const guestItem of guestItems) {
+            const guestItemId = getId(guestItem);
+            const existingIndex = mergedItems.findIndex(item => getId(item) === guestItemId);
+
+            if (existingIndex >= 0) {
+                // Combine quantities
+                mergedItems[existingIndex].quantity = (mergedItems[existingIndex].quantity || 1) + (guestItem.quantity || 1);
+                console.log(`🔄 Combined quantities for: ${guestItem.name}`);
+            } else {
+                // Add new item
+                mergedItems.push(guestItem);
+                console.log(`➕ Added new item: ${guestItem.name}`);
+            }
         }
 
-        try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            console.log("✅ Cart loaded from backend:", data);
+        // Save merged cart and update state
+        await saveCart(mergedItems, mergedShippingAddress, mergedShippingFee);
 
-            setCartItems(data.items || []);
-            setShippingAddress(data.shippingAddress || null);
-            setShippingFee(data.shippingFee || 0);
-        } catch (err) {
-            console.error("❌ Failed loading cart:", err);
-            setCartItems([]); // Clear cart on error
-        } finally {
-            setIsCartLoading(false);
+        // Clean up guest cart
+        localStorage.removeItem('guest-cart');
+        Cookies.remove(GUEST_CART_ID_COOKIE);
+
+        console.log("✅ Cart merge completed:", mergedItems.length, "total items");
+        
+        const totalGuestItems = guestItems.length;
+        if (totalGuestItems > 0) {
+            toast.success(`Your ${totalGuestItems} cart ${totalGuestItems === 1 ? 'item has' : 'items have'} been saved to your account!`);
         }
-    }, [user]);
 
-    // Merge carts on login
+        return mergedItems;
+    }, [getId, saveCart]);
+
+    // ✅ IMPROVED: Merge carts on login
     const mergeCartOnLogin = useCallback(async (userId) => {
-        const guestId = Cookies.get(GUEST_CART_ID_COOKIE); // Get guestId before potential async operations
-        if (!guestId) {
-            await loadCart(); // Just load user's cart if it exists
-            return;
-        }
-        console.log(`🔄 Merging guest cart (${guestId}) with user cart (${userId})`);
+        console.log(`🔄 Starting cart merge for user: ${userId.substring(0,8)}...`);
+        
         try {
-            const res = await fetch(`${API_BASE}/cart/merge`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` // Add authorization token
-                },
-                body: JSON.stringify({ userId, guestId }),
-            });
-            if (!res.ok) throw new Error('Failed to merge carts');
-            const mergedCart = await res.json();
-            setCartItems(mergedCart.items || []);
-            setShippingAddress(mergedCart.shippingAddress || null);
-            setShippingFee(mergedCart.shippingFee || 0);
-            Cookies.remove(GUEST_CART_ID_COOKIE); // Clean up guest cookie            
-            // The /cart/merge endpoint might return a partial user object.
-            // Instead of overwriting the user state, we re-fetch the full user object
-            // to ensure all data (like addresses) is up-to-date and consistent.
-            fetchUser();
-            console.log("✅ Carts merged successfully.");
+            await manualMergeGuestCart(userId);
         } catch (error) {
-            console.error("❌ Failed to merge carts:", error);
-            toast.error("Could not merge your guest cart.");
-            await loadCart(); // Fallback to loading user's cart
+            console.error("❌ Cart merge failed:", error);
+            // Fallback: just load user's existing cart
+            await loadCart();
+            toast.info("Welcome back! Loading your cart...");
         }
-    }, [token, loadCart, fetchUser]);
+    }, [manualMergeGuestCart, loadCart]);
 
-    // ✅ ENHANCED: Add item to cart with improved duplicate detection and logging
+    // Enhanced Add item to cart
     const addToCart = useCallback(async (product, quantity = 1) => {
-        console.log("🛒 Adding to cart:", product, "quantity:", quantity);
+        console.log("🛒 Adding to cart:", product.name, "x", quantity);
         
         const productToAdd = {
-            productId: product._id || String(product.id), // Use _id from DB or id from local data
+            productId: product._id || String(product.id),
             name: product.name,
             price: product.price,
             image: product.image || (product.images && product.images[0]),
-            variation: product.variation || "", // Ensure variation is always a string
+            variation: product.variation || "",
             quantity: quantity,
         };
 
         const id = getId(productToAdd);
-        console.log("🔑 Generated ID:", id);
-        console.log("📦 Current cart items:", cartItems);
-
-        const existingItem = cartItems.find(item => {
-            const itemId = getId(item);
-            console.log("🔍 Comparing:", itemId, "vs", id);
-            return itemId === id;
-        });
+        const existingItem = cartItems.find(item => getId(item) === id);
 
         let newCartItems;
         if (existingItem) {
-            console.log("✅ Found existing item, updating quantity:", existingItem.quantity + quantity);
             newCartItems = cartItems.map(item =>
                 getId(item) === id ? { ...item, quantity: item.quantity + quantity } : item
             );
-            // Show appropriate toast message
             toast.success(`Updated ${product.name} quantity to ${existingItem.quantity + quantity}!`, {
                 position: "top-center",
                 autoClose: 2000,
                 hideProgressBar: true,
             });
         } else {
-            console.log("➕ Adding new item to cart");
             newCartItems = [...cartItems, productToAdd];
-            // Show appropriate toast message  
             toast.success(`${product.name} added to cart!`, {
                 position: "top-center",
                 autoClose: 2000,
@@ -205,7 +302,6 @@ export const CartProvider = ({ children }) => {
             });
         }
 
-        console.log("💾 Saving new cart:", newCartItems);
         await saveCart(newCartItems, shippingAddress, shippingFee);
     }, [cartItems, getId, saveCart, shippingAddress, shippingFee]);
 
@@ -239,11 +335,11 @@ export const CartProvider = ({ children }) => {
             return;
         }
 
-        if (isAuthenticated && user?.id && token) { // Ensure token is also available
-            // User is logged in, merge guest cart (if any) and load.
+        if (isAuthenticated && user?.id && token) {
+            console.log("👤 User authenticated, merging guest cart (if any)...");
             mergeCartOnLogin(user.id);
         } else {
-            // User is a guest or has logged out, load cart using guestId from cookie.
+            console.log("👻 Guest user or logged out, loading guest cart...");
             loadCart();
         }
     }, [isAuthenticated, user?.id, token, isLoading, loadCart, mergeCartOnLogin]);

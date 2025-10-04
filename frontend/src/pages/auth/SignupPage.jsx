@@ -1,5 +1,6 @@
+// src/pages/auth/SignupPage.jsx (ALTERNATIVE - no auto-login, redirect to login with preserved state)
 import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Loader2, User, Mail, Lock, X } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -13,7 +14,14 @@ const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useUser();
+
+  // ✅ Get navigation state (cart info from shop/cart pages)
+  const fromCart = location.state?.from?.includes('cart') || false;
+  const fromShop = location.state?.from?.includes('shop') || false;
+  const cartData = location.state?.cartItems || null;
+  const productData = location.state?.product || null;
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -50,6 +58,7 @@ export default function SignUpPage() {
     return true;
   };
 
+  // ✅ NO AUTO-LOGIN: Just create account and redirect to login with preserved state
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -68,8 +77,16 @@ export default function SignUpPage() {
         role = "admin";
       }
 
-      // Call register endpoint with the new 'role' field
-      const { data } = await axios.post(`${API_URL}/register`, {
+      console.log("🔧 Signing up user with cart context:", { 
+        fromCart, 
+        fromShop, 
+        hasCartData: !!cartData, 
+        hasProductData: !!productData,
+        cartItemCount: cartData?.length || 0
+      });
+
+      // Call register endpoint
+      const registerResponse = await axios.post(`${API_URL}/register`, {
         fullName: formData.fullName,
         username: formData.username,
         email: formData.email,
@@ -77,13 +94,39 @@ export default function SignUpPage() {
         role: role,
       });
 
-      if (!data || !data.user || !data.token) {
+      if (!registerResponse.data) {
         throw new Error("Registration failed. Please try again.");
       }
 
-        // Redirect to login page after successful registration
-      toast.success("Account created successfully! Please sign in.");
-      navigate("/login", { replace: true });
+      toast.success("Account created successfully! Please sign in to access your cart.");
+
+      // ✅ PRESERVE CART STATE: Store cart data in sessionStorage temporarily
+      if ((cartData && cartData.length > 0) || productData) {
+        const cartStateToPreserve = {
+          from: location.state.from,
+          cartItems: cartData,
+          product: productData,
+          email: formData.email, // Pre-fill email on login page
+          timestamp: Date.now(),
+          preserveCart: true // Flag to indicate cart should be preserved
+        };
+        
+        sessionStorage.setItem('signup-cart-state', JSON.stringify(cartStateToPreserve));
+        console.log("💾 Cart state preserved in sessionStorage for login");
+      }
+
+      // ✅ Redirect to login with preserved state + success message
+      navigate("/login", { 
+        state: {
+          ...location.state, // Preserve original navigation state
+          fromSignup: true,
+          email: formData.email, // Pre-fill email
+          successMessage: (cartData && cartData.length > 0) 
+            ? `Account created! Sign in to access your ${cartData.length} cart items.`
+            : "Account created successfully! Please sign in."
+        },
+        replace: true 
+      });
 
     } catch (err) {
       const message =
@@ -96,6 +139,19 @@ export default function SignUpPage() {
   };
 
   const handleOAuthLogin = (provider) => {
+    // ✅ Preserve cart state for OAuth users too
+    if ((cartData && cartData.length > 0) || productData) {
+      const cartStateToPreserve = {
+        from: location.state.from,
+        cartItems: cartData,
+        product: productData,
+        timestamp: Date.now(),
+        preserveCart: true
+      };
+      
+      sessionStorage.setItem('oauth-cart-state', JSON.stringify(cartStateToPreserve));
+    }
+
     window.location.href = `${API_BASE_URL}/auth/${provider}`;
   };
 
@@ -113,9 +169,37 @@ export default function SignUpPage() {
 
     if (token && userId) {
       login(token);
-      toast.success("Successfully logged in!");
-      const redirectUrl = params.get("redirect") || "/";
-      navigate(redirectUrl, { replace: true });
+      
+      // ✅ Check for preserved cart state from OAuth
+      const preservedState = sessionStorage.getItem('oauth-cart-state');
+      if (preservedState) {
+        try {
+          const parsed = JSON.parse(preservedState);
+          sessionStorage.removeItem('oauth-cart-state');
+          
+          toast.success(`Welcome! Your ${parsed.cartItems?.length || 1} cart items are being restored...`);
+          
+          setTimeout(() => {
+            if (parsed.from?.includes('cart') && parsed.cartItems?.length > 0) {
+              navigate("/cart", { replace: true });
+            } else if (parsed.from?.includes('shop') && parsed.product) {
+              navigate("/checkout", { 
+                state: { product: parsed.product },
+                replace: true 
+              });
+            } else {
+              navigate("/shop", { replace: true });
+            }
+          }, 1500);
+        } catch (e) {
+          console.error("Failed to parse OAuth cart state:", e);
+        }
+      } else {
+        toast.success("Successfully logged in!");
+        const redirectUrl = params.get("redirect") || "/";
+        navigate(redirectUrl, { replace: true });
+      }
+      
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [login, navigate]);
@@ -152,8 +236,22 @@ export default function SignUpPage() {
                 Create Account
               </h2>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Join us today and start your journey
+                {fromCart ? "Join us to save your cart items!" : "Join us today and start your journey"}
               </p>
+              
+              {/* ✅ Show cart context to user */}
+              {(fromCart || fromShop) && (
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">
+                    🛒 Cart Items Ready
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    {cartData?.length > 0 && `Your ${cartData.length} items will be waiting after you sign in`}
+                    {productData && "Your selected product will be ready for checkout"}
+                    {!cartData && !productData && "Your cart items will be preserved"}
+                  </p>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -278,6 +376,10 @@ export default function SignUpPage() {
                 Already have an account?{" "}
                 <Link
                   to="/login"
+                  state={{
+                    ...location.state, // Preserve original navigation state
+                    email: formData.email // Pre-fill email if they've started typing
+                  }}
                   className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 underline"
                 >
                   Sign in

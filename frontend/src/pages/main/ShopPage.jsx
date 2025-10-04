@@ -1,4 +1,4 @@
-// src/pages/main/ShopPage.jsx (UPDATED - remove duplicate toast)
+// src/pages/main/ShopPage.jsx (UPDATED - guest cart checkout redirect to signup)
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -186,7 +186,7 @@ export default function ShopPage() {
     return placeholderImage;
   };
 
-  // ✅ UPDATED: Handle Add to Cart (CartContext will handle toast messages)
+  // Handle Add to Cart (works for both guest and authenticated users)
   const handleAddToCart = async (product) => {
     if (!product) return;
     // Create a product object that includes the selected variation
@@ -196,12 +196,9 @@ export default function ShopPage() {
     };
 
     try {
-      // addToCart already handles saving the cart to the backend AND showing toast messages
+      // ✅ addToCart works for both guests (saves in cookie) and authenticated users (saves to backend)
       await addToCart(productToAdd, modalQuantity);
       
-      // ✅ REMOVED: Duplicate toast message (CartContext handles this now)
-      // toast.success(`${product.name} added to cart!`, { ... });
-
       setSelectedProduct(null);
     } catch (err) {
       // Only show error toast if something goes wrong
@@ -210,9 +207,27 @@ export default function ShopPage() {
     }
   };
 
-  // Handle Buy Now
+  // ✅ UPDATED: Handle Buy Now - redirect guests to signup for direct checkout
   const handleBuyNow = () => {
     if (!selectedProduct) return;
+
+    // ✅ NEW: Check if user is authenticated for Buy Now
+    if (!isAuthenticated) {
+      toast.info("Please sign up to purchase items directly. You can add items to cart as a guest!");
+      navigate("/signup", {
+        state: { 
+          from: "shop-buy-now",
+          product: {
+            ...selectedProduct,
+            variation: selectedVariation || "",
+            quantity: modalQuantity
+          }
+        },
+      });
+      setSelectedProduct(null);
+      return;
+    }
+
     const shippingFee = shippingFees[localCity] || 0;
     let shippingAddress;
     if (isAuthenticated && selectedAddressId) {
@@ -247,6 +262,31 @@ export default function ShopPage() {
     <>
       {/* The Navbar and Sidebar are now provided by the main Layout component */}
       <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 ${isAuthenticated ? 'px-6 md:px-20 lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
+        {/* ✅ NEW: Guest user info banner */}
+        {!isAuthenticated && totalQuantity > 0 && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaShoppingCart className="text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="font-medium text-blue-900 dark:text-blue-100">
+                    You have {totalQuantity} item(s) in your cart
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Sign up to checkout and save your cart to your account!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/signup", { state: { from: "shop-cart" } })}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* View, Search & Pagination */}
         <div className="flex flex-col flex-wrap items-center justify-between gap-4 mb-8 md:flex-row">
           {/* Left side: Filters */}
@@ -488,11 +528,24 @@ export default function ShopPage() {
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    className="flex-1 py-3 text-lg font-semibold text-red-600 transition bg-transparent border border-red-600 rounded-lg hover:bg-red-600 hover:text-white dark:text-red-400 dark:border-red-400 dark:hover:bg-red-400 dark:hover:text-white"
+                    className={`flex-1 py-3 text-lg font-semibold transition border rounded-lg ${
+                      isAuthenticated 
+                        ? 'text-red-600 bg-transparent border-red-600 hover:bg-red-600 hover:text-white dark:text-red-400 dark:border-red-400 dark:hover:bg-red-400 dark:hover:text-white'
+                        : 'text-orange-600 bg-transparent border-orange-600 hover:bg-orange-600 hover:text-white dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-400 dark:hover:text-white'
+                    }`}
                   >
-                    Buy Now
+                    {isAuthenticated ? 'Buy Now' : 'Sign Up to Buy'}
                   </button>
                 </div>
+
+                {/* ✅ NEW: Guest user notice for Buy Now */}
+                {!isAuthenticated && (
+                  <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <p className="text-orange-700 dark:text-orange-300 text-sm text-center">
+                      Create an account to buy items directly or continue as guest to add to cart!
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
