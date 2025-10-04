@@ -1,8 +1,9 @@
 import React, { Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress, Environment } from '@react-three/drei';
+import { OrbitControls, Html, useProgress, Environment, useCursor } from '@react-three/drei';
 import * as THREE from 'three';
 import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
+import { NormalPass } from 'postprocessing';
 import FlowerModel from './FlowerModel';
 
 // Loader
@@ -76,6 +77,7 @@ const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
         />
       </Suspense>
       <EffectComposer>
+        <primitive object={new NormalPass()} />
         <SSAO radius={0.4} intensity={20} luminanceInfluence={0.4} color="black" />
         <ToneMapping />
       </EffectComposer>
@@ -85,40 +87,70 @@ const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
 });
 Scene3D.displayName = 'Scene3D';
 
-// A simple component that attaches its group to an external parent (MindAR anchor)
-function AttachToExternal({ externalGroup, children }) {
-  const local = useRef();
-  const scene = useThree((s) => s.scene);
+// Create a context to share the AR.js context
+const ARContext = React.createContext();
+
+// AR.js integration component
+const ARProvider = ({ children }) => {
+  const { gl, camera, scene } = useThree();
+  const arToolkitContextRef = useRef(null);
 
   useEffect(() => {
-    if (!externalGroup || !local.current) return;
-    externalGroup.add(local.current);
-    return () => {
-      externalGroup.remove(local.current);
+    // Initialize AR.js
+    const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
+    arToolkitSource.init(() => {
+      setTimeout(() => arToolkitSource.onResizeElement(), 100);
+    });
+
+    const arToolkitContext = new window.THREEx.ArToolkitContext({
+      cameraParametersUrl: '/data/camera_para.dat',
+      detectionMode: 'mono',
+    });
+    arToolkitContext.init(() => {
+      camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+    });
+    arToolkitContextRef.current = arToolkitContext;
+
+    // Update AR.js on render
+    const onRender = () => {
+      if (arToolkitSource.ready === false) return;
+      arToolkitContext.update(arToolkitSource.domElement);
+      scene.visible = camera.visible;
     };
-  }, [externalGroup]);
 
-  return <group ref={local}>{children}</group>;
-}
+    gl.setAnimationLoop(onRender);
 
-// AR payload rendered by R3F but parented to MindAR anchor
-const SceneAR = React.memo(({ flowerType, color, arrangement, anchorGroup }) => {
+    return () => {
+      gl.setAnimationLoop(null);
+      // Cleanup if needed, though AR.js doesn't have a clean stop method
+    };
+  }, [gl, camera, scene]);
+
+  return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
+};
+
+// AR payload rendered by R3F
+const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
+  const markerRootRef = useRef();
+  const arToolkitContextRef = React.useContext(ARContext);
+
   return (
     <>
-      <AttachToExternal externalGroup={anchorGroup}>
-        <Suspense fallback={null}>
-          <FlowerModel
-            key={`${flowerType}-${arrangement}-${color}`}
-            flowerType={flowerType}
-            color={color}
-            position={[0, 0, 0]}
-            arrangement={arrangement}
-            scale={0.5}
-          />
-        </Suspense>
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-      </AttachToExternal>
+      <ambientLight intensity={1.5} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <group ref={markerRootRef}>
+        <FlowerModel
+          key={`${flowerType}-${arrangement}-${color}`}
+          flowerType={flowerType}
+          color={color}
+          position={[0, 0.5, 0]} // Lift model slightly above marker
+          arrangement={arrangement}
+          scale={0.5}
+        />
+      </group>
+      {arToolkitContextRef && (
+        <primitive object={new window.THREEx.ArMarkerControls(arToolkitContextRef.current, markerRootRef.current, { type: 'pattern', patternUrl: '/data/pattern-hiro.patt' })} />
+      )}
     </>
   );
 });
@@ -159,115 +191,6 @@ const ARViewer = ({
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
 
-  // MindAR runtime refs
-  const containerRef = useRef(null);
-  const mindarRef = useRef(null);
-  const mindarAnchorGroup = useRef(null);
-  const mindarCamera = useRef(null);
-  const mindarRenderer = useRef(null);
-  const [anchorGroupState, setAnchorGroupState] = useState(null);
-
-  // WebGL context restore handling
-  useEffect(() => {
-    const handleContextLost = (event) => {
-      event.preventDefault();
-      setError('WebGL context lost. Attempting to recover...');
-      setIsReady(false);
-    };
-    const handleContextRestored = () => {
-      setError(null);
-      setIsReady(true);
-    };
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      canvas.addEventListener('webglcontextlost', handleContextLost, false);
-      canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
-    }
-    return () => {
-      if (canvas) {
-        canvas.removeEventListener('webglcontextlost', handleContextLost);
-        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
-      }
-    };
-  }, []);
-
-  // Initialize MindAR when AR enabled
-  useEffect(() => {
-    let stopped = false;
-
-    const startMindAR = async () => {
-      if (!isAREnabled || !containerRef.current) return;
-
-      try {
-        // Access MindAR from the global window object (loaded via script tag in index.html)
-        const { MindARThree } = window;
-
-        const mindarThree = new MindARThree({
-          container: containerRef.current,
-          imageTargetSrc: './assets/ar/targets.mind',
-          maxTrack: 1,
-          filterMinCF: 0.0001,
-          filterBeta: 0.001,
-          missTolerance: 5,
-          warmupTolerance: 5
-        });
-
-        const { renderer, scene, camera } = mindarThree;
-
-        // Create one anchor and expose its group
-        const anchor = mindarThree.addAnchor(0);
-        mindarRef.current = mindarThree;
-        mindarAnchorGroup.current = anchor.group;
-        mindarCamera.current = camera;
-        mindarRenderer.current = renderer;
-        setAnchorGroupState(anchor.group);
-
-        await mindarThree.start();
-
-        // MindAR controls the render loop; R3F can still render its Canvas separately
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
-      } catch (e) {
-        console.error(e);
-        setError('Failed to start AR. Check camera permissions and target file.');
-      }
-    };
-
-    const stopMindAR = async () => {
-      setAnchorGroupState(null);
-      if (mindarRef.current) {
-        try {
-          await mindarRef.current.stop();
-        } catch {}
-        if (mindarRef.current.renderer) {
-          mindarRef.current.renderer.setAnimationLoop(null);
-        }
-      }
-      mindarRef.current = null;
-      mindarAnchorGroup.current = null;
-      mindarCamera.current = null;
-      mindarRenderer.current = null;
-    };
-
-    if (isAREnabled) {
-      startMindAR();
-    } else {
-      stopMindAR();
-    }
-
-    return () => {
-      if (isAREnabled) {
-        // cleanup on unmount or toggle off
-        (async () => {
-          try {
-            await stopMindAR();
-          } catch {}
-        })();
-      }
-    };
-  }, [isAREnabled]);
-
   const onCreated = useCallback(({ gl }) => {
     try {
       gl.shadowMap.enabled = true;
@@ -301,25 +224,21 @@ const ARViewer = ({
     return (
       <div className={`relative w-full h-full ${className}`}>
         <ErrorBoundary>
-          {/* MindAR renders into this container; it creates its own canvas */}
-          <div ref={containerRef} className="relative w-full h-full" />
-          {/* R3F Canvas overlays to render the model, parented to the MindAR anchor */}
           <Canvas
-            orthographic={false}
-            shadows="soft"
-            dpr={[1, 2]}
-            camera={{ position: [0, 0, 5], fov: 50 }}
-            gl={{ antialias: true, powerPreference: 'high-performance', alpha: true, stencil: false, depth: true }}
+            gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
             onCreated={onCreated}
+            camera={{ position: [0, 0, 0] }} // AR.js will control this
           >
-            <Suspense fallback={null}>
-              <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} anchorGroup={anchorGroupState} />
-            </Suspense>
+            <ARProvider>
+              <Suspense fallback={<Loader />}>
+                <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
+              </Suspense>
+            </ARProvider>
           </Canvas>
         </ErrorBoundary>
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
           <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">
-            Point the camera at the target image.
+            Point camera at the HIRO marker.
           </p>
         </div>
       </div>
