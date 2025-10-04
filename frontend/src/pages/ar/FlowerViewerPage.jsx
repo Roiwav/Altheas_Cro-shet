@@ -40,7 +40,7 @@ const FLOWER_PRICES = {
   peony: { single: 250, bouquet: 2500 },
 };
 
-const ARPage = () => {
+const FlowerViewerPage = () => {
   const { type: initialType } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useUser();
@@ -350,4 +350,4 @@ const ARPage = () => {
   );
 };
 
-export default ARPage;
+export default FlowerViewerPage;
