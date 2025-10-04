@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - FIXED
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
@@ -83,16 +83,17 @@ export default function App() {
           
           {/* User-specific Pages */}
           <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/cart" element={<UserDashboard />} />
           <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/cart" element={<CartPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-    </Route>
+          
+          {/* ✅ FIXED: Separate cart and checkout routes */}
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+        </Route>
 
-    {/* Catch-all for 404 Not Found - This should be the last route */}
-    <Route path="*" element={<NotFoundPage />} />
-  </Routes>
-</>
+        {/* Catch-all for 404 Not Found - This should be the last route */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </>
   );
 }

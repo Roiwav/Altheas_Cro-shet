@@ -1,5 +1,5 @@
+// src/pages/main/ShopPage.jsx (UPDATED - remove duplicate toast)
 /* eslint-disable no-unused-vars */
-// src/pages/main/ShopPage.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaThLarge, FaList, FaShoppingCart, FaSearch } from "react-icons/fa";
@@ -186,26 +186,25 @@ export default function ShopPage() {
     return placeholderImage;
   };
 
-  // Handle Add to Cart (wait for backend sync if user is logged in)
+  // ✅ UPDATED: Handle Add to Cart (CartContext will handle toast messages)
   const handleAddToCart = async (product) => {
     if (!product) return;
     // Create a product object that includes the selected variation
     const productToAdd = {
       ...product,
-      variation: selectedVariation,
+      variation: selectedVariation || "", // Ensure variation is always a string
     };
 
     try {
-      // addToCart already handles saving the cart to the backend
+      // addToCart already handles saving the cart to the backend AND showing toast messages
       await addToCart(productToAdd, modalQuantity);
-      toast.success(`${product.name} added to cart!`, {
-        position: "top-center", // Better for mobile
-        autoClose: 2000,       // Shorter duration
-        hideProgressBar: true,
-      });
+      
+      // ✅ REMOVED: Duplicate toast message (CartContext handles this now)
+      // toast.success(`${product.name} added to cart!`, { ... });
 
       setSelectedProduct(null);
     } catch (err) {
+      // Only show error toast if something goes wrong
       toast.error("Failed to add to cart.");
       console.error(err);
     }
@@ -235,7 +234,7 @@ export default function ShopPage() {
       name: selectedProduct.name,
       price: selectedProduct.price,
       image: getImageSrc(selectedProduct),
-      variation: selectedVariation,
+      variation: selectedVariation || "", // Ensure variation is always a string
       quantity: modalQuantity,
       shippingFee,
       shippingAddress,

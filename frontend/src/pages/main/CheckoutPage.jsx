@@ -1,7 +1,7 @@
-// src/pages/main/CheckoutPage.jsx (NEW - handles payment & order placement)
+// src/pages/main/CheckoutPage.jsx (UPDATED - added proof of payment image uploader)
 import { useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, ShoppingBag, Loader2, MapPin, Package, CreditCard, Shield, Truck, Clock } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2, MapPin, Package, CreditCard, Shield, Truck, Clock, Upload, X, Camera } from "lucide-react";
 import { toast } from "react-toastify";
 
 import gcashIcon from '../../assets/images/icons/gcash.png';
@@ -26,6 +26,10 @@ export default function CheckoutPage() {
 
     const [paymentMethod, setPaymentMethod] = useState('GCash');
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    
+    // ✅ NEW: Payment proof state
+    const [paymentProof, setPaymentProof] = useState(null);
+    const [paymentProofPreview, setPaymentProofPreview] = useState(null);
 
     // Determine items to checkout
     const checkoutItems = singleProduct ? [singleProduct] : cartItems;
@@ -47,6 +51,57 @@ export default function CheckoutPage() {
     const shippingFee = singleProduct ? singleProduct.shippingFee : passedShippingFee;
     const totalCost = subtotal + shippingFee;
 
+    // Handle change address navigation
+    const handleChangeAddress = () => {
+        navigate("/settings", { 
+            state: { 
+                activeTab: "addresses",
+                returnTo: location.pathname,
+                returnState: location.state
+            } 
+        });
+    };
+
+    // ✅ NEW: Handle payment proof image upload
+    const handlePaymentProofUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error("Please upload an image file (PNG, JPG, JPEG)");
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Image size should be less than 5MB");
+            return;
+        }
+
+        setPaymentProof(file);
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setPaymentProofPreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+
+        toast.success("Payment proof uploaded successfully!");
+    };
+
+    // ✅ NEW: Remove payment proof
+    const handleRemovePaymentProof = () => {
+        setPaymentProof(null);
+        setPaymentProofPreview(null);
+        // Reset the file input
+        const fileInput = document.getElementById('payment-proof-upload');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
+
     const handlePlaceOrder = async () => {
         if (!isAuthenticated) {
             toast.info("You need to sign up first before placing an order.");
@@ -61,9 +116,18 @@ export default function CheckoutPage() {
             return;
         }
 
+        // ✅ NEW: Validate payment proof
+        if (!paymentProof) {
+            toast.error("Please upload proof of payment before placing your order.");
+            return;
+        }
+
         setIsPlacingOrder(true);
 
         try {
+            // ✅ NEW: Create FormData to handle file upload
+            const formData = new FormData();
+            
             const orderData = {
                 userId: user?.id,
                 username: user?.username,
@@ -88,13 +152,19 @@ export default function CheckoutPage() {
                 paymentMethod: paymentMethod
             };
 
+            // Add order data to FormData
+            formData.append('orderData', JSON.stringify(orderData));
+            
+            // Add payment proof image
+            formData.append('paymentProof', paymentProof);
+
             const response = await fetch("http://localhost:5001/api/orders", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
+                    // Don't set Content-Type, let browser set it for FormData
                 },
-                body: JSON.stringify(orderData),
+                body: formData,
             });
 
             if (response.ok) {
@@ -130,6 +200,9 @@ export default function CheckoutPage() {
     if (checkoutItems.length === 0) {
         return null; // Will redirect in useEffect
     }
+
+    // ✅ NEW: Check if order can be placed
+    const canPlaceOrder = paymentProof && !isPlacingOrder;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 pb-10 md:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
@@ -174,7 +247,13 @@ export default function CheckoutPage() {
                                     if (!addr) return (
                                         <div className="text-center py-8">
                                             <MapPin className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                                            <p className="text-gray-500 dark:text-gray-400">No shipping address available</p>
+                                            <p className="text-gray-500 dark:text-gray-400 mb-2">No shipping address available</p>
+                                            <button
+                                                onClick={handleChangeAddress}
+                                                className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-medium text-sm underline"
+                                            >
+                                                Add Address
+                                            </button>
                                         </div>
                                     );
                                     const addressParts = [addr.line1, addr.line2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
@@ -187,12 +266,14 @@ export default function CheckoutPage() {
                                                         <Truck className="w-4 h-4" />
                                                         <span>Shipping: {currencyFormatter.format(shippingFee)}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                                                        <Clock className="w-4 h-4" />
-                                                        <span>2-3 days delivery</span>
-                                                    </div>
                                                 </div>
                                             </div>
+                                            <button
+                                                onClick={handleChangeAddress}
+                                                className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-medium text-sm ml-4 shrink-0 underline"
+                                            >
+                                                Change Address
+                                            </button>
                                         </div>
                                     );
                                 })()}
@@ -248,6 +329,85 @@ export default function CheckoutPage() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* ✅ NEW: Payment Proof Upload Card */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 border-b border-red-100 dark:border-red-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                        <Camera className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                                            Proof of Payment <span className="text-red-500">*</span>
+                                        </h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Upload a screenshot of your GCash payment</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-6">
+                                {!paymentProofPreview ? (
+                                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                                        <input
+                                            id="payment-proof-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handlePaymentProofUpload}
+                                            className="hidden"
+                                        />
+                                        <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                                        <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                                            Upload Payment Proof
+                                        </h4>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                            Take a screenshot of your GCash payment confirmation and upload it here
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.getElementById('payment-proof-upload').click()}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                                        >
+                                            <Camera className="w-4 h-4" />
+                                            Choose Image
+                                        </button>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                                            PNG, JPG or JPEG (max 5MB)
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4">
+                                            <div className="flex items-start gap-4">
+                                                <img
+                                                    src={paymentProofPreview}
+                                                    alt="Payment proof"
+                                                    className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                                                />
+                                                <div className="flex-1">
+                                                    <h4 className="font-medium text-gray-900 dark:text-white">
+                                                        Payment Proof Uploaded
+                                                    </h4>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                        {paymentProof?.name}
+                                                    </p>
+                                                    <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                                                        <Shield className="w-3 h-3" />
+                                                        Ready to place order
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={handleRemovePaymentProof}
+                                                    className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                    title="Remove payment proof"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Right Column - Order Summary & Payment */}
@@ -292,7 +452,6 @@ export default function CheckoutPage() {
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-gray-900 dark:text-white">Payment Method</h3>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">Choose your preferred payment</p>
                                         </div>
                                     </div>
                                 </div>
@@ -315,16 +474,25 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
-                            {/* Place Order Button */}
+                            {/* ✅ UPDATED: Place Order Button - only enabled when payment proof is uploaded */}
                             <button
-                                disabled={isPlacingOrder}
+                                disabled={!canPlaceOrder}
                                 onClick={handlePlaceOrder}
-                                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                                className={`w-full py-4 font-bold text-lg rounded-2xl shadow-lg transition-all duration-200 flex items-center justify-center gap-3 ${
+                                    canPlaceOrder
+                                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:shadow-xl text-white'
+                                        : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                                }`}
                             >
                                 {isPlacingOrder ? (
                                     <>
                                         <Loader2 className="w-6 h-6 animate-spin" />
                                         Placing Order...
+                                    </>
+                                ) : !paymentProof ? (
+                                    <>
+                                        <Camera className="w-6 h-6" />
+                                        Upload Payment Proof First
                                     </>
                                 ) : (
                                     <>
@@ -333,6 +501,15 @@ export default function CheckoutPage() {
                                     </>
                                 )}
                             </button>
+
+                            {/* ✅ NEW: Payment proof status message */}
+                            {!paymentProof && (
+                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-center">
+                                    <p className="text-amber-700 dark:text-amber-300 text-sm font-medium">
+                                        Please upload your payment proof to continue
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Security Badge */}
                             <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
