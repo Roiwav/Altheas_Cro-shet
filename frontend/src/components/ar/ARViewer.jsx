@@ -111,6 +111,17 @@ const ARProvider = ({ children }) => {
     const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
     arToolkitSource.init(() => {
       setTimeout(() => arToolkitSource.onResizeElement(), 100);
+      // Append the video element to the body to show the camera feed
+      arToolkitSource.domElement.style.position = 'absolute';
+      arToolkitSource.domElement.style.top = '0px';
+      arToolkitSource.domElement.style.left = '0px';
+      arToolkitSource.domElement.style.zIndex = '-1'; // Put it behind the canvas
+      document.body.appendChild(arToolkitSource.domElement);
+    }, (error) => {
+      // Handle errors, e.g., camera not found or permissions denied
+      console.error("AR.js source initialization error:", error);
+      // You might want to set an error state here to show a message to the user
+      // For example: setError("Could not access the camera. Please check permissions.");
     });
 
     const arToolkitContext = new window.THREEx.ArToolkitContext({
@@ -133,6 +144,9 @@ const ARProvider = ({ children }) => {
 
     return () => {
       gl.setAnimationLoop(null);
+      if (arToolkitSource && arToolkitSource.domElement) {
+        document.body.removeChild(arToolkitSource.domElement);
+      }
       // Cleanup if needed, though AR.js doesn't have a clean stop method
     };
   }, [gl, camera, scene, isARScriptLoaded]); // isARScriptLoaded ensures this runs when script is ready
