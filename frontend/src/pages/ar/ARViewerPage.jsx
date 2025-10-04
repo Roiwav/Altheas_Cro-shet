@@ -77,23 +77,6 @@ function ARViewerPage() {
     navigate(-1); // Go back to previous page
   };
 
-  // Request fullscreen when entering AR mode
-  useEffect(() => {
-    if (!isLoading && !error) {
-      const requestFullscreen = async () => {
-        try {
-          if (document.documentElement.requestFullscreen) {
-            await document.documentElement.requestFullscreen();
-          }
-        } catch (err) {
-          console.warn('Failed to enter fullscreen:', err);
-        }
-      };
-      
-      requestFullscreen();
-    }
-  }, [isLoading, error]);
-
   if (isLoading) {
     return (
       <div className={`fixed inset-0 flex items-center justify-center text-white bg-black ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
 import { NormalPass } from 'postprocessing';
 import FlowerModel from './FlowerModel';
+import { useARScript } from '../../hooks/useARScript';
 
 // Loader
 function Loader() {
@@ -95,6 +96,11 @@ const ARProvider = ({ children }) => {
   const { gl, camera, scene } = useThree();
   const arToolkitContextRef = useRef(null);
 
+  const isARScriptLoaded = useARScript();
+  if (!isARScriptLoaded) {
+    return null; // Or a loading indicator if you prefer
+  }
+
   useEffect(() => {
     // Initialize AR.js
     const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
@@ -124,7 +130,7 @@ const ARProvider = ({ children }) => {
       gl.setAnimationLoop(null);
       // Cleanup if needed, though AR.js doesn't have a clean stop method
     };
-  }, [gl, camera, scene]);
+  }, [gl, camera, scene, isARScriptLoaded]);
 
   return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
 };
@@ -133,6 +139,11 @@ const ARProvider = ({ children }) => {
 const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
   const markerRootRef = useRef();
   const arToolkitContextRef = React.useContext(ARContext);
+  const isARScriptLoaded = useARScript();
+
+  if (!isARScriptLoaded) {
+    return null;
+  }
 
   return (
     <>
@@ -148,7 +159,7 @@ const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
           scale={0.5}
         />
       </group>
-      {arToolkitContextRef && (
+      {arToolkitContextRef && arToolkitContextRef.current && (
         <primitive object={new window.THREEx.ArMarkerControls(arToolkitContextRef.current, markerRootRef.current, { type: 'pattern', patternUrl: '/data/pattern-hiro.patt' })} />
       )}
     </>
@@ -190,6 +201,7 @@ const ARViewer = ({
 }) => {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
+  const isARScriptLoaded = useARScript();
 
   const onCreated = useCallback(({ gl }) => {
     try {
@@ -221,6 +233,16 @@ const ARViewer = ({
   }
 
   if (isAREnabled) {
+    if (!isARScriptLoaded) {
+      return (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
+          <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading AR Library...</h3>
+          <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Please wait a moment.</p>
+        </div>
+      );
+    }
+
     return (
       <div className={`relative w-full h-full ${className}`}>
         <ErrorBoundary>
