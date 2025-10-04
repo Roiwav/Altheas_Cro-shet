@@ -21,6 +21,7 @@ import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import OAuthCallback from './pages/auth/OAuthCallback';
 import CheckoutPage from './pages/main/CheckoutPage';
+import CartPage from './pages/main/CartPage.jsx';
 import UserDashboard from './pages/user/UserDashboard';
 import OrdersPage from './pages/user/OrdersPage';
 import SettingsPage from './pages/user/SettingsPage';
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/cart" element={<UserDashboard />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/settings" element={<SettingsPage />} />
     </Route>
 

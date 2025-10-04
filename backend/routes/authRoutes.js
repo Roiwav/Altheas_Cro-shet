@@ -35,6 +35,8 @@ router.post("/register", async (req, res) => {
         email: user.email,
         username: user.username,
         avatar: user.avatar || "",
+        addresses: user.addresses || [],
+        preferences: user.preferences || { newsletter: true },
         role: user.role
       }
     });
@@ -44,7 +46,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// LOGIN
+// LOGIN - Enhanced to return complete user data including addresses
 router.post("/login", async (req, res) => {
   try {
     const { email, username, identifier, password } = req.body;
@@ -58,9 +60,83 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid email/username or password" });
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.json({ token, user: { id: user._id, fullName: user.fullName, email: user.email, username: user.username, avatar: user.avatar || "", role: user.role } });
+    
+    // Return complete user data including addresses and preferences
+    res.json({ 
+      token, 
+      user: { 
+        id: user._id, 
+        fullName: user.fullName, 
+        email: user.email, 
+        username: user.username, 
+        avatar: user.avatar || "", 
+        addresses: user.addresses || [],
+        preferences: user.preferences || { newsletter: true },
+        role: user.role 
+      } 
+    });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
+// NEW: GET CURRENT USER DATA - This is the missing endpoint!
+router.get("/me", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Return complete user data including addresses and preferences
+    res.json({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      username: user.username,
+      avatar: user.avatar || "",
+      addresses: user.addresses || [],
+      preferences: user.preferences || { newsletter: true },
+      role: user.role
+    });
+  } catch (error) {
+    console.error('Fetch user error:', error);
+    res.status(500).json({ error: 'Failed to fetch user data' });
+  }
+});
+
+// NEW: CHANGE PASSWORD ENDPOINT (if you don't have it elsewhere)
+router.post("/change-password", verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if current password is correct
+    const isCurrentPasswordValid = await user.matchPassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Update password (will be hashed by pre-save middleware)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });

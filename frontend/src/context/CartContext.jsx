@@ -11,7 +11,7 @@ export const useCart = () => useContext(CartContext);
 const GUEST_CART_ID_COOKIE = 'guest-cart-id';
 
 export const CartProvider = ({ children }) => {
-    const { user, isAuthenticated, isLoading } = useUser?.() || { user: null, isAuthenticated: false, isLoading: true };
+    const { user, token, isAuthenticated, isLoading, fetchUser, updateUser } = useUser?.() || { user: null, token: null, isAuthenticated: false, isLoading: true, fetchUser: () => {}, updateUser: () => {} };
 
     console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
@@ -123,7 +123,7 @@ export const CartProvider = ({ children }) => {
 
     // Merge carts on login
     const mergeCartOnLogin = useCallback(async (userId) => {
-        const guestId = Cookies.get(GUEST_CART_ID_COOKIE);
+        const guestId = Cookies.get(GUEST_CART_ID_COOKIE); // Get guestId before potential async operations
         if (!guestId) {
             await loadCart(); // Just load user's cart if it exists
             return;
@@ -132,7 +132,10 @@ export const CartProvider = ({ children }) => {
         try {
             const res = await fetch(`${API_BASE}/cart/merge`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Add authorization token
+                },
                 body: JSON.stringify({ userId, guestId }),
             });
             if (!res.ok) throw new Error('Failed to merge carts');
@@ -140,14 +143,18 @@ export const CartProvider = ({ children }) => {
             setCartItems(mergedCart.items || []);
             setShippingAddress(mergedCart.shippingAddress || null);
             setShippingFee(mergedCart.shippingFee || 0);
-            Cookies.remove(GUEST_CART_ID_COOKIE); // Clean up guest cookie
+            Cookies.remove(GUEST_CART_ID_COOKIE); // Clean up guest cookie            
+            // The /cart/merge endpoint might return a partial user object.
+            // Instead of overwriting the user state, we re-fetch the full user object
+            // to ensure all data (like addresses) is up-to-date and consistent.
+            fetchUser();
             console.log("✅ Carts merged successfully.");
         } catch (error) {
             console.error("❌ Failed to merge carts:", error);
             toast.error("Could not merge your guest cart.");
             await loadCart(); // Fallback to loading user's cart
         }
-    }, [loadCart]);
+    }, [token, loadCart, fetchUser]);
 
     // Add item to cart
     const addToCart = useCallback(async (product, quantity = 1) => {
@@ -199,18 +206,18 @@ export const CartProvider = ({ children }) => {
     // Main effect to handle auth changes and initial load
     useEffect(() => {
         if (isLoading) {
-            console.log("⏳ Waiting for authentication to resolve...");
+            console.log("⏳ CartContext: Waiting for authentication to resolve...");
             return;
         }
 
-        if (isAuthenticated && user?.id) {
+        if (isAuthenticated && user?.id && token) { // Ensure token is also available
             // User is logged in, merge guest cart (if any) and load.
             mergeCartOnLogin(user.id);
         } else {
             // User is a guest or has logged out, load cart using guestId from cookie.
             loadCart();
         }
-    }, [isAuthenticated, user?.id, isLoading, loadCart, mergeCartOnLogin]);
+    }, [isAuthenticated, user?.id, token, isLoading, loadCart, mergeCartOnLogin]);
 
     return (
         <CartContext.Provider
