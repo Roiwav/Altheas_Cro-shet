@@ -102,6 +102,11 @@ const ARProvider = ({ children }) => {
   }
 
   useEffect(() => {
+    // Guard against running before the script is loaded and executed
+    if (!isARScriptLoaded || !window.THREEx) {
+      return;
+    }
+
     // Initialize AR.js
     const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
     arToolkitSource.init(() => {
@@ -130,7 +135,7 @@ const ARProvider = ({ children }) => {
       gl.setAnimationLoop(null);
       // Cleanup if needed, though AR.js doesn't have a clean stop method
     };
-  }, [gl, camera, scene, isARScriptLoaded]);
+  }, [gl, camera, scene, isARScriptLoaded]); // isARScriptLoaded ensures this runs when script is ready
 
   return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
 };
@@ -159,7 +164,7 @@ const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
           scale={0.5}
         />
       </group>
-      {arToolkitContextRef && arToolkitContextRef.current && (
+      {arToolkitContextRef && arToolkitContextRef.current && window.THREEx && (
         <primitive object={new window.THREEx.ArMarkerControls(arToolkitContextRef.current, markerRootRef.current, { type: 'pattern', patternUrl: '/data/pattern-hiro.patt' })} />
       )}
     </>
