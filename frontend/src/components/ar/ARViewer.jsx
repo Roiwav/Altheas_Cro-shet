@@ -96,7 +96,7 @@ const ARProvider = ({ children }) => {
   const { gl, camera, scene } = useThree();
   const arToolkitContextRef = useRef(null);
 
-  const isARScriptLoaded = useARScript();
+  const isARScriptLoaded = useARScript(); // This hook returns true when scripts are loaded
   if (!isARScriptLoaded) {
     return null; // Or a loading indicator if you prefer
   }
@@ -149,7 +149,7 @@ const ARProvider = ({ children }) => {
       }
       // Cleanup if needed, though AR.js doesn't have a clean stop method
     };
-  }, [gl, camera, scene, isARScriptLoaded]); // isARScriptLoaded ensures this runs when script is ready
+  }, [isARScriptLoaded, gl, camera, scene]); // Added isARScriptLoaded to dependencies
 
   return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
 };
