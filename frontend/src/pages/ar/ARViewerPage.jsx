@@ -40,24 +40,6 @@ function ARViewerPage() {
           throw new Error('AR not supported on this device');
         }
         
-        // Check for required features
-        const optionalFeatures = ['dom-overlay'];
-        const requiredFeatures = ['hit-test'];
-        
-        // Test if we can request a session with these features
-        try {
-          // This is just a test, we'll create a real session later
-          const testSession = await navigator.xr.requestSession('immersive-ar', {
-            requiredFeatures,
-            optionalFeatures,
-            domOverlay: { root: document.body }
-          });
-          await testSession.end();
-        } catch (err) {
-          console.warn('AR feature test failed, falling back to basic AR:', err);
-          // Continue with basic AR if some features aren't supported
-        }
-        
         setIsLoading(false);
       } catch (err) {
         console.error('AR initialization error:', err);
