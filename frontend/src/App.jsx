@@ -7,7 +7,7 @@ import AdminRoute from './components/auth/AdminRoute';
 import AdminPage from './pages/admin/AdminPage';
 import HomePage from './pages/main/HomePage';
 import { useEffect, useState } from 'react';
-import ARPage from './pages/ar/ARPage';
+import FlowerViewerPage from './pages/ar/FlowerViewerPage';
 import ARViewerPage from './pages/ar/ARViewerPage';
 import AboutUs from './pages/main/AboutUs';
 import Contact from './pages/main/Contact';
@@ -78,7 +78,7 @@ export default function App() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/ar" element={<ARPage />} />
+          <Route path="/ar" element={<FlowerViewerPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           
           {/* User-specific Pages */}
