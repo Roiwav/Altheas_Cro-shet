@@ -120,7 +120,7 @@ export default function Navbar({
             {/* Cart */}
             {!isAuthPage && (
               <Link
-                to="/checkout"
+                to="/cart"
                 className="relative inline-flex p-2 text-gray-700 rounded-full hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
                 aria-label="Shopping Cart"
               >

@@ -1,4 +1,4 @@
-// src/context/CartContext.jsx
+// src/context/CartContext.jsx (UPDATED - fixed duplicate prevention)
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
@@ -11,7 +11,7 @@ export const useCart = () => useContext(CartContext);
 const GUEST_CART_ID_COOKIE = 'guest-cart-id';
 
 export const CartProvider = ({ children }) => {
-    const { user, isAuthenticated, isLoading } = useUser?.() || { user: null, isAuthenticated: false, isLoading: true };
+    const { user, token, isAuthenticated, isLoading, fetchUser, updateUser } = useUser?.() || { user: null, token: null, isAuthenticated: false, isLoading: true, fetchUser: () => {}, updateUser: () => {} };
 
     console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
@@ -22,10 +22,13 @@ export const CartProvider = ({ children }) => {
 
     const API_BASE = "http://localhost:5001/api/v1";
 
-    // Use a composite key of product ID and variation to uniquely identify items.
+    // ✅ FIXED: Improved getId function to handle variations consistently
     const getId = useCallback((product) => {
         const baseId = product.productId || product._id || product.id;
-        return product.variation ? `${baseId}-${product.variation}` : baseId;
+        const variation = product.variation || "";
+        
+        // Always include variation in the ID, even if empty
+        return `${baseId}${variation ? `-${variation}` : ""}`;
     }, []);
 
     // Generic function to save the cart to the backend
@@ -123,7 +126,7 @@ export const CartProvider = ({ children }) => {
 
     // Merge carts on login
     const mergeCartOnLogin = useCallback(async (userId) => {
-        const guestId = Cookies.get(GUEST_CART_ID_COOKIE);
+        const guestId = Cookies.get(GUEST_CART_ID_COOKIE); // Get guestId before potential async operations
         if (!guestId) {
             await loadCart(); // Just load user's cart if it exists
             return;
@@ -132,7 +135,10 @@ export const CartProvider = ({ children }) => {
         try {
             const res = await fetch(`${API_BASE}/cart/merge`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Add authorization token
+                },
                 body: JSON.stringify({ userId, guestId }),
             });
             if (!res.ok) throw new Error('Failed to merge carts');
@@ -140,36 +146,66 @@ export const CartProvider = ({ children }) => {
             setCartItems(mergedCart.items || []);
             setShippingAddress(mergedCart.shippingAddress || null);
             setShippingFee(mergedCart.shippingFee || 0);
-            Cookies.remove(GUEST_CART_ID_COOKIE); // Clean up guest cookie
+            Cookies.remove(GUEST_CART_ID_COOKIE); // Clean up guest cookie            
+            // The /cart/merge endpoint might return a partial user object.
+            // Instead of overwriting the user state, we re-fetch the full user object
+            // to ensure all data (like addresses) is up-to-date and consistent.
+            fetchUser();
             console.log("✅ Carts merged successfully.");
         } catch (error) {
             console.error("❌ Failed to merge carts:", error);
             toast.error("Could not merge your guest cart.");
             await loadCart(); // Fallback to loading user's cart
         }
-    }, [loadCart]);
+    }, [token, loadCart, fetchUser]);
 
-    // Add item to cart
+    // ✅ ENHANCED: Add item to cart with improved duplicate detection and logging
     const addToCart = useCallback(async (product, quantity = 1) => {
-        const id = getId(product);
-        const existingItem = cartItems.find(item => getId(item) === id);
+        console.log("🛒 Adding to cart:", product, "quantity:", quantity);
+        
+        const productToAdd = {
+            productId: product._id || String(product.id), // Use _id from DB or id from local data
+            name: product.name,
+            price: product.price,
+            image: product.image || (product.images && product.images[0]),
+            variation: product.variation || "", // Ensure variation is always a string
+            quantity: quantity,
+        };
+
+        const id = getId(productToAdd);
+        console.log("🔑 Generated ID:", id);
+        console.log("📦 Current cart items:", cartItems);
+
+        const existingItem = cartItems.find(item => {
+            const itemId = getId(item);
+            console.log("🔍 Comparing:", itemId, "vs", id);
+            return itemId === id;
+        });
 
         let newCartItems;
         if (existingItem) {
+            console.log("✅ Found existing item, updating quantity:", existingItem.quantity + quantity);
             newCartItems = cartItems.map(item =>
                 getId(item) === id ? { ...item, quantity: item.quantity + quantity } : item
             );
+            // Show appropriate toast message
+            toast.success(`Updated ${product.name} quantity to ${existingItem.quantity + quantity}!`, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: true,
+            });
         } else {
-            const newItem = {
-                productId: product._id || String(product.id), // Use _id from DB or id from local data
-                name: product.name,
-                price: product.price,
-                image: product.image || (product.images && product.images[0]),
-                variation: product.variation,
-                quantity: quantity,
-            };
-            newCartItems = [...cartItems, newItem];
+            console.log("➕ Adding new item to cart");
+            newCartItems = [...cartItems, productToAdd];
+            // Show appropriate toast message  
+            toast.success(`${product.name} added to cart!`, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: true,
+            });
         }
+
+        console.log("💾 Saving new cart:", newCartItems);
         await saveCart(newCartItems, shippingAddress, shippingFee);
     }, [cartItems, getId, saveCart, shippingAddress, shippingFee]);
 
@@ -199,18 +235,18 @@ export const CartProvider = ({ children }) => {
     // Main effect to handle auth changes and initial load
     useEffect(() => {
         if (isLoading) {
-            console.log("⏳ Waiting for authentication to resolve...");
+            console.log("⏳ CartContext: Waiting for authentication to resolve...");
             return;
         }
 
-        if (isAuthenticated && user?.id) {
+        if (isAuthenticated && user?.id && token) { // Ensure token is also available
             // User is logged in, merge guest cart (if any) and load.
             mergeCartOnLogin(user.id);
         } else {
             // User is a guest or has logged out, load cart using guestId from cookie.
             loadCart();
         }
-    }, [isAuthenticated, user?.id, isLoading, loadCart, mergeCartOnLogin]);
+    }, [isAuthenticated, user?.id, token, isLoading, loadCart, mergeCartOnLogin]);
 
     return (
         <CartContext.Provider

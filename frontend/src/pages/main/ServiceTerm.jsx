@@ -56,7 +56,7 @@ export default function ServiceTerms() {
         <section className="mb-6">
           <h2 className="text-xl font-semibold mb-2">5. Pricing &amp; Payment</h2>
           <p>
-            Prices are in PHP and include taxes unless stated. We accept COD and GCash via
+            Prices are in PHP and include taxes unless stated. We accept GCash via
             a secure third-party gateway.
           </p>
         </section>

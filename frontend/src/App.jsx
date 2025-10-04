@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - FIXED
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
@@ -21,6 +21,7 @@ import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import OAuthCallback from './pages/auth/OAuthCallback';
 import CheckoutPage from './pages/main/CheckoutPage';
+import CartPage from './pages/main/CartPage.jsx';
 import UserDashboard from './pages/user/UserDashboard';
 import OrdersPage from './pages/user/OrdersPage';
 import SettingsPage from './pages/user/SettingsPage';
@@ -28,6 +29,7 @@ import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import NotFoundPage from './pages/main/NotFoundPage.jsx';
+import ResetPassword from './pages/auth/ResetPassword.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,7 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
         <Route path="/data-policy" element={<DataPolicy />} />
         <Route path="/service-terms" element={<ServiceTerm />} />
 
@@ -80,15 +83,17 @@ export default function App() {
           
           {/* User-specific Pages */}
           <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/cart" element={<UserDashboard />} />
           <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-    </Route>
+          
+          {/* ✅ FIXED: Separate cart and checkout routes */}
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+        </Route>
 
-    {/* Catch-all for 404 Not Found - This should be the last route */}
-    <Route path="*" element={<NotFoundPage />} />
-  </Routes>
-</>
+        {/* Catch-all for 404 Not Found - This should be the last route */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </>
   );
 }
