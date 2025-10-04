@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
 import { NormalPass } from 'postprocessing';
 import FlowerModel from './FlowerModel';
-import { useARScript } from '../../hooks/useARScript';
+import { useARScript } from '@/hooks/useARScript';
 
 // Loader
 function Loader() {
