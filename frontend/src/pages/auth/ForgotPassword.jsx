@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
 import axios from 'axios';
+import emailjs from 'emailjs-com';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
@@ -22,20 +23,51 @@ const ForgotPassword = () => {
     setError('');
     setIsLoading(true);
 
-    try {
-      const { data } = await axios.post(`${API_URL}/forgot-password`, {
-        email,
-      });
+    // Validate email
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      setIsLoading(false);
+      return;
+    }
 
-      if (data.success) {
-        setMessage(data.message || 'A password reset link has been sent to your email.');
-        setEmail('');
-      } else {
-        throw new Error(data.message || 'Something went wrong. Please try again.');
+    try {
+      // Step 1: Request backend to generate reset token
+      const { data } = await axios.post(`${API_URL}/forgot-password`, { email });
+      console.log("Forgot Password API Response:", data);
+
+      if (!data.success || !data.token) {
+        throw new Error(data.message || "Failed to generate reset link.");
       }
+
+      // Step 2: Prepare EmailJS template parameters
+      const templateParams = {
+        to_email: email.trim(),         // FIX: must match EmailJS recipient variable
+        user_name: data.name || "User",
+        reset_link: `${window.location.origin}/reset-password?token=${data.token}`,
+      };
+
+      console.log("EmailJS Template Params:", templateParams); // Debug
+
+      // Step 3: Send email via EmailJS
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_USER_ID
+      );
+
+      setMessage(data.message || "A password reset link has been sent to your email.");
+      setEmail('');
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Failed to send reset link. Please try again.';
-      setError(message);
+      console.error("Forgot Password Error:", err);
+
+      const msg =
+        err.response?.data?.message ||  // Axios backend error
+        err.text ||                     // EmailJS error
+        err.message ||                  // JS error
+        'Failed to send reset link. Please try again.';
+
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -71,6 +103,7 @@ const ForgotPassword = () => {
               <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           )}
+
           {message && (
             <div className="bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 p-4 mb-6 rounded-lg">
               <p className="text-sm text-green-700 dark:text-green-300">{message}</p>
@@ -104,7 +137,9 @@ const ForgotPassword = () => {
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isLoading ? (
-                <div className="flex items-center"><Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" /> Sending...</div>
+                <div className="flex items-center">
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" /> Sending...
+                </div>
               ) : (
                 <span>Send Reset Link</span>
               )}
@@ -113,7 +148,10 @@ const ForgotPassword = () => {
 
           <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
             Remembered your password?{' '}
-            <Link to="/login" className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300">
+            <Link
+              to="/login"
+              className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+            >
               Sign in
             </Link>
           </div>

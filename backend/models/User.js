@@ -1,4 +1,3 @@
-// src/models/User.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
@@ -17,7 +16,6 @@ const PreferencesSchema = new mongoose.Schema({
   newsletter: { type: Boolean, default: true }
 }, { _id: false });
 
-
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
@@ -28,6 +26,10 @@ const userSchema = new mongoose.Schema(
     addresses: [AddressSchema],
     preferences: PreferencesSchema,
     lastUsernameChangeAt: { type: Date },
+    resetToken: { type: String },
+    tokenExpiry: { type: Date },
+
+    role: { type: String, default: "customer" }
   },
   { timestamps: true }
 );
