@@ -40,7 +40,7 @@ const FAQPage = () => {
       questions: [
         {
           question: 'What payment methods do you accept?',
-          answer: 'As of now, we only accept payments through GCash and Cash on Delivery (COD). All transactions are secure and encrypted.'
+          answer: 'As of now, we only accept payments through GCash. All transactions are secure and encrypted.'
         },
         {
           question: 'Do you offer payment plans?',
