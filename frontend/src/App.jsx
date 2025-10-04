@@ -28,6 +28,7 @@ import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import NotFoundPage from './pages/main/NotFoundPage.jsx';
+import ResetPassword from './pages/auth/ResetPassword.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
         <Route path="/data-policy" element={<DataPolicy />} />
         <Route path="/service-terms" element={<ServiceTerm />} />
 
