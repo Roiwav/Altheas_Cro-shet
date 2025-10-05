@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import '@google/model-viewer';
-import { Cube } from 'lucide-react';
+import { Box } from 'lucide-react';
 
 export default function ARViewer({ 
   flowerType = 'rose', 
@@ -132,7 +132,7 @@ export default function ARViewer({
           className="absolute z-10 flex items-center gap-2 px-6 py-3 text-base font-semibold text-white transition-all duration-300 ease-in-out -translate-x-1/2 border-none rounded-full shadow-lg bottom-6 left-1/2 hover:scale-105 hover:shadow-xl active:scale-100"
           style={{ backgroundColor: color }}
         >
-          <Cube className="w-5 h-5" />
+          <Box className="w-5 h-5" />
           <span>View in your space</span>
         </button>
       </model-viewer>
