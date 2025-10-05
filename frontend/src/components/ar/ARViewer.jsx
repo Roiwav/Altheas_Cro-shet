@@ -131,7 +131,7 @@ export default function ARViewer({
           className="absolute z-10 px-6 py-3 text-base font-bold text-white transition-transform -translate-x-1/2 bg-blue-600 border-none rounded-full shadow-lg bottom-5 left-1/2 hover:scale-105"
           style={{ backgroundColor: color }}
         >
-          View in Your Space
+          Enter AR Experience
         </button>
       </model-viewer>
     </div>
