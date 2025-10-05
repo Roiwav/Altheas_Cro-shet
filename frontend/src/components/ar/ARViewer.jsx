@@ -91,47 +91,44 @@ Scene3D.displayName = 'Scene3D';
 // Create a context to share the AR.js context
 const ARContext = React.createContext();
 
-// AR.js integration component
-const ARProvider = ({ children }) => {
+const ARProvider = ({ children, onCameraStreamReady }) => {
   const { gl, camera, scene } = useThree();
   const arToolkitContextRef = useRef(null);
-
-  const isARScriptLoaded = useARScript(); // This hook returns true when scripts are loaded
-  if (!isARScriptLoaded) {
-    return null; // Or a loading indicator if you prefer
-  }
+  const isARScriptLoaded = useARScript();
 
   useEffect(() => {
-    // Guard against running before the script is loaded and executed
-    if (!isARScriptLoaded || !window.THREEx) {
+    if (!isARScriptLoaded || !window.THREEx || arToolkitContextRef.current) {
       return;
     }
-
-    // Initialize AR.js
-    const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
-    arToolkitSource.init(() => {
-      setTimeout(() => arToolkitSource.onResizeElement(), 100);
-      // Append the video element to the body to show the camera feed
-      arToolkitSource.domElement.style.position = 'absolute';
-      arToolkitSource.domElement.style.top = '0px';
-      arToolkitSource.domElement.style.left = '0px';
-      arToolkitSource.domElement.style.zIndex = '-1'; // Put it behind the canvas
-      document.body.appendChild(arToolkitSource.domElement);
-    }, (error) => {
-      // Handle errors, e.g., camera not found or permissions denied
-      console.error("AR.js source initialization error:", error);
-      // You might want to set an error state here to show a message to the user
-      // For example: setError("Could not access the camera. Please check permissions.");
-    });
 
     const arToolkitContext = new window.THREEx.ArToolkitContext({
       cameraParametersUrl: '/data/camera_para.dat',
       detectionMode: 'mono',
     });
+
     arToolkitContext.init(() => {
       camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
     });
+
     arToolkitContextRef.current = arToolkitContext;
+
+    const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
+
+    arToolkitSource.init(() => {
+      arToolkitSource.domElement.addEventListener('loadedmetadata', () => {
+        onCameraStreamReady(true);
+      });
+
+      setTimeout(() => arToolkitSource.onResizeElement(), 100);
+      arToolkitSource.domElement.style.position = 'absolute';
+      arToolkitSource.domElement.style.top = '0px';
+      arToolkitSource.domElement.style.left = '0px';
+      arToolkitSource.domElement.style.zIndex = '-1';
+      document.body.appendChild(arToolkitSource.domElement);
+    }, (error) => {
+      console.error("AR.js source initialization error:", error);
+      onCameraStreamReady(false, "Could not access the camera. Please check permissions and ensure you are on a secure (HTTPS) connection.");
+    });
 
     // Update AR.js on render
     const onRender = () => {
@@ -139,7 +136,6 @@ const ARProvider = ({ children }) => {
       arToolkitContext.update(arToolkitSource.domElement);
       scene.visible = camera.visible;
     };
-
     gl.setAnimationLoop(onRender);
 
     return () => {
@@ -148,8 +144,9 @@ const ARProvider = ({ children }) => {
         document.body.removeChild(arToolkitSource.domElement);
       }
       // Cleanup if needed, though AR.js doesn't have a clean stop method
+      arToolkitContextRef.current = null;
     };
-  }, [isARScriptLoaded, gl, camera, scene]); // Added isARScriptLoaded to dependencies
+  }, [isARScriptLoaded, gl, camera, scene, onCameraStreamReady]);
 
   return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
 };
@@ -220,6 +217,8 @@ const ARViewer = ({
 }) => {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
+  const [arStarted, setArStarted] = useState(false);
+  const [cameraStreamReady, setCameraStreamReady] = useState(false);
   const isARScriptLoaded = useARScript();
 
   const onCreated = useCallback(({ gl }) => {
@@ -232,6 +231,15 @@ const ARViewer = ({
       console.error('WebGL initialization error:', err);
       setError('Failed to initialize WebGL. Please try refreshing the page.');
     }
+  }, []);
+
+  const handleStartAR = () => {
+    setArStarted(true);
+  };
+
+  const handleCameraStreamReady = useCallback((success, message) => {
+    if (success) setCameraStreamReady(true);
+    else setError(message);
   }, []);
 
   if (error) {
