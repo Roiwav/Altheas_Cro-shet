@@ -114,7 +114,7 @@ const ARProvider = React.forwardRef(({ children }, ref) => {
 
       arToolkitContextRef.current = arToolkitContext;
 
-      const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
+     const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
 
       arToolkitSource.init(() => {
         arToolkitSource.domElement.addEventListener('loadedmetadata', () => {
@@ -222,13 +222,13 @@ const ARViewer = ({
   const [error, setError] = useState(null);
   const [arStarted, setArStarted] = useState(false);
   const [cameraStreamReady, setCameraStreamReady] = useState(false);
-  const arProviderRef = useRef();
+  const arProviderRef = useRef(null);
   const isARScriptLoaded = useARScript();
 
   const onCreated = useCallback(({ gl }) => {
     try {
       gl.shadowMap.enabled = true;
-      gl.shadowMap.type = THREE.PCFSoftShadowMap;
+      // gl.shadowMap.type = THREE.PCFSoftShadowMap; // PCFSoftShadowMap is default
       gl.outputColorSpace = THREE.SRGBColorSpace;
       setIsReady(true);
     } catch (err) {
@@ -237,7 +237,7 @@ const ARViewer = ({
     }
   }, []);
 
-  const handleStartAR = async () => {
+  const handleStartAR = () => {
     if (arProviderRef.current) {
       arProviderRef.current.initAR(handleCameraStreamReady);
       setArStarted(true);
@@ -252,7 +252,7 @@ const ARViewer = ({
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-full p-4 bg-gray-100 rounded-lg dark:bg-gray-800">
-        <div className="text-center">
+        <div className="text-center text-red-500">
           <div className="mb-2 text-lg font-medium text-red-500">WebGL Error</div>
           <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
           <button
@@ -267,36 +267,45 @@ const ARViewer = ({
   }
 
   if (isAREnabled) {
-    if (!isARScriptLoaded) {
+    if (!arStarted) {
       return (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
-          <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
-          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading AR Library...</h3>
-          <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Please wait a moment.</p>
+        <div className={`relative w-full h-full ${className}`}>
+          {/* Render canvas hidden to get GL context for ARProvider */}
+          <div style={{ visibility: 'hidden', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+            <Canvas gl={{ alpha: true }} camera={{ position: [0, 0, 0] }}>
+              <ARProvider ref={arProviderRef} />
+            </Canvas>
+          </div>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
+            <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Ready for Augmented Reality</h3>
+            <p className="max-w-md mb-6 text-gray-600 dark:text-gray-300">
+              Click the button below to start the AR experience. You will be asked for camera permission.
+            </p>
+            <button onClick={handleStartAR} disabled={!isARScriptLoaded} className="px-6 py-3 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600 disabled:bg-gray-400">
+              {isARScriptLoaded ? 'Start AR' : 'Loading AR...'}
+            </button>
+          </div>
         </div>
       );
     }
 
     return (
       <div className={`relative w-full h-full ${className}`}>
-        <ErrorBoundary>
-          <Canvas
-            gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
-            onCreated={onCreated}
-            camera={{ position: [0, 0, 0] }} // AR.js will control this
-          >
-            <ARProvider>
-              <Suspense fallback={<Loader />}>
-                <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
-              </Suspense>
-            </ARProvider>
-          </Canvas>
-        </ErrorBoundary>
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-          <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">
-            Point camera at the HIRO marker.
-          </p>
-        </div>
+        <Canvas
+          gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
+          camera={{ position: [0, 0, 0] }} // AR.js will control this
+        >
+          <ARProvider ref={arProviderRef}>
+            <Suspense fallback={<Loader />}>
+              <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
+            </Suspense>
+          </ARProvider>
+        </Canvas>
+        {cameraStreamReady && (
+          <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+            <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">Point camera at the HIRO marker.</p>
+          </div>
+        )}
       </div>
     );
   }
