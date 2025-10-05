@@ -252,7 +252,7 @@ const ARViewer = ({
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-full p-4 bg-gray-100 rounded-lg dark:bg-gray-800">
-        <div className="text-center text-red-500">
+        <div className="text-center">
           <div className="mb-2 text-lg font-medium text-red-500">WebGL Error</div>
           <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
           <button
@@ -266,75 +266,58 @@ const ARViewer = ({
     );
   }
 
-  if (isAREnabled) {
-    return (
-      <div className={`relative w-full h-full ${className}`}>
-        <Canvas
-          gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
-          camera={{ position: [0, 0, 0] }} // AR.js will control this
-        >
-          <ARProvider ref={arProviderRef} />
-          {arStarted && (
-            <Suspense fallback={null}>
-              <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
-            </Suspense>
-          )}
-        </Canvas>
-
-        {!arStarted && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
-            <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Ready for Augmented Reality</h3>
-            <p className="max-w-md mb-6 text-gray-600 dark:text-gray-300">
-              Click the button below to start the AR experience. You will be asked for camera permission.
-            </p>
-            <button onClick={handleStartAR} disabled={!isARScriptLoaded} className="px-6 py-3 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600 disabled:bg-gray-400">
-              {isARScriptLoaded ? 'Start AR' : 'Loading AR...'}
-            </button>
-          </div>
-        )}
-
-        {arStarted && !cameraStreamReady && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
-            <Loader />
-          </div>
-        )}
-
-        {arStarted && cameraStreamReady && (
-          <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-            <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">Point camera at the HIRO marker.</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div
       className={`relative w-full ${
         isAREnabled ? 'h-full' : 'h-auto aspect-square max-h-[70vh] rounded-lg overflow-hidden shadow-lg'
       } ${className}`}
     >
-      <ErrorBoundary>
-        <Canvas
-          shadows="soft"
-          dpr={[1, 2]}
-          camera={{ position: [0, 0, 5], fov: 50 }}
-          gl={{ antialias: true, powerPreference: 'high-performance', alpha: true, stencil: false, depth: true }}
-          onCreated={onCreated}
-          frameloop="demand"
-        >
-          <Suspense fallback={<Loader />}>
+      <Canvas
+        shadows={!isAREnabled ? "soft" : false}
+        dpr={[1, 2]}
+        gl={{ antialias: true, powerPreference: 'high-performance', alpha: true, stencil: false, depth: true }}
+        onCreated={onCreated}
+        camera={isAREnabled ? { position: [0, 0, 0] } : { position: [0, 0, 5], fov: 50 }}
+        frameloop={isAREnabled ? 'always' : 'demand'}
+        key={isAREnabled ? 'ar' : '3d'} // Force canvas recreation on mode change
+      >
+        <Suspense fallback={<Loader />}>
+          {isAREnabled ? (
+            <>
+              <ARProvider ref={arProviderRef} />
+              {arStarted && <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />}
+            </>
+          ) : (
             <Scene3D flowerType={flowerType} color={color} arrangement={arrangement} />
-            <ModelViewer autoRotate={!isAREnabled} />
-          </Suspense>
-        </Canvas>
-      </ErrorBoundary>
-      {!isReady && (
+          )}
+        </Suspense>
+        {!isAREnabled && <ModelViewer autoRotate />}
+      </Canvas>
+
+      {isAREnabled && !arStarted && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
-          <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
-          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading 3D Viewer</h3>
-          <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Preparing your flower model. This may take a moment...</p>
+          <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Ready for Augmented Reality</h3>
+          <p className="max-w-md mb-6 text-gray-600 dark:text-gray-300">
+            Click the button below to start the AR experience. You will be asked for camera permission.
+          </p>
+          <button onClick={handleStartAR} disabled={!isARScriptLoaded} className="px-6 py-3 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600 disabled:bg-gray-400">
+            {isARScriptLoaded ? 'Start AR' : 'Loading AR...'}
+          </button>
         </div>
+      )}
+
+      {isAREnabled && arStarted && cameraStreamReady && (
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+          <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">Point camera at the HIRO marker.</p>
+        </div>
+      )}
+
+      {!isReady && !isAREnabled && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
+            <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+            <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading 3D Viewer</h3>
+            <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Preparing your flower model. This may take a moment...</p>
+          </div>
       )}
     </div>
   );
