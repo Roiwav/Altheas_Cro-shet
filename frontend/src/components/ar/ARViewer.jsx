@@ -15,14 +15,13 @@ export default function ARViewer({
     const modelViewer = modelRef.current;
     
     if (modelViewer) {
-      // Listen for model load events
       const handleLoad = () => {
         setIsLoading(false);
         console.log('3D model loaded successfully');
       };
 
       const handleError = (event) => {
-        setError('Failed to load 3D model');
+        setError('Failed to load 3D model. Please check if the file exists.');
         setIsLoading(false);
         console.error('Model loading error:', event);
       };
@@ -37,16 +36,14 @@ export default function ARViewer({
     }
   }, []);
 
-  // Generate model path based on flower configuration
+  // IMPORTANT: Place GLB files in /public folder
+  // Files in /public are served at root URL
   const getModelPath = () => {
     if (modelSrc) return modelSrc;
-    // Adjust path to your actual model files
+    
+    // If files are in /public/models/ directory
+    // Access them without '/public' prefix
     return `/models/${flowerType}_${arrangement}.glb`;
-  };
-
-  // Generate iOS USDZ path (optional, for iOS AR Quick Look)
-  const getIOSModelPath = () => {
-    return `/models/${flowerType}_${arrangement}.usdz`;
   };
 
   return (
@@ -77,9 +74,13 @@ export default function ARViewer({
           color: '#fff',
           background: 'rgba(255,0,0,0.8)',
           padding: '15px',
-          borderRadius: '8px'
+          borderRadius: '8px',
+          maxWidth: '80%'
         }}>
           {error}
+          <div style={{ fontSize: '12px', marginTop: '8px' }}>
+            Looking for: {getModelPath()}
+          </div>
         </div>
       )}
 
@@ -103,7 +104,6 @@ export default function ARViewer({
           '--progress-bar-color': color
         }}
       >
-        {/* Custom AR button slot */}
         <button 
           slot="ar-button"
           style={{
