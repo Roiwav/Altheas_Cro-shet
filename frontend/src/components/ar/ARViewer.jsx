@@ -91,65 +91,68 @@ Scene3D.displayName = 'Scene3D';
 // Create a context to share the AR.js context
 const ARContext = React.createContext();
 
-const ARProvider = ({ children, onCameraStreamReady }) => {
+const ARProvider = React.forwardRef(({ children }, ref) => {
   const { gl, camera, scene } = useThree();
   const arToolkitContextRef = useRef(null);
   const isARScriptLoaded = useARScript();
 
-  useEffect(() => {
-    if (!isARScriptLoaded || !window.THREEx || arToolkitContextRef.current) {
-      return;
-    }
+  React.useImperativeHandle(ref, () => ({
+    initAR: (onCameraStreamReady) => {
+      if (!isARScriptLoaded || !window.THREEx || arToolkitContextRef.current) {
+        console.warn('AR.js not ready or already initialized.');
+        return;
+      }
 
-    const arToolkitContext = new window.THREEx.ArToolkitContext({
-      cameraParametersUrl: '/data/camera_para.dat',
-      detectionMode: 'mono',
-    });
-
-    arToolkitContext.init(() => {
-      camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-    });
-
-    arToolkitContextRef.current = arToolkitContext;
-
-    const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
-
-    arToolkitSource.init(() => {
-      arToolkitSource.domElement.addEventListener('loadedmetadata', () => {
-        onCameraStreamReady(true);
+      const arToolkitContext = new window.THREEx.ArToolkitContext({
+        cameraParametersUrl: '/data/camera_para.dat',
+        detectionMode: 'mono',
       });
 
-      setTimeout(() => arToolkitSource.onResizeElement(), 100);
-      arToolkitSource.domElement.style.position = 'absolute';
-      arToolkitSource.domElement.style.top = '0px';
-      arToolkitSource.domElement.style.left = '0px';
-      arToolkitSource.domElement.style.zIndex = '-1';
-      document.body.appendChild(arToolkitSource.domElement);
-    }, (error) => {
-      console.error("AR.js source initialization error:", error);
-      onCameraStreamReady(false, "Could not access the camera. Please check permissions and ensure you are on a secure (HTTPS) connection.");
-    });
+      arToolkitContext.init(() => {
+        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+      });
 
-    // Update AR.js on render
-    const onRender = () => {
-      if (arToolkitSource.ready === false) return;
-      arToolkitContext.update(arToolkitSource.domElement);
-      scene.visible = camera.visible;
-    };
-    gl.setAnimationLoop(onRender);
+      arToolkitContextRef.current = arToolkitContext;
 
-    return () => {
-      gl.setAnimationLoop(null);
-      if (arToolkitSource && arToolkitSource.domElement) {
-        document.body.removeChild(arToolkitSource.domElement);
-      }
-      // Cleanup if needed, though AR.js doesn't have a clean stop method
-      arToolkitContextRef.current = null;
-    };
-  }, [isARScriptLoaded, gl, camera, scene, onCameraStreamReady]);
+      const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
+
+      arToolkitSource.init(() => {
+        arToolkitSource.domElement.addEventListener('loadedmetadata', () => {
+          onCameraStreamReady(true);
+        });
+
+        setTimeout(() => arToolkitSource.onResizeElement(), 100);
+        arToolkitSource.domElement.style.position = 'absolute';
+        arToolkitSource.domElement.style.top = '0px';
+        arToolkitSource.domElement.style.left = '0px';
+        arToolkitSource.domElement.style.zIndex = '-1';
+        document.body.appendChild(arToolkitSource.domElement);
+
+        const onRender = () => {
+          if (arToolkitSource.ready === false) return;
+          arToolkitContext.update(arToolkitSource.domElement);
+          scene.visible = camera.visible;
+        };
+        gl.setAnimationLoop(onRender);
+
+      }, (error) => {
+        console.error("AR.js source initialization error:", error);
+        onCameraStreamReady(false, "Could not access the camera. Please check permissions and ensure you are on a secure (HTTPS) connection.");
+      });
+
+      return () => { // Cleanup function
+        gl.setAnimationLoop(null);
+        if (arToolkitSource && arToolkitSource.domElement && arToolkitSource.domElement.parentElement) {
+          document.body.removeChild(arToolkitSource.domElement);
+        }
+        arToolkitContextRef.current = null;
+      };
+    }
+  }));
 
   return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
-};
+});
+ARProvider.displayName = 'ARProvider';
 
 // AR payload rendered by R3F
 const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
@@ -219,6 +222,7 @@ const ARViewer = ({
   const [error, setError] = useState(null);
   const [arStarted, setArStarted] = useState(false);
   const [cameraStreamReady, setCameraStreamReady] = useState(false);
+  const arProviderRef = useRef();
   const isARScriptLoaded = useARScript();
 
   const onCreated = useCallback(({ gl }) => {
@@ -233,8 +237,11 @@ const ARViewer = ({
     }
   }, []);
 
-  const handleStartAR = () => {
-    setArStarted(true);
+  const handleStartAR = async () => {
+    if (arProviderRef.current) {
+      arProviderRef.current.initAR(handleCameraStreamReady);
+      setArStarted(true);
+    }
   };
 
   const handleCameraStreamReady = useCallback((success, message) => {
