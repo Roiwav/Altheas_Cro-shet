@@ -1,11 +1,11 @@
-import React, { Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress, Environment, useCursor } from '@react-three/drei';
+import { OrbitControls, Html, useProgress, Environment, Ring } from '@react-three/drei';
 import * as THREE from 'three';
 import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
 import { NormalPass } from 'postprocessing';
+import { ARButton, XR, useHitTest, useXR } from '@react-three/xr';
 import FlowerModel from './FlowerModel';
-import { useARScript } from '@/hooks/useARScript';
 
 // Loader
 function Loader() {
@@ -88,103 +88,54 @@ const Scene3D = React.memo(({ flowerType, color, arrangement }) => {
 });
 Scene3D.displayName = 'Scene3D';
 
-// Create a context to share the AR.js context
-const ARContext = React.createContext();
+// AR Scene with placement logic
+function ARScene({ flowerType, color, arrangement }) {
+  const [placed, setPlaced] = useState(false);
+  const [modelTransform, setModelTransform] = useState({ position: [0, 0, 0], rotation: [0, 0, 0] });
+  const reticleRef = useRef();
+  const { isPresenting } = useXR();
 
-const ARProvider = React.forwardRef(({ children }, ref) => {
-  const { gl, camera, scene } = useThree();
-  const arToolkitContextRef = useRef(null);
-  const isARScriptLoaded = useARScript();
-
-  React.useImperativeHandle(ref, () => ({
-    initAR: (onCameraStreamReady) => {
-      if (!isARScriptLoaded || !window.THREEx || arToolkitContextRef.current) {
-        console.warn('AR.js not ready or already initialized.');
-        return;
-      }
-
-      const arToolkitContext = new window.THREEx.ArToolkitContext({
-        cameraParametersUrl: '/data/camera_para.dat',
-        detectionMode: 'mono',
-      });
-
-      arToolkitContext.init(() => {
-        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-      });
-
-      arToolkitContextRef.current = arToolkitContext;
-
-     const arToolkitSource = new window.THREEx.ArToolkitSource({ sourceType: 'webcam' });
-
-      arToolkitSource.init(() => {
-        arToolkitSource.domElement.addEventListener('loadedmetadata', () => {
-          onCameraStreamReady(true);
-        });
-
-        setTimeout(() => arToolkitSource.onResizeElement(), 100);
-        arToolkitSource.domElement.style.position = 'absolute';
-        arToolkitSource.domElement.style.top = '0px';
-        arToolkitSource.domElement.style.left = '0px';
-        arToolkitSource.domElement.style.zIndex = '-1';
-        document.body.appendChild(arToolkitSource.domElement);
-
-        const onRender = () => {
-          if (arToolkitSource.ready === false) return;
-          arToolkitContext.update(arToolkitSource.domElement);
-          scene.visible = camera.visible;
-        };
-        gl.setAnimationLoop(onRender);
-
-      }, (error) => {
-        console.error("AR.js source initialization error:", error);
-        onCameraStreamReady(false, "Could not access the camera. Please check permissions and ensure you are on a secure (HTTPS) connection.");
-      });
-
-      return () => { // Cleanup function
-        gl.setAnimationLoop(null);
-        if (arToolkitSource && arToolkitSource.domElement && arToolkitSource.domElement.parentElement) {
-          document.body.removeChild(arToolkitSource.domElement);
-        }
-        arToolkitContextRef.current = null;
-      };
+  useHitTest((hitMatrix, hit) => {
+    if (hit && reticleRef.current && !placed) {
+      hitMatrix.decompose(reticleRef.current.position, reticleRef.current.quaternion, reticleRef.current.scale);
+      reticleRef.current.rotation.set(-Math.PI / 2, 0, 0);
     }
-  }));
+  });
 
-  return <ARContext.Provider value={arToolkitContextRef}>{children}</ARContext.Provider>;
-});
-ARProvider.displayName = 'ARProvider';
-
-// AR payload rendered by R3F
-const SceneAR = React.memo(({ flowerType, color, arrangement }) => {
-  const markerRootRef = useRef();
-  const arToolkitContextRef = React.useContext(ARContext);
-  const isARScriptLoaded = useARScript();
-
-  if (!isARScriptLoaded) {
-    return null;
-  }
+  const placeModel = (e) => {
+    if (reticleRef.current && !placed) {
+      const { position, quaternion } = reticleRef.current;
+      const euler = new THREE.Euler().setFromQuaternion(quaternion);
+      setModelTransform({ position: position.toArray(), rotation: euler.toArray() });
+      setPlaced(true);
+    }
+  };
 
   return (
-    <>
+    <group onSelect={placeModel}>
       <ambientLight intensity={1.5} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
-      <group ref={markerRootRef}>
+
+      {!placed && isPresenting && (
+        <Ring ref={reticleRef} args={[0.05, 0.1, 32]} rotation={[-Math.PI / 2, 0, 0]}>
+          <meshStandardMaterial color="white" />
+        </Ring>
+      )}
+
+      {placed && (
         <FlowerModel
           key={`${flowerType}-${arrangement}-${color}`}
           flowerType={flowerType}
           color={color}
-          position={[0, 0.5, 0]} // Lift model slightly above marker
+          position={modelTransform.position}
+          rotation={modelTransform.rotation}
           arrangement={arrangement}
           scale={0.5}
         />
-      </group>
-      {arToolkitContextRef && arToolkitContextRef.current && window.THREEx && (
-        <primitive object={new window.THREEx.ArMarkerControls(arToolkitContextRef.current, markerRootRef.current, { type: 'pattern', patternUrl: '/data/pattern-hiro.patt' })} />
       )}
-    </>
+    </group>
   );
-});
-SceneAR.displayName = 'SceneAR';
+}
 
 // Error boundary
 class ErrorBoundary extends React.Component {
@@ -220,15 +171,10 @@ const ARViewer = ({
 }) => {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
-  const [arStarted, setArStarted] = useState(false);
-  const [cameraStreamReady, setCameraStreamReady] = useState(false);
-  const arProviderRef = useRef(null);
-  const isARScriptLoaded = useARScript();
 
   const onCreated = useCallback(({ gl }) => {
     try {
       gl.shadowMap.enabled = true;
-      // gl.shadowMap.type = THREE.PCFSoftShadowMap; // PCFSoftShadowMap is default
       gl.outputColorSpace = THREE.SRGBColorSpace;
       setIsReady(true);
     } catch (err) {
@@ -237,23 +183,11 @@ const ARViewer = ({
     }
   }, []);
 
-  const handleStartAR = () => {
-    if (arProviderRef.current) {
-      arProviderRef.current.initAR(handleCameraStreamReady);
-      setArStarted(true);
-    }
-  };
-
-  const handleCameraStreamReady = useCallback((success, message) => {
-    if (success) setCameraStreamReady(true);
-    else setError(message);
-  }, []);
-
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-full p-4 bg-gray-100 rounded-lg dark:bg-gray-800">
         <div className="text-center">
-          <div className="mb-2 text-lg font-medium text-red-500">WebGL Error</div>
+          <div className="mb-2 text-lg font-medium text-red-500">Error</div>
           <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
           <button
             onClick={() => window.location.reload()}
@@ -272,45 +206,28 @@ const ARViewer = ({
         isAREnabled ? 'h-full' : 'h-auto aspect-square max-h-[70vh] rounded-lg overflow-hidden shadow-lg'
       } ${className}`}
     >
+      {isAREnabled && <ARButton sessionInit={{ requiredFeatures: ['hit-test'] }} />}
       <Canvas
         shadows={!isAREnabled ? "soft" : false}
         dpr={[1, 2]}
         gl={{ antialias: true, powerPreference: 'high-performance', alpha: true, stencil: false, depth: true }}
         onCreated={onCreated}
-        camera={isAREnabled ? { position: [0, 0, 0] } : { position: [0, 0, 5], fov: 50 }}
+        camera={!isAREnabled ? { position: [0, 0, 5], fov: 50 } : undefined}
         frameloop={isAREnabled ? 'always' : 'demand'}
-        key={isAREnabled ? 'ar' : '3d'} // Force canvas recreation on mode change
       >
-        <Suspense fallback={<Loader />}>
-          {isAREnabled ? (
-            <>
-              <ARProvider ref={arProviderRef} />
-              {arStarted && <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />}
-            </>
-          ) : (
+        {isAREnabled ? (
+          <XR>
+            <Suspense fallback={<Loader />}>
+              <ARScene flowerType={flowerType} color={color} arrangement={arrangement} />
+            </Suspense>
+          </XR>
+        ) : (
+          <Suspense fallback={<Loader />}>
             <Scene3D flowerType={flowerType} color={color} arrangement={arrangement} />
-          )}
-        </Suspense>
-        {!isAREnabled && <ModelViewer autoRotate />}
+            <ModelViewer autoRotate />
+          </Suspense>
+        )}
       </Canvas>
-
-      {isAREnabled && !arStarted && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
-          <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Ready for Augmented Reality</h3>
-          <p className="max-w-md mb-6 text-gray-600 dark:text-gray-300">
-            Click the button below to start the AR experience. You will be asked for camera permission.
-          </p>
-          <button onClick={handleStartAR} disabled={!isARScriptLoaded} className="px-6 py-3 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600 disabled:bg-gray-400">
-            {isARScriptLoaded ? 'Start AR' : 'Loading AR...'}
-          </button>
-        </div>
-      )}
-
-      {isAREnabled && arStarted && cameraStreamReady && (
-        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-          <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">Point camera at the HIRO marker.</p>
-        </div>
-      )}
 
       {!isReady && !isAREnabled && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
