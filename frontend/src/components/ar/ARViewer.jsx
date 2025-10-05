@@ -267,15 +267,21 @@ const ARViewer = ({
   }
 
   if (isAREnabled) {
-    if (!arStarted) {
-      return (
-        <div className={`relative w-full h-full ${className}`}>
-          {/* Render canvas hidden to get GL context for ARProvider */}
-          <div style={{ visibility: 'hidden', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-            <Canvas gl={{ alpha: true }} camera={{ position: [0, 0, 0] }}>
-              <ARProvider ref={arProviderRef} />
-            </Canvas>
-          </div>
+    return (
+      <div className={`relative w-full h-full ${className}`}>
+        <Canvas
+          gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
+          camera={{ position: [0, 0, 0] }} // AR.js will control this
+        >
+          <ARProvider ref={arProviderRef} />
+          {arStarted && (
+            <Suspense fallback={null}>
+              <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
+            </Suspense>
+          )}
+        </Canvas>
+
+        {!arStarted && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
             <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Ready for Augmented Reality</h3>
             <p className="max-w-md mb-6 text-gray-600 dark:text-gray-300">
@@ -285,23 +291,15 @@ const ARViewer = ({
               {isARScriptLoaded ? 'Start AR' : 'Loading AR...'}
             </button>
           </div>
-        </div>
-      );
-    }
+        )}
 
-    return (
-      <div className={`relative w-full h-full ${className}`}>
-        <Canvas
-          gl={{ antialias: true, powerPreference: 'high-performance', alpha: true }}
-          camera={{ position: [0, 0, 0] }} // AR.js will control this
-        >
-          <ARProvider ref={arProviderRef}>
-            <Suspense fallback={<Loader />}>
-              <SceneAR flowerType={flowerType} color={color} arrangement={arrangement} />
-            </Suspense>
-          </ARProvider>
-        </Canvas>
-        {cameraStreamReady && (
+        {arStarted && !cameraStreamReady && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
+            <Loader />
+          </div>
+        )}
+
+        {arStarted && cameraStreamReady && (
           <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
             <p className="px-4 py-2 text-sm text-center text-white bg-black bg-opacity-50 rounded-full">Point camera at the HIRO marker.</p>
           </div>
