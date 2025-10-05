@@ -1,7 +1,8 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { X, QrCode } from 'lucide-react';
+import { X, QrCode, AlertTriangle } from 'lucide-react';
 import { useUser } from '../../context/useUser';
+import { ARErrorBoundary } from '../../components/ar/ARErrorBoundary';
 
 const QRCodeDisplay = React.lazy(() => import('../../components/ar/QRCodeDisplay'));
 const ARViewer = React.lazy(() => import('../../components/ar/ARViewer'));
@@ -49,33 +50,37 @@ function ARViewerPage() {
             <p className="mb-6 text-gray-600">
               Scan this QR code with your mobile device to view the flower in Augmented Reality.
             </p>
-            <Suspense fallback={<div>Generating QR Code...</div>}>
-              <QRCodeDisplay 
-                flowerType={flowerType}
-                arrangement={arrangement}
-                color={color.replace('#', '')}
-              />
-            </Suspense>
+            <ARErrorBoundary>
+              <Suspense fallback={<div>Generating QR Code...</div>}>
+                <QRCodeDisplay 
+                  flowerType={flowerType}
+                  arrangement={arrangement}
+                  color={color.replace('#', '')}
+                />
+              </Suspense>
+            </ARErrorBoundary>
           </div>
         </div>
       )}
 
       {/* Mobile: Show AR Viewer */}
       {isMobile && (
-        <Suspense fallback={
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 border-b-2 border-pink-500 rounded-full animate-spin"></div>
-              <p className="text-gray-700">Loading AR experience...</p>
+        <ARErrorBoundary>
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 border-b-2 border-pink-500 rounded-full animate-spin"></div>
+                <p className="text-gray-700">Loading AR experience...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <ARViewer 
-            flowerType={flowerType}
-            arrangement={arrangement}
-            color={color}
-          />
-        </Suspense>
+          }>
+            <ARViewer 
+              flowerType={flowerType}
+              arrangement={arrangement}
+              color={color}
+            />
+          </Suspense>
+        </ARErrorBoundary>
       )}
     </div>
   );
