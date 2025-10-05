@@ -105,29 +105,39 @@ const FlowerViewerPage = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6 mx-auto lg:grid-cols-2 lg:gap-8 xl:grid-cols-5 xl:max-w-7xl">
-          {/* Main AR Viewer */}
-          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
-            <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
-              <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Drag to rotate • Scroll to zoom • Pinch to zoom on mobile</p>
-            </div>
-            
-            <div className="relative w-full h-[50vh] lg:h-[65vh] bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center">
-              <Suspense fallback={
-                <div className="flex flex-col items-center justify-center space-y-4">
-                  <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
-                  <p className="text-gray-500 dark:text-gray-400">Loading 3D model...</p>
-                </div>
-              }>
-                <ARViewer 
-                  flowerType={flowerType}
-                  color={color}
-                  arrangement={arrangement}
-                  className="w-full h-full"
-                />
-              </Suspense>
-            </div>
-          </div>
+         
+         {/* Main AR Viewer */}
+<div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
+  <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
+    <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
+    <p className="text-sm text-gray-500 dark:text-gray-400">Drag to rotate • Scroll to zoom • Pinch to zoom on mobile</p>
+  </div>
+  
+  {/* Canvas Container with Proper Containment */}
+  <div 
+    className="relative flex items-center justify-center w-full overflow-hidden bg-gray-50 dark:bg-gray-900/50"
+    style={{ 
+      height: '50vh',
+      minHeight: '400px',
+      maxHeight: '600px',
+      minWidth: 0,  // Important for flex containers
+      minHeight: 0  // Important for flex containers
+    }}
+  >
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+        <p className="text-gray-500 dark:text-gray-400">Loading 3D model...</p>
+      </div>
+    }>
+      <ARViewer 
+        flowerType={flowerType}
+        color={color}
+        arrangement={arrangement}
+      />
+    </Suspense>
+  </div>
+</div>
 
           {/* Controls Panel */}
           <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">

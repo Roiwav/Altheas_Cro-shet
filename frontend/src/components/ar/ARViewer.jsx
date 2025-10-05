@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
 import '@google/model-viewer';
-import { Box } from 'lucide-react';
 
 export default function ARViewer({ 
   flowerType = 'rose', 
@@ -17,8 +16,6 @@ export default function ARViewer({
   // Files in /public are served at root URL
   const getModelPath = () => {
     if (modelSrc) return modelSrc;
-    // If files are in /public/models/ directory
-    // Access them without '/public' prefix
     return `/models/${flowerType}_${arrangement}.glb`;
   };
 
@@ -47,11 +44,9 @@ export default function ARViewer({
         console.error('Model loading error:', event.detail || event);
       };
 
-      // Add event listeners
       modelViewer.addEventListener('load', handleLoad);
       modelViewer.addEventListener('error', handleError);
 
-      // Cleanup
       return () => {
         modelViewer.removeEventListener('load', handleLoad);
         modelViewer.removeEventListener('error', handleError);
@@ -60,7 +55,14 @@ export default function ARViewer({
   }, [flowerType, arrangement, modelSrc]);
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+    <div style={{ 
+      width: '100%', 
+      height: '100%', 
+      position: 'relative',
+      overflow: 'hidden',  // KEY FIX: Prevents overflow
+      minWidth: 0,         // KEY FIX: For flex containers
+      minHeight: 0         // KEY FIX: For flex containers
+    }}>
       {isLoading && !error && (
         <div style={{
           position: 'absolute',
@@ -68,8 +70,8 @@ export default function ARViewer({
           left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 10,
-          color: '#fff',
-          background: 'rgba(0,0,0,0.7)',
+          color: '#666',
+          background: 'rgba(255,255,255,0.9)',
           padding: '20px',
           borderRadius: '10px',
           textAlign: 'center'
@@ -124,16 +126,29 @@ export default function ARViewer({
         style={{
           width: '100%',
           height: '100%',
+          display: 'block',  // KEY FIX: Prevents extra spacing
           '--progress-bar-color': color
         }}
       >
         <button 
           slot="ar-button"
-          className="absolute z-10 flex items-center gap-2 px-6 py-3 text-base font-semibold text-white transition-all duration-300 ease-in-out -translate-x-1/2 border-none rounded-full shadow-lg bottom-6 left-1/2 hover:scale-105 hover:shadow-xl active:scale-100"
-          style={{ backgroundColor: color }}
+          style={{
+            backgroundColor: color,
+            color: '#fff',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '24px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1
+          }}
         >
-          <Box className="w-5 h-5" />
-          <span>View in your space</span>
+          View in Your Space
         </button>
       </model-viewer>
     </div>
