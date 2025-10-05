@@ -19,11 +19,6 @@ export default function ARViewer({
     return `/models/${flowerType}_${arrangement}.glb`;
   };
 
-  // Generate iOS USDZ path (optional, for iOS AR Quick Look)
-  const getIOSModelPath = () => {
-    return `/models/${flowerType}_${arrangement}.usdz`;
-  };
-
   useEffect(() => {
     const path = getModelPath();
     setModelPath(path);
@@ -112,7 +107,6 @@ export default function ARViewer({
       <model-viewer
         ref={modelRef}
         src={getModelPath()}
-        ios-src={getIOSModelPath()}
         alt={`A ${color} ${flowerType} in ${arrangement} arrangement`}
         ar
         ar-modes="webxr scene-viewer quick-look"
