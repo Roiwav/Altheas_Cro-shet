@@ -128,21 +128,8 @@ export default function ARViewer({
       >
         <button 
           slot="ar-button"
-          style={{
-            backgroundColor: color,
-            color: '#fff',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '24px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1
-          }}
+          className="absolute z-10 px-6 py-3 text-base font-bold text-white transition-transform -translate-x-1/2 bg-blue-600 border-none rounded-full shadow-lg bottom-5 left-1/2 hover:scale-105"
+          style={{ backgroundColor: color }}
         >
           View in Your Space
         </button>
