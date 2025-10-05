@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import '@google/model-viewer';
 
 export default function ARViewer({ 
@@ -48,6 +48,34 @@ export default function ARViewer({
       };
     }
   }, [flowerType, arrangement, modelSrc]);
+
+  // Memoize style objects to prevent re-renders
+  const modelViewerStyle = useMemo(() => ({
+    width: '100%',
+    height: '100%',
+    display: 'block',  // KEY FIX: Prevents extra spacing
+    '--progress-bar-color': color
+  }), [color]);
+
+  const arButtonStyle = useMemo(() => ({
+    backgroundColor: color,
+    color: '#fff',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '24px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    position: 'absolute',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 1
+  }), [color]);
+
+  // Note: The inline styles for the loading/error divs are acceptable
+  // because those elements are unmounted when the model viewer is visible,
+  // so they don't cause re-renders on the model-viewer element itself.
 
   return (
     <div style={{ 
@@ -106,7 +134,7 @@ export default function ARViewer({
 
       <model-viewer
         ref={modelRef}
-        src={getModelPath()}
+        src={modelPath}
         alt={`A ${color} ${flowerType} in ${arrangement} arrangement`}
         ar
         ar-modes="webxr scene-viewer quick-look"
@@ -117,30 +145,11 @@ export default function ARViewer({
         environment-image="neutral"
         exposure="1"
         ar-placement="floor"
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'block',  // KEY FIX: Prevents extra spacing
-          '--progress-bar-color': color
-        }}
+        style={modelViewerStyle}
       >
         <button 
           slot="ar-button"
-          style={{
-            backgroundColor: color,
-            color: '#fff',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '24px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1
-          }}
+          style={arButtonStyle}
         >
           View in Your Space
         </button>
