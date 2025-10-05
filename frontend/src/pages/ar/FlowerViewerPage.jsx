@@ -121,7 +121,7 @@ const FlowerViewerPage = () => {
       minHeight: '400px',
       maxHeight: '600px',
       minWidth: 0,  // Important for flex containers
-      minHeight: 0  // Important for flex containers
+     
     }}
   >
     <Suspense fallback={
