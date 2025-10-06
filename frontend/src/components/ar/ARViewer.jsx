@@ -1,255 +1,195 @@
-import React, { Suspense, useState, useEffect, useCallback, useRef } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress, Environment } from '@react-three/drei';
-import * as THREE from 'three';
-import { EffectComposer, SSAO, ToneMapping } from '@react-three/postprocessing';
-import FlowerModel from './FlowerModel';
+// components/ar/ARViewer.jsx
+import React, { useRef, useEffect, useMemo, useState } from 'react';
+import { Color } from 'three';
+import '@google/model-viewer';
 
-// Loading component
-function Loader() {
-  const { progress } = useProgress();
-  return (
-    <Html center style={{ color: 'white' }}>
-      {Math.round(progress)}% loaded
-    </Html>
-  );
-}
-
-// Simple 3D model viewer controls
-const ModelViewer = ({ autoRotate = true }) => {
-  const { camera } = useThree();
-  
-  // Set up camera position
-  useEffect(() => {
-    camera.position.set(0, 0, 5);
-  }, [camera]);
-  
-  return (
-    <OrbitControls 
-      enableZoom={true}
-      enablePan={true}
-      enableRotate={true}
-      minDistance={2}
-      maxDistance={10}
-      autoRotate={autoRotate}
-      autoRotateSpeed={0.5}
-    />
-  );
+// Defines the paths to the 3D models for each flower type and arrangement.
+const MODEL_PATHS = {
+  rose: { single: '/models/rose_single.glb', bouquet: '/models/rose_bouquet.glb' },
+  tulip: { single: '/models/tulip_single.glb', bouquet: '/models/tulip_bouquet.glb' },
+  sunflower: { single: '/models/sunflower_single.glb', bouquet: '/models/sunflower_bouquet.glb' },
+  lily: { single: '/models/lily_single.glb', bouquet: '/models/lily_bouquet.glb' },
+  carnation: { single: '/models/carnation_single.glb', bouquet: '/models/carnation_bouquet.glb' },
+  peony: { single: '/models/peony_single.glb', bouquet: '/models/peony_bouquet.glb' },
 };
 
-// --- Dynamic Lighting Component ---
-const DynamicLighting = () => {
-  const lightRef = useRef();
-
-  useFrame(({ clock }) => {
-    if (lightRef.current) {
-      // Gently move the light in a circular path to create dynamic shadows
-      const elapsedTime = clock.getElapsedTime();
-      lightRef.current.position.x = 10 + Math.sin(elapsedTime * 0.2) * 3;
-      lightRef.current.position.z = 5 + Math.cos(elapsedTime * 0.2) * 3;
-    }
-  });
-
-  return (
-    <>
-      <ambientLight intensity={0.8} />
-      <directionalLight
-        ref={lightRef}
-        position={[10, 10, 5]}
-        intensity={1.5}
-        castShadow
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
-      />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} />
-    </>
-  );
-};
-
-// --- 3D Scene Component ---
-const Scene3D = React.memo(({ flowerType, color, arrangement, isAREnabled }) => {
-  return (
-    <>
-      <DynamicLighting />
-      
-      <Suspense fallback={null}>
-        <FlowerModel 
-          key={`${flowerType}-${arrangement}-${color}`}
-          flowerType={flowerType}
-          color={color}
-          position={[0, 0, 0]}
-          arrangement={arrangement}
-          scale={1}
-        />
-      </Suspense>
-      
-      {/* High-quality effects. Conditionally render ground plane for non-AR mode */}
-      <EffectComposer>
-        <SSAO
-          radius={0.4}
-          intensity={20}
-          luminanceInfluence={0.4}
-          color="black"
-        />
-        <ToneMapping />
-      </EffectComposer>
-
-      {/* Environment for realistic reflections */}
-      <Environment preset="city" />
-    </>
-  );
-});
-
-// Add display name for better debugging
-Scene3D.displayName = 'Scene3D';
-
-// Error boundary for 3D content
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error) {
-    console.error('Error in 3D viewer:', error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 text-red-500 rounded bg-red-50">
-          Failed to load 3D model. Please try refreshing the page.
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// --- Main 3D Model Viewer Component ---
-const ARViewer = ({ 
+/**
+ * A versatile 3D model viewer component that can be used for both inline previews
+ * and full-screen Augmented Reality experiences. It leverages Google's <model-viewer>.
+ * @param {object} props - The component props.
+ */
+export default function ARViewer({
   flowerType = 'rose',
-  color = '#ff69b4',
   arrangement = 'single',
-  className = '',
-  isAREnabled = false
-}) => {
-  const [isReady, setIsReady] = useState(false);
+  color = '#ff69b4',
+  modelSrc, // optional override
+  ar = false, // Prop to control AR functionality
+  showARButton = false, // New prop to control AR button visibility
+  isFullScreen = false, // New prop to control layout
+}) {
+  // Refs to directly access the <model-viewer> and its AR button.
+  const modelRef = useRef(null);
+  const arButtonRef = useRef(null);
+  // State to manage loading and error status of the model.
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  
-  // Handle WebGL context restoration
+
+  // Memoize the model path to prevent re-computation on every render.
+  const modelPath = useMemo(() => {
+    if (modelSrc) return modelSrc;
+    const entry = MODEL_PATHS[flowerType] || MODEL_PATHS.rose;
+    return (entry && entry[arrangement]) ? entry[arrangement] : MODEL_PATHS.rose.single;
+  }, [flowerType, arrangement, modelSrc]);
+
+  // Effect to add a "press-in" animation to the AR button on touch devices.
   useEffect(() => {
-    const handleContextLost = (event) => {
-      event.preventDefault();
-      setError('WebGL context lost. Attempting to recover...');
-      setIsReady(false);
+    const button = arButtonRef.current;
+    if (!button) return;
+
+    const handleTouchStart = () => {
+      button.style.transform = 'translateX(-50%) scale(0.95)';
+      button.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)'; // shadow-sm
     };
 
-    const handleContextRestored = () => {
-      setError(null);
-      setIsReady(true);
+    const handleTouchEnd = () => {
+      button.style.transform = 'translateX(-50%) scale(1)';
+      button.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)'; // shadow-md
     };
 
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      canvas.addEventListener('webglcontextlost', handleContextLost, false);
-      canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
-    }
+    button.addEventListener('touchstart', handleTouchStart, { passive: true });
+    button.addEventListener('touchend', handleTouchEnd, { passive: true });
+    button.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
     return () => {
-      if (canvas) {
-        canvas.removeEventListener('webglcontextlost', handleContextLost);
-        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
-      }
+      button.removeEventListener('touchstart', handleTouchStart);
+      button.removeEventListener('touchend', handleTouchEnd);
+      button.removeEventListener('touchcancel', handleTouchEnd);
     };
   }, []);
-  
-  // Initialize WebGL renderer with error boundaries
-  const onCreated = useCallback(({ gl }) => {
-    try {
-      gl.shadowMap.enabled = true;
-      gl.shadowMap.type = THREE.PCFSoftShadowMap;
-      gl.outputColorSpace = THREE.SRGBColorSpace;
-      setIsReady(true);
-    } catch (err) {
-      console.error('WebGL initialization error:', err);
-      setError('Failed to initialize WebGL. Please try refreshing the page.');
+
+  // Effect to handle the loading and error events from the <model-viewer> element.
+  useEffect(() => {
+    const el = modelRef.current;
+    if (!el) return;
+
+    const handleLoad = () => {
+      setIsLoading(false);
+      setError(null);
+      // Note: do not set element properties here to avoid Lit change-in-update warnings
+      // This console log is fine and visible in your earlier logs
+      console.log('3D model loaded successfully');
+    };
+
+    const handleError = (event) => {
+      const message = `Failed to load 3D model from: ${modelPath}`;
+      setError(message);
+      setIsLoading(false);
+      console.error('Model loading error:', event?.detail || event);
+    };
+
+    el.addEventListener('load', handleLoad);
+    el.addEventListener('error', handleError);
+    return () => {
+      el.removeEventListener('load', handleLoad);
+      el.removeEventListener('error', handleError);
+    };
+  }, [modelPath]);
+
+  // Effect to apply color changes to the model's materials.
+  useEffect(() => {
+    const modelViewer = modelRef.current;
+    // The model is only ready to be manipulated after it has fully loaded.
+    // We check for `!isLoading` and the presence of `modelViewer.model`.
+    if (isLoading || !modelViewer || !modelViewer.model) {
+      // If the model is still loading or not available, we do nothing.
+      // The hook will re-run once `isLoading` changes to false.
+      return;
     }
-  }, []);
-  
-  if (error) {
-    return (
-      <div className="flex items-center justify-center w-full h-full p-4 bg-gray-100 rounded-lg dark:bg-gray-800">
-        <div className="text-center">
-          <div className="mb-2 text-lg font-medium text-red-500">WebGL Error</div>
-          <p className="mb-4 text-gray-600 dark:text-gray-300">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
+
+    const newColor = new Color(color);
+
+    // This is a common pattern for <model-viewer>:
+    // We create a new material and swap it out to ensure changes are applied.
+    modelViewer.model.materials.forEach((material) => {
+      const materialName = material.name.toLowerCase();
+
+      // Target only the petal materials.
+      if (materialName.includes('petal') || materialName.includes('flower') || materialName.includes(flowerType)) {
+        // Set the base color factor directly on the material.
+        // model-viewer will detect this change and update the model.
+        material.pbrMetallicRoughness.setBaseColorFactor(newColor);
+      }
+    });
+  }, [color, isLoading, flowerType]); // Rerun when color changes or after the model has loaded.
+
   return (
-    <div 
-      className={`relative w-full ${
-        isAREnabled 
-          ? 'h-full' 
-          : 'h-auto aspect-square max-h-[70vh] rounded-lg overflow-hidden shadow-lg'
-      } ${className}`}
-    >
-      <ErrorBoundary>
-        <Canvas
-          shadows="soft"
-          dpr={[1, 2]}
-          camera={{ position: [0, 0, 5], fov: 50 }}
-          gl={{
-            antialias: true,
-            powerPreference: 'high-performance',
-            alpha: true,
-            stencil: false,
-            depth: true
-          }}
-          onCreated={onCreated}
-          // Enable MSAA for smoother edges
-          gl-antialias="true"
-          gl-powerPreference="high-performance"
-          frameloop="demand" // Render on-demand for better performance
-        >
-          <Suspense fallback={<Loader />}>
-            <Scene3D 
-              flowerType={flowerType} 
-              color={color}
-              arrangement={arrangement}
-              isAREnabled={isAREnabled}
-            />
-            {/* Always enable viewer controls, but disable auto-rotate in AR mode for better manual control */}
-            <ModelViewer autoRotate={!isAREnabled} />
-          </Suspense>
-        </Canvas>
-      </ErrorBoundary>
-      {!isReady && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-sm">
-          <div className="w-12 h-12 mb-4 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
-          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Loading 3D Viewer</h3>
-          <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">Preparing your flower model. This may take a moment...</p>
+    // The main container, which is either full-screen or sized by its parent.
+    <div className={isFullScreen ? "fixed inset-0 w-screen h-dvh bg-black overflow-hidden" : "w-full h-full relative overflow-hidden"}>
+      {isLoading && !error && (
+        <div className="absolute inset-0 z-10 grid text-white place-items-center">
+          Loading 3D model...
         </div>
       )}
+
+      {error && (
+        <div className="absolute inset-0 z-10 grid p-4 text-center text-white place-items-center">
+          {error}
+        </div>
+      )}
+
+      {/* The core <model-viewer> web component. */}
+      <model-viewer
+        ref={modelRef}
+        src={modelPath}
+        alt={`${flowerType} ${arrangement}`}
+        ar={ar ? true : undefined}
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="auto"
+        interaction-prompt="auto"
+        interaction-prompt-style="wiggle" // Adds a subtle animation to encourage interaction.
+        camera-controls
+        touch-action="pan-y"
+        camera-target="0 1m 0" // Aims the camera slightly up.
+        field-of-view="30deg" // Zooms in for a fuller view.
+        shadow-intensity="1"
+        shadow-softness="1" // Creates softer, more realistic shadows.
+        exposure="1.2"
+        environment-image="neutral"
+        autoplay
+        className="block w-full h-full"
+        style={{
+          '--progress-bar-color': color,
+          '--model-viewer-background-color': '#f0f2f5'
+        }}
+      >
+        {/* The "Enter AR" button, only shown when `showARButton` is true. */}
+        {showARButton && (
+          <button
+            ref={arButtonRef}
+            slot="ar-button"
+            className="absolute z-10 px-6 py-3 text-base font-bold text-white transition-transform ease-out -translate-x-1/2 border-none rounded-full shadow-md cursor-pointer left-1/2 bg-gradient-to-r from-pink-500 to-purple-600"
+            style={{
+              bottom: 'calc(24px + env(safe-area-inset-bottom))', // Adjust for mobile navigation bars
+              transition: 'transform 0.1s ease-out, box-shadow 0.1s ease-out'
+            }}
+          >
+            Enter AR Experience
+          </button>
+        )}
+        {/* An invisible ground plane for shadows to be cast upon in the 3D preview. */}
+        <div className="plane" slot="environment" style={{
+          display: 'block', content: ' ', width: '1000px', height: '1000px', background: 'transparent', position: 'absolute', transform: 'translateY(-50%) rotateX(90deg)', top: '50%', left: '50%', marginLeft: '-500px', marginTop: '-500px'
+        }}></div>
+        
+        {/* Instructional text displayed during the AR session. */}
+        <div
+          slot="ar-status"
+          className="absolute left-1/2 z-10 box-border max-w-[calc(100%-32px)] -translate-x-1/2 whitespace-nowrap rounded-lg bg-black/70 px-3 py-2 text-center text-sm text-white font-sans"
+          style={{ bottom: 'calc(16px + env(safe-area-inset-bottom))' }} // Adjust for mobile navigation bars
+        >
+          Move your phone to find a surface, then tap to place
+        </div>
+      </model-viewer>
     </div>
   );
-};
-
-// Add display name for better debugging
-ARViewer.displayName = 'ARViewer';
-
-export default React.memo(ARViewer);
+}

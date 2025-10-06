@@ -6,51 +6,51 @@ import * as THREE from 'three';
 // Available flower models with their configurations
 const FLOWER_MODELS = {
   rose: {
-    single: { path: '/models/rose.glb' },
+    single: { path: '/models/rose_single.glb' },
     bouquet: { 
-      path: '/models/Rose Bouquet.glb', // Using single model for now
+      path: '/models/rose_bouquet.glb',
       scale: 1.2, // Slightly larger scale for bouquet effect
     },
     scale: 0.50,
     rotation: [0, 0, 0]
   },
   tulip: {
-    single: { path: '/models/tulips.glb' },
-    bouquet: { path: '/models/Tulips Bouquet.glb' },
+    single: { path: '/models/tulip_single.glb' },
+    bouquet: { path: '/models/tulip_bouquet.glb' },
     scale: 1,
     rotation: [0, Math.PI / 4, 0]
   },
   sunflower: {
-    single: { path: '/models/sunflower.glb' },
+    single: { path: '/models/sunflower_single.glb' },
     bouquet: {
-      path: '/models/Sunflower Bouquet.glb', 
+      path: '/models/sunflower_bouquet.glb',
       scale:1,
     },
     scale: 1,
     rotation: [0, 0, 0]
   },
   lily: {
-    single: { path: '/models/lily.glb' },
+    single: { path: '/models/lily_single.glb' },
     bouquet: {
-      path: '/models/Lily Bouquet.glb',
+      path: '/models/lily_bouquet.glb',
       scale: 1.2,
     },
     scale: 1,
     rotation: [0, 0, 0]
   },
   carnation: {
-    single: { path: '/models/carnation.glb' },
+    single: { path: '/models/carnation_single.glb' },
     bouquet: { 
-      path: '/models/Carnation Bouquet.glb',
+      path: '/models/carnation_bouquet.glb',
       scale: 1, 
     },
     scale: 1,
     rotation: [0, 0, 0]
   },
   peony: {
-    single: { path: '/models/peony.glb' },
+    single: { path: '/models/peony_single.glb' },
     bouquet: {
-      path: '/models/Peony Bouquet.glb', 
+      path: '/models/peony_bouquet.glb', 
       scale: 1.2,
     },
     scale: 0.7,
@@ -106,31 +106,6 @@ const FlowerModel = React.memo(({
       ...arrangementData, // override with arrangement-specific path, scale, etc.
     };
   }, [flowerType, arrangement]);
-  
-  // Handle WebGL context loss
-  useEffect(() => {
-    const handleContextLost = (event) => {
-      event.preventDefault();
-      console.log('WebGL Context lost. Attempting to recover...');
-    };
-
-    const handleContextRestored = () => {
-      console.log('WebGL Context restored.');
-    };
-
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      canvas.addEventListener('webglcontextlost', handleContextLost, false);
-      canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
-    }
-
-    return () => {
-      if (canvas) {
-        canvas.removeEventListener('webglcontextlost', handleContextLost);
-        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
-      }
-    };
-  }, []);
   
   // Load the model with error handling and resource management
   const { scene, animations } = useGLTF(modelConfig.path, true, (error) => {

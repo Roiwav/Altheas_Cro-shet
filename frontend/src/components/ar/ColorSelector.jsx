@@ -1,7 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { HexColorPicker } from 'react-colorful';
-import { Popover } from '@headlessui/react';
-import { PaintBrushIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useMemo } from 'react';
 
 // Predefined color palette with names for better accessibility
 const COLOR_PRESETS = [
@@ -20,29 +17,13 @@ const ColorSelector = React.memo(({
   onSelect,
   className = ''
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [customColor, setCustomColor] = useState(selectedColor);
-
-  // Only update parent when popover is closed
-  const handleColorChange = useCallback((color) => {
-    setCustomColor(color);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    onSelect(customColor);
-    setIsOpen(false);
-  }, [customColor, onSelect]);
-
   // Memoize color swatches to prevent unnecessary re-renders
   const colorSwatches = useMemo(() => (
     COLOR_PRESETS.map(({ hex, name }) => (
       <button
         key={hex}
         type="button"
-        onClick={() => {
-          setCustomColor(hex);
-          onSelect(hex);
-        }}
+        onClick={() => onSelect(hex)}
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-all transform hover:scale-110 ${
           selectedColor === hex
             ? 'border-pink-500 ring-2 ring-offset-2 ring-pink-300 scale-110'
@@ -56,61 +37,7 @@ const ColorSelector = React.memo(({
   ), [selectedColor, onSelect]);
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Flower Color</h3>
-        <Popover className="relative">
-          {() => (
-            <>
-              <Popover.Button 
-                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => {
-                  setCustomColor(selectedColor); // Sync color on open
-                  setIsOpen(!isOpen);
-                }}
-                aria-label="Open color picker"
-              >
-                <PaintBrushIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              </Popover.Button>
-              
-              {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 md:absolute md:right-0 md:top-8 md:inset-auto">
-                  <div className="w-full max-w-xs p-4 bg-white rounded-lg shadow-xl dark:bg-gray-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-medium">Custom Color</h3>
-                      <button 
-                        onClick={handleClose}
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        aria-label="Close color picker"
-                      >
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <div className="mb-4">
-                      <HexColorPicker 
-                        color={customColor} 
-                        onChange={handleColorChange} 
-                        className="w-full h-48"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 border border-gray-300 rounded" style={{ backgroundColor: customColor }} />
-                      <span className="font-mono text-sm">{customColor.toUpperCase()}</span>
-                      <button
-                        onClick={handleClose}
-                        className="px-3 py-1 text-white transition-colors bg-pink-500 rounded-md hover:bg-pink-600"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </Popover>
-      </div>
-      
+    <div className={className}>
       <div className="flex flex-wrap gap-2">
         {colorSwatches}
       </div>
