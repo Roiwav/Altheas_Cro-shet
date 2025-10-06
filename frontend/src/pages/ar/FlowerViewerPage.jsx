@@ -46,7 +46,7 @@ const FlowerViewerPage = () => {
   const { isAuthenticated } = useUser();
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
-  const [color, setColor] = useState('#FFFFFF');
+  const [color, setColor] = useState(defaultColors[initialType] || '#FFFFFF');
   const [flowerCount, setFlowerCount] = useState(3); // New state for bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false);
@@ -86,7 +86,7 @@ const FlowerViewerPage = () => {
 
   // Update color to default when flowerType changes
   useEffect(() => {
-    setColor('#FFFFFF');
+    setColor(defaultColors[flowerType] || '#FFFFFF');
   }, [flowerType]);
 
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
@@ -226,18 +226,18 @@ const FlowerViewerPage = () => {
               </div>
               
               {/* Price Display */}
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
+              <div className="items-center justify-between hidden pt-4 mt-4 border-t border-gray-200 lg:flex lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">Total Price:</h3>
                 <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
                   {currencyFormatter.format(totalPrice)}
                 </span>
               </div>
 
-              {/* Action Buttons */}
-              <div className="hidden pt-4 mt-4 space-y-3 border-t border-gray-200 lg:block lg:pt-5 lg:mt-5 dark:border-gray-700">
+              {/* Action Buttons - Desktop */}
+              <div className="pt-4 mt-4 space-y-3 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <button
                   onClick={handleGenerateQR}
-                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg"
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg lg:flex"
                 >
                   <QrCode className="w-5 h-5 mr-2" />
                   Generate QR Code
@@ -245,7 +245,7 @@ const FlowerViewerPage = () => {
                 
                 <button
                   onClick={handlePlaceOrder}
-                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:shadow-lg"
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:shadow-lg lg:flex"
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Place Order Now
@@ -270,22 +270,29 @@ const FlowerViewerPage = () => {
       </main>
 
       {/* Sticky Footer for Mobile Actions */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 p-3 border-t border-gray-200 bg-white/80 lg:hidden backdrop-blur-sm dark:bg-gray-800/80 dark:border-gray-700">
-        <div className="container flex items-center justify-center mx-auto space-x-3">
-          <button
-            onClick={handleGenerateQR}
-            className="flex items-center justify-center flex-1 px-4 py-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600"
-          >
-            <QrCode className="w-5 h-5 mr-2" />
-            <span>View in AR</span>
-          </button>
-          <button
-            onClick={handlePlaceOrder}
-            className="flex items-center justify-center flex-1 px-4 py-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            <span>Order Now</span>
-          </button>
+      <div className="fixed bottom-0 left-0 right-0 z-40 p-3 border-t border-gray-200 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 dark:border-gray-700 lg:hidden">
+        <div className="container flex items-center justify-between mx-auto space-x-3">
+          <div className="flex flex-col text-left">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Total Price</span>
+            <span className="font-bold text-pink-600 dark:text-pink-400">
+              {currencyFormatter.format(totalPrice)}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleGenerateQR}
+              className="flex items-center justify-center p-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600"
+            >
+              <QrCode className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handlePlaceOrder}
+              className="flex items-center justify-center flex-1 px-4 py-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600"
+            >
+              <ShoppingCart className="w-5 h-5 mr-2" />
+              <span>Order Now</span>
+            </button>
+          </div>
         </div>
       </div>
 

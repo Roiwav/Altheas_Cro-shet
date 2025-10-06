@@ -67,42 +67,47 @@ const QRCodeDisplay = React.memo(
     }, [flowerType, color]);
 
     return (
-      <div className={className}>
-        <div className="flex items-center gap-2 mb-3">
+      <div className={`flex flex-col items-center text-center ${className}`}>
+        {isMobile() && (
           <a
             href={arUrl}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-white bg-black rounded-lg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-full max-w-xs px-4 py-3 mb-6 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg"
           >
-            <Smartphone className="w-4 h-4" />
-            Open on mobile
-            <ArrowUpRight className="w-4 h-4" />
+            <Smartphone className="w-5 h-5 mr-2" />
+            Tap to View in Your Space
+            <ArrowUpRight className="w-5 h-5 ml-1" />
           </a>
+        )}
+
+        <div className="relative p-4 bg-white border border-gray-200 qr-code rounded-xl dark:bg-gray-900/50 dark:border-gray-700">
+          <QRCodeSVG
+            value={arUrl}
+            size={220}
+            bgColor="transparent"
+            fgColor={document.documentElement.classList.contains('dark') ? '#FFFFFF' : '#000000'}
+            level="Q"
+            includeMargin={false}
+          />
         </div>
 
-        <div className="grid w-full my-4 qr-code place-items-center">
-          <QRCodeSVG value={arUrl} size={220} />
-        </div>
-
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-center gap-3 mt-6">
           <button
             onClick={handleCopy}
-            className="inline-flex items-center gap-2 px-3 py-2 border rounded"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-transparent rounded-lg dark:text-gray-200 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
           >
-            {showCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {showCopied ? 'Copied' : 'Copy link'}
+            {showCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            <span>{showCopied ? 'Copied!' : 'Copy Link'}</span>
           </button>
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 px-3 py-2 border rounded"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-transparent rounded-lg dark:text-gray-200 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
           >
             <Download className="w-4 h-4" />
-            Download QR
+            <span>Download SVG</span>
           </button>
         </div>
-
-        <p className="mt-3 text-xs text-gray-600">
-          Scan the QR code or tap the button above {isMobile() ? 'to view in AR' : 'on a mobile device'}.
-        </p>
       </div>
     );
   }

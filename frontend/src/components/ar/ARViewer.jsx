@@ -1,5 +1,6 @@
 // components/ar/ARViewer.jsx
 import React, { useRef, useEffect, useMemo, useState } from 'react';
+import { Color } from 'three';
 import '@google/model-viewer';
 
 // Map to actual files used elsewhere so AR uses the same assets
@@ -17,6 +18,8 @@ export default function ARViewer({
   arrangement = 'single',
   color = '#ff69b4',
   modelSrc, // optional override
+  showARButton = false, // New prop to control AR button visibility
+  isFullScreen = false, // New prop to control layout
 }) {
   const modelRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,14 +33,19 @@ export default function ARViewer({
   }, [flowerType, arrangement, modelSrc]);
 
   // Style objects are memoized so they do not trigger updates in Lit
-  const containerStyle = useMemo(() => ({
-    position: 'fixed',
-    inset: 0,
-    width: '100vw',
-    height: '100vh',
-    background: '#000',
-    overflow: 'hidden',
-  }), []);
+  const containerStyle = useMemo(() => (isFullScreen ? {
+      position: 'fixed',
+      inset: 0,
+      width: '100vw',
+      height: '100vh',
+      background: '#000',
+      overflow: 'hidden',
+    } : {
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+    }), [isFullScreen]);
 
   const modelViewerStyle = useMemo(() => ({
     width: '100%',
@@ -89,6 +97,37 @@ export default function ARViewer({
     };
   }, [modelPath]);
 
+  // Effect to update material color when the color prop changes
+  useEffect(() => {
+    const modelViewer = modelRef.current;
+    if (!modelViewer || !modelViewer.model) return;
+
+    const applyColor = () => {
+      const newColor = new Color(color);
+      modelViewer.model.materials.forEach((material) => {
+        const materialName = material.name.toLowerCase();
+        // Only apply color to materials that are part of the flower petals.
+        // This relies on the 3D model's materials being named appropriately (e.g., 'petal', 'flower_material').
+        if (materialName.includes('petal') || materialName.includes('flower') || materialName.includes(flowerType)) {
+          const pbr = material.pbrMetallicRoughness;
+          if (pbr) {
+            // Discard the original texture to apply a solid color, but keep other maps (like normalMap).
+            pbr.baseColorTexture.texture?.dispose();
+            pbr.baseColorTexture.texture = null;
+            pbr.setBaseColorFactor([newColor.r, newColor.g, newColor.b, 1]);
+          }
+        }
+      });
+    };
+
+    // If the model is already loaded, apply color immediately.
+    // Otherwise, the 'load' event listener will handle it.
+    if (!isLoading) {
+      applyColor();
+    }
+
+  }, [color, isLoading]); // Rerun when color changes or model finishes loading
+
   return (
     <div style={containerStyle}>
       {isLoading && !error && (
@@ -129,18 +168,23 @@ export default function ARViewer({
         alt={`${flowerType} ${arrangement}`}
         ar
         ar-modes="webxr scene-viewer quick-look"
-        ar-scale="fixed"
+        ar-scale="auto"
+        interaction-prompt="auto"
+        interaction-prompt-style="wiggle"
         camera-controls
+        camera-orbit="15deg 75deg 105%"
         touch-action="pan-y"
         shadow-intensity="1"
-        exposure="1"
+        exposure="1.2"
         environment-image="neutral"
         autoplay
         style={modelViewerStyle}
       >
-        <button slot="ar-button" style={arButtonStyle}>
-          View in AR
-        </button>
+        {showARButton && (
+          <button slot="ar-button" style={arButtonStyle}>
+            View in AR
+          </button>
+        )}
       </model-viewer>
     </div>
   );
