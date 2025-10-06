@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../context/useUser';
 import { toast } from 'react-toastify';
 
 export const ProtectedRoute = ({ children, requiredRole = null }) => {

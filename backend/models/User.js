@@ -19,9 +19,10 @@ const PreferencesSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
-    username: { type: String, required: true, unique: true },
+    username: { type: String, required: true, unique: true, sparse: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String },
+    googleId: { type: String, sparse: true },
     avatar: { type: String, default: "" },
     addresses: [AddressSchema],
     preferences: PreferencesSchema,
@@ -36,9 +37,27 @@ const userSchema = new mongoose.Schema(
 
 // Encrypt password before saving
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  // Skip password hashing for OAuth users without a password
+  if (this.isModified('password') && this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+  
+  // Generate username from email if not provided (for OAuth users)
+  if (this.isNew && !this.username && this.email) {
+    const baseUsername = this.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    let username = baseUsername;
+    let counter = 1;
+    
+    // Ensure username is unique
+    while (await this.constructor.findOne({ username })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+    
+    this.username = username;
+  }
+  
   next();
 });
 

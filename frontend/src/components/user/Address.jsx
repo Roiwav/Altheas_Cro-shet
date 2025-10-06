@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useUser } from "../../../context/UserContext";
+import { useUser } from "../../context/useUser";
 
 const backendURL = "http://localhost/croshet_db"; // Ensure the URL is correct
 

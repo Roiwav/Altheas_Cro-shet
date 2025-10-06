@@ -369,7 +369,7 @@ export default function SignUpPage() {
                     fill="#EA4335"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>Sign Up with Google</span>
               </button>
 
               <div className="mt-6 text-sm text-center text-gray-600 dark:text-gray-400">

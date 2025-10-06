@@ -26,25 +26,39 @@ export default function LoginPage() {
   const errorMessage = searchParams.get("message");
 
   // ✅ Handle OAuth success redirects
-  const handleOAuthRedirect = useCallback(() => {
+  const handleOAuthRedirect = useCallback(async () => {
     const token = searchParams.get("token");
     const user = searchParams.get("user");
     const error = searchParams.get("error");
 
     if (error) {
-      // This is handled by the other useEffect, but good to have a guard here.
+      toast.error(error || "An error occurred during login");
       return;
     }
 
     if (token && user) {
       try {
-        const parsedUser = JSON.parse(user);
-        login(parsedUser, token); // Use the login function from context
+        // Parse the user data from the URL
+        const parsedUser = JSON.parse(decodeURIComponent(user));
+        
+        // Store token in localStorage
+        localStorage.setItem("token", token);
+        
+        // Call the login function from UserContext with isOAuth flag
+        await login(parsedUser, token, { isOAuth: true });
+        
+        // Show success message
         toast.success("Successfully logged in with Google!");
+        
+        // Clean up the URL by removing the token and user data
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        // Navigate to the original URL or home page
         navigate(from, { replace: true });
-      // eslint-disable-next-line no-unused-vars
-      } catch (e) {
-        toast.error("Failed to process login data.");
+      } catch (error) {
+        console.error("Error processing OAuth callback:", error);
+        toast.error("Failed to process login. Please try again.");
       }
     }
   }, [login, navigate, from, searchParams]);
@@ -80,9 +94,6 @@ export default function LoginPage() {
     handleOAuthRedirect();
   }, [errorParam, errorMessage, error, handleOAuthRedirect]);
 
-  const handleOAuthLogin = (provider) => {
-    window.location.href = `${API_BASE_URL}/auth/${provider}`;
-  };
 
   // ✅ Controlled input handler
   const handleChange = (e) => {
@@ -284,10 +295,7 @@ export default function LoginPage() {
             <div className="mt-6">
               <Divider text="Or continue with" />
               <div className="mt-6 grid grid-cols-1 gap-4">
-                <OAuthButton
-                  provider="google"
-                  onClick={() => handleOAuthLogin("google")}
-                />
+                <OAuthButton />
               </div>
             </div>
 
@@ -365,12 +373,19 @@ function PasswordField({ label, name, value, onChange, show, setShow }) {
   );
 }
 
-function OAuthButton({ provider, onClick }) {
+function OAuthButton() {
+  const handleClick = (e) => {
+    e.preventDefault();
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+    // Use the full Google OAuth URL
+    window.location.href = `${apiBaseUrl}/auth/google`;
+  };
+
   return (
     <div>
       <button
         type="button"
-        onClick={() => onClick(provider)}
+        onClick={handleClick}
         className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
