@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { useUser } from '../../context/useUser';
+import { motion as Motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { useUser } from '../../hooks/useUser';
 import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
 
 // Lazy load AR components for better initial page load performance.
@@ -43,29 +43,23 @@ const FLOWER_PRICES = {
   peony: { single: 250, bouquet: 2500 },
 };
 
-/**
- * The main page for customizing and viewing a 3D flower model.
- * It allows users to select flower type, arrangement, color, and quantity,
- * and provides options to view in AR or proceed to checkout.
- */
 const FlowerViewerPage = () => {
   // Hooks for routing and user authentication context.
   const { type: initialType } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useUser();
+
   // State management for flower customization.
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
   const [color, setColor] = useState(defaultColors[initialType] || '#FFFFFF');
-  const [flowerCount, setFlowerCount] = useState(3); // New state for bouquet flower count
+  const [flowerCount, setFlowerCount] = useState(3); // bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
-  const [showQR, setShowQR] = useState(false); // Controls the visibility of the QR code modal.
+  const [showQR, setShowQR] = useState(false); // QR code modal
   const [quantity, setQuantity] = useState(1);
-  
-  // Effect to scroll to the top of the page when the component mounts.
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+
+  // State to force remounting the Canvas on WebGL context loss.
+  const [canvasKey, setCanvasKey] = useState(Date.now());
 
   // Memoized callback to show the QR code modal.
   const handleGenerateQR = useCallback(() => {
@@ -75,27 +69,26 @@ const FlowerViewerPage = () => {
   // Handle place order
   const handlePlaceOrder = useCallback(() => {
     const colorName = COLOR_NAMES[color.toLowerCase()] || color;
-    navigate('/checkout', { state: 
-      { flowerType, 
+    navigate('/checkout', {
+      state: {
+        flowerType,
         color: colorName,
-        arrangement, 
-        totalPrice, 
-        quantity}   
-      });
+        arrangement,
+        totalPrice,
+        quantity,
+      }
+    });
   }, [flowerType, color, arrangement, totalPrice, quantity, navigate]);
+
+  // Effect to scroll to the top of the page when the component mounts.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   // Effect to recalculate the total price whenever customization options change.
   useEffect(() => {
-    const prices = FLOWER_PRICES[flowerType] || { single: 0 };
-    let basePrice = 0;
-
-    if (arrangement === 'bouquet') {
-      // Price for a bouquet is the single flower price multiplied by the count
-      basePrice = (prices.single || 0) * flowerCount;
-    } else {
-      basePrice = prices.single || 0;
-    }
-
+    const prices = FLOWER_PRICES[flowerType] || { single: 0, bouquet: 0 };
+    let basePrice = arrangement === 'bouquet' ? prices.bouquet : prices.single;
     setTotalPrice(basePrice * quantity);
   }, [flowerType, arrangement, flowerCount, quantity]);
 
@@ -108,10 +101,11 @@ const FlowerViewerPage = () => {
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pt-16 pb-28 lg:pb-0 transition-all duration-300 ease-in-out ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''}`}>
-      <main className={`px-4 py-6 md:px-6 lg:px-8 ${isAuthenticated ? 'container mx-auto' : ''}`}>
-        {/* Page Header */} 
-        <div className="mb-6 text-center lg:mb-8">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pt-16 transition-all duration-300 ease-in-out ${isAuthenticated ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''}`}>
+      {/* DESKTOP LAYOUT */}
+      <main className={`hidden lg:block px-4 py-6 md:px-6 lg:px-8 ${isAuthenticated ? 'container mx-auto' : ''}`}>
+        {/* Page Header */}
+        <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 md:text-4xl lg:text-5xl dark:text-white">
             Flower Customizer
           </h1>
@@ -119,56 +113,49 @@ const FlowerViewerPage = () => {
             Create and visualize your perfect crochet flower in AR.
           </p>
         </div>
-
-        <div className="grid grid-cols-1 gap-6 mx-auto lg:grid-cols-2 lg:gap-8 xl:grid-cols-5 xl:max-w-7xl">
-         
-         {/* 3D Model Viewer Section */}
-<div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
-  <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
-    <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
-    <p className="text-sm text-gray-500 dark:text-gray-400">Drag to rotate • Scroll to zoom • Pinch to zoom on mobile</p>
-  </div>
-  
-  {/* Canvas Container with Proper Containment */}
-  <div 
-    className="relative flex items-center justify-center w-full overflow-hidden bg-gray-50 dark:bg-gray-900/50"
-    style={{ 
-      height: 'clamp(300px, 50vh, 600px)', // Use clamp for responsive height
-      minHeight: '300px', // Reduce min-height for smaller screens
-      maxHeight: '600px',
-      minWidth: 0,
-     
-    }}
-  >
-    {/* Suspense fallback for the lazy-loaded ARViewer component. */}
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
-        <p className="text-gray-500 dark:text-gray-400">Loading 3D model...</p>
-      </div>
-    }>
-      <ARViewer 
-        flowerType={flowerType}
-        color={color}
-        arrangement={arrangement}
-      />
-    </Suspense>
-  </div>
-</div>
-
+        <div className="grid grid-cols-1 gap-8 mx-auto lg:grid-cols-2 xl:grid-cols-5 xl:max-w-7xl">
+          {/* 3D Model Viewer Section */}
+          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
+            <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
+              <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Drag to rotate • Scroll to zoom • Pinch to zoom on mobile
+              </p>
+            </div>
+            <div
+              className="relative flex items-center justify-center w-full overflow-hidden bg-gray-50 dark:bg-gray-900/50"
+              style={{
+                height: 'clamp(300px, 50vh, 600px)',
+                minHeight: '300px',
+                maxHeight: '600px',
+                minWidth: 0,
+              }}>
+              <Suspense fallback={
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+                  <p className="text-gray-500 dark:text-gray-400">Loading 3D model...</p>
+                </div>
+              }>
+                <ARViewer
+                  key={canvasKey}
+                  flowerType={flowerType}
+                  color={color}
+                  arrangement={arrangement}
+                />
+              </Suspense>
+            </div>
+          </div>
           {/* Customization Controls Panel */}
-          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">
+          <div className="overflow-hidden bg-white border border-gray-200 shadow-lg xl:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">
             <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Customization</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">Personalize your flower design</p>
             </div>
-            
             <div className="p-4 space-y-4 md:p-5 lg:space-y-5">
               {/* Flower Type Selection */}
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Flower Type</h3>
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Choose your preferred flower style</p>
-                {/* Suspense for the lazy-loaded FlowerTypeSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
@@ -178,19 +165,16 @@ const FlowerViewerPage = () => {
                   />
                 </Suspense>
               </div>
-
               {/* Arrangement Selection */}
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Arrangement</h3>
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Choose single stem or a full bouquet</p>
-                {/* Suspense for the lazy-loaded ArrangementSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
                   <ArrangementSelector selectedArrangement={arrangement} onSelect={setArrangement} />
                 </Suspense>
               </div>
-
               {/* Animated container for bouquet-specific controls. */}
               <AnimatePresence>
                 {arrangement === 'bouquet' && (
@@ -201,14 +185,13 @@ const FlowerViewerPage = () => {
                     transition={{ duration: 0.3 }}
                     className="space-y-1 overflow-hidden"
                   >
+                  {/* Add bouquet controls here if needed */}
                   </Motion.div>
                 )}
               </AnimatePresence>
-
               {/* Color Picker */}
               <div className="space-y-1">
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Select a color for the petals</p>
-                {/* Suspense for the lazy-loaded ColorSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
@@ -219,13 +202,12 @@ const FlowerViewerPage = () => {
                   />
                 </Suspense>
               </div>
-
               {/* Quantity Selector */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</h3>
                   <div className="flex items-center space-x-2">
-                    <button 
+                    <button
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}
                       className="p-1 text-gray-600 bg-gray-100 rounded-full dark:text-gray-300 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={quantity <= 1}
@@ -234,7 +216,7 @@ const FlowerViewerPage = () => {
                       <Minus className="w-4 h-4" />
                     </button>
                     <span className="w-10 font-semibold text-center text-gray-800 dark:text-gray-100">{quantity}</span>
-                    <button 
+                    <button
                       onClick={() => setQuantity(q => q + 1)}
                       className="p-1 text-gray-600 bg-gray-100 rounded-full dark:text-gray-300 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
                       aria-label="Increase quantity"
@@ -244,7 +226,6 @@ const FlowerViewerPage = () => {
                   </div>
                 </div>
               </div>
-              
               {/* Price Display for Desktop */}
               <div className="items-center justify-between hidden pt-4 mt-4 border-t border-gray-200 lg:flex lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">Total Price:</h3>
@@ -252,27 +233,24 @@ const FlowerViewerPage = () => {
                   {currencyFormatter.format(totalPrice)}
                 </span>
               </div>
-
               {/* Action Buttons for Desktop */}
-              <div className="pt-4 mt-4 space-y-3 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
+              <div className="pt-5 mt-5 space-y-3 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={handleGenerateQR}
-                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg lg:flex"
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:shadow-lg"
                 >
                   <QrCode className="w-5 h-5 mr-2" />
-                  Generate QR Code
+                  View in AR
                 </button>
-                
                 <button
                   onClick={handlePlaceOrder}
-                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:shadow-lg lg:flex"
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg"
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Place Order Now
                 </button>
               </div>
             </div>
-            
             {/* A small section with design tips for the user. */}
             <div className="p-5 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/30 dark:border-gray-700">
               <h3 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Design Tips</h3>
@@ -288,38 +266,97 @@ const FlowerViewerPage = () => {
           </div>
         </div>
       </main>
+      {/* MOBILE LAYOUT */}
+      <div className="w-full lg:hidden">
+        {/* 3D Viewer */}
+        <div className="w-full h-[60vh] max-h-[450px] bg-gray-100 dark:bg-gray-900/50">
+          <Suspense fallback={
+            <div className="grid w-full h-full place-items-center">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+                <p className="text-gray-500 dark:text-gray-400">Loading 3D model...</p>
+              </div>
+            </div>
+          }>
+            <ARViewer key={canvasKey} flowerType={flowerType} color={color} arrangement={arrangement} />
+          </Suspense>
+        </div>
 
-      {/* Sticky Footer with primary actions, visible only on mobile screens. */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 p-3 border-t border-gray-200 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 dark:border-gray-700 lg:hidden">
-        <div className="container flex items-center justify-between mx-auto space-x-3">
-          <div className="flex flex-col text-left">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Total Price</span>
-            <span className="font-bold text-pink-600 dark:text-pink-400">
-              {currencyFormatter.format(totalPrice)}
-            </span>
+        {/* Content Section */}
+        <div className="p-4 space-y-6 sm:p-6">
+          {/* Product Info */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 capitalize dark:text-white">{flowerType} {arrangement}</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Handcrafted Crochet Flower</p>
+            </div>
+            <p className="text-2xl font-bold text-pink-600 dark:text-pink-400">{currencyFormatter.format(totalPrice)}</p>
           </div>
-          <div className="flex items-center space-x-2">
+
+          {/* Customization Options */}
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Flower Type</h3>
+              <Suspense fallback={<div className="h-24 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>}>
+                <FlowerTypeSelector selectedType={flowerType} onSelect={setFlowerType} />
+              </Suspense>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Arrangement</h3>
+              <Suspense fallback={<div className="h-20 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>}>
+                <ArrangementSelector selectedArrangement={arrangement} onSelect={setArrangement} />
+              </Suspense>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Flower Color</h3>
+              <Suspense fallback={<div className="h-16 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>}>
+                <ColorSelector selectedColor={color} onSelect={setColor} />
+              </Suspense>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</h3>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  className="p-1.5 text-gray-600 bg-gray-100 rounded-full dark:text-gray-300 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="w-10 font-semibold text-center text-gray-800 dark:text-gray-100">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  className="p-1.5 text-gray-600 bg-gray-100 rounded-full dark:text-gray-300 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-6 mt-6 space-y-3 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={handleGenerateQR}
-              className="flex items-center justify-center p-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600"
+              className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-pink-500 to-purple-600 hover:shadow-lg"
             >
-              <QrCode className="w-5 h-5" />
+              <QrCode className="w-5 h-5 mr-2" /> View in AR
             </button>
             <button
               onClick={handlePlaceOrder}
-              className="flex items-center justify-center flex-1 px-4 py-3 font-medium text-white transition-all rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600"
+              className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg"
             >
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              <span>Order Now</span>
+              <ShoppingCart className="w-5 h-5 mr-2" /> Place Order
             </button>
           </div>
         </div>
       </div>
-
-      {/* Modal for displaying the QR code, animated with Framer Motion. */}
+      {/* Modal for displaying the QR code */}
       <AnimatePresence>
         {showQR && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <Motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -337,9 +374,8 @@ const FlowerViewerPage = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-
               <div className="flex-grow p-4 overflow-y-auto sm:p-6">
-                {/* Suspense for the lazy-loaded QRCodeDisplay component. */}
+                {/* Suspense for QRCodeDisplay */}
                 <Suspense fallback={
                   <div className="flex items-center justify-center w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-xl">
                     <div className="flex flex-col items-center">
@@ -355,11 +391,9 @@ const FlowerViewerPage = () => {
                     className="w-full"
                   />
                 </Suspense>
-
-                {/* Instructions on how to use the QR code for AR. */}
                 <div className="p-4 mt-6 border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:border-blue-800">
                   <h4 className="flex items-center mb-2 font-medium text-blue-800 dark:text-blue-200">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
                     </svg>
                     How to view in AR
@@ -372,7 +406,6 @@ const FlowerViewerPage = () => {
                   </ol>
                 </div>
               </div>
-
               <div className="flex justify-end flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
                 <button
                   onClick={() => setShowQR(false)}

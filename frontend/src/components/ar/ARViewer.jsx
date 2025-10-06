@@ -23,6 +23,7 @@ export default function ARViewer({
   arrangement = 'single',
   color = '#ff69b4',
   modelSrc, // optional override
+  ar = false, // Prop to control AR functionality
   showARButton = false, // New prop to control AR button visibility
   isFullScreen = false, // New prop to control layout
 }) {
@@ -94,36 +95,32 @@ export default function ARViewer({
     };
   }, [modelPath]);
 
-  // Effect to apply the selected color to the model's materials (specifically the petals).
+  // Effect to apply color changes to the model's materials.
   useEffect(() => {
     const modelViewer = modelRef.current;
-    if (!modelViewer || !modelViewer.model) return;
-
-    const applyColor = () => {
-      const newColor = new Color(color);
-      modelViewer.model.materials.forEach((material) => {
-        const materialName = material.name.toLowerCase();
-        // Only apply color to materials that are part of the flower petals.
-        // This relies on the 3D model's materials being named appropriately (e.g., 'petal', 'flower_material').
-        if (materialName.includes('petal') || materialName.includes('flower') || materialName.includes(flowerType)) {
-          const pbr = material.pbrMetallicRoughness;
-          if (pbr) {
-            // Discard the original texture to apply a solid color, but keep other maps (like normalMap).
-            pbr.baseColorTexture.texture?.dispose();
-            pbr.baseColorTexture.texture = null;
-            pbr.setBaseColorFactor([newColor.r, newColor.g, newColor.b, 1]);
-          }
-        }
-      });
-    };
-
-    // If the model is already loaded, apply color immediately.
-    // Otherwise, the 'load' event listener will handle it.
-    if (!isLoading) {
-      applyColor();
+    // The model is only ready to be manipulated after it has fully loaded.
+    // We check for `!isLoading` and the presence of `modelViewer.model`.
+    if (isLoading || !modelViewer || !modelViewer.model) {
+      // If the model is still loading or not available, we do nothing.
+      // The hook will re-run once `isLoading` changes to false.
+      return;
     }
 
-  }, [color, isLoading]); // Rerun when color changes or model finishes loading
+    const newColor = new Color(color);
+
+    // This is a common pattern for <model-viewer>:
+    // We create a new material and swap it out to ensure changes are applied.
+    modelViewer.model.materials.forEach((material) => {
+      const materialName = material.name.toLowerCase();
+
+      // Target only the petal materials.
+      if (materialName.includes('petal') || materialName.includes('flower') || materialName.includes(flowerType)) {
+        // Set the base color factor directly on the material.
+        // model-viewer will detect this change and update the model.
+        material.pbrMetallicRoughness.setBaseColorFactor(newColor);
+      }
+    });
+  }, [color, isLoading, flowerType]); // Rerun when color changes or after the model has loaded.
 
   return (
     // The main container, which is either full-screen or sized by its parent.
@@ -145,7 +142,7 @@ export default function ARViewer({
         ref={modelRef}
         src={modelPath}
         alt={`${flowerType} ${arrangement}`}
-        ar
+        ar={ar ? true : undefined}
         ar-modes="webxr scene-viewer quick-look"
         ar-scale="auto"
         interaction-prompt="auto"

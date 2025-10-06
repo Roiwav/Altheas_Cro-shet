@@ -37,9 +37,7 @@ const ColorSelector = React.memo(({
   ), [selectedColor, onSelect]);
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Flower Color</h3>
-      
+    <div className={className}>
       <div className="flex flex-wrap gap-2">
         {colorSwatches}
       </div>

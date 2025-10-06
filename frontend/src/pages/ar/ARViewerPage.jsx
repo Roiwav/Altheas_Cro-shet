@@ -63,6 +63,7 @@ function ARViewerPage() {
             flowerType={flowerType}
             arrangement={arrangement}
             color={color}
+            ar={true}
             isFullScreen={true}
             showARButton={true}
           />
