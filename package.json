@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@google/model-viewer": "^4.1.0",
+    "react-qrcode-logo": "^4.0.0",
     "three": "^0.180.0"
   }
 }

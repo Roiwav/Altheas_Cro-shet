@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { Color } from 'three';
 import '@google/model-viewer';
 
-// Map to actual files used elsewhere so AR uses the same assets
+// Defines the paths to the 3D models for each flower type and arrangement.
 const MODEL_PATHS = {
   rose: { single: '/models/rose_single.glb', bouquet: '/models/rose_bouquet.glb' },
   tulip: { single: '/models/tulip_single.glb', bouquet: '/models/tulip_bouquet.glb' },
@@ -13,6 +13,11 @@ const MODEL_PATHS = {
   peony: { single: '/models/peony_single.glb', bouquet: '/models/peony_bouquet.glb' },
 };
 
+/**
+ * A versatile 3D model viewer component that can be used for both inline previews
+ * and full-screen Augmented Reality experiences. It leverages Google's <model-viewer>.
+ * @param {object} props - The component props.
+ */
 export default function ARViewer({
   flowerType = 'rose',
   arrangement = 'single',
@@ -21,55 +26,47 @@ export default function ARViewer({
   showARButton = false, // New prop to control AR button visibility
   isFullScreen = false, // New prop to control layout
 }) {
+  // Refs to directly access the <model-viewer> and its AR button.
   const modelRef = useRef(null);
+  const arButtonRef = useRef(null);
+  // State to manage loading and error status of the model.
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Resolve src once; do not keep setting attributes during runtime
+  // Memoize the model path to prevent re-computation on every render.
   const modelPath = useMemo(() => {
     if (modelSrc) return modelSrc;
     const entry = MODEL_PATHS[flowerType] || MODEL_PATHS.rose;
     return (entry && entry[arrangement]) ? entry[arrangement] : MODEL_PATHS.rose.single;
   }, [flowerType, arrangement, modelSrc]);
 
-  // Style objects are memoized so they do not trigger updates in Lit
-  const containerStyle = useMemo(() => (isFullScreen ? {
-      position: 'fixed',
-      inset: 0,
-      width: '100vw',
-      height: '100vh',
-      background: '#000',
-      overflow: 'hidden',
-    } : {
-      width: '100%',
-      height: '100%',
-      position: 'relative',
-      overflow: 'hidden',
-    }), [isFullScreen]);
+  // Effect to add a "press-in" animation to the AR button on touch devices.
+  useEffect(() => {
+    const button = arButtonRef.current;
+    if (!button) return;
 
-  const modelViewerStyle = useMemo(() => ({
-    width: '100%',
-    height: '100%',
-    display: 'block',
-    '--progress-bar-color': color,
-  }), [color]);
+    const handleTouchStart = () => {
+      button.style.transform = 'translateX(-50%) scale(0.95)';
+      button.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)'; // shadow-sm
+    };
 
-  const arButtonStyle = useMemo(() => ({
-    backgroundColor: color,
-    color: '#fff',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '24px',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    position: 'absolute',
-    bottom: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    zIndex: 2,
-  }), [color]);
+    const handleTouchEnd = () => {
+      button.style.transform = 'translateX(-50%) scale(1)';
+      button.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)'; // shadow-md
+    };
 
+    button.addEventListener('touchstart', handleTouchStart, { passive: true });
+    button.addEventListener('touchend', handleTouchEnd, { passive: true });
+    button.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      button.removeEventListener('touchstart', handleTouchStart);
+      button.removeEventListener('touchend', handleTouchEnd);
+      button.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, []);
+
+  // Effect to handle the loading and error events from the <model-viewer> element.
   useEffect(() => {
     const el = modelRef.current;
     if (!el) return;
@@ -97,7 +94,7 @@ export default function ARViewer({
     };
   }, [modelPath]);
 
-  // Effect to update material color when the color prop changes
+  // Effect to apply the selected color to the model's materials (specifically the petals).
   useEffect(() => {
     const modelViewer = modelRef.current;
     if (!modelViewer || !modelViewer.model) return;
@@ -129,39 +126,21 @@ export default function ARViewer({
   }, [color, isLoading]); // Rerun when color changes or model finishes loading
 
   return (
-    <div style={containerStyle}>
+    // The main container, which is either full-screen or sized by its parent.
+    <div className={isFullScreen ? "fixed inset-0 w-screen h-dvh bg-black overflow-hidden" : "w-full h-full relative overflow-hidden"}>
       {isLoading && !error && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'grid',
-            placeItems: 'center',
-            color: '#fff',
-            zIndex: 3,
-          }}
-        >
+        <div className="absolute inset-0 z-10 grid text-white place-items-center">
           Loading 3D model...
         </div>
       )}
 
       {error && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'grid',
-            placeItems: 'center',
-            color: '#fff',
-            padding: 16,
-            textAlign: 'center',
-            zIndex: 3,
-          }}
-        >
+        <div className="absolute inset-0 z-10 grid p-4 text-center text-white place-items-center">
           {error}
         </div>
       )}
 
+      {/* The core <model-viewer> web component. */}
       <model-viewer
         ref={modelRef}
         src={modelPath}
@@ -170,21 +149,49 @@ export default function ARViewer({
         ar-modes="webxr scene-viewer quick-look"
         ar-scale="auto"
         interaction-prompt="auto"
-        interaction-prompt-style="wiggle"
+        interaction-prompt-style="wiggle" // Adds a subtle animation to encourage interaction.
         camera-controls
-        camera-orbit="15deg 75deg 105%"
         touch-action="pan-y"
+        camera-target="0 1m 0" // Aims the camera slightly up.
+        field-of-view="30deg" // Zooms in for a fuller view.
         shadow-intensity="1"
+        shadow-softness="1" // Creates softer, more realistic shadows.
         exposure="1.2"
         environment-image="neutral"
         autoplay
-        style={modelViewerStyle}
+        className="block w-full h-full"
+        style={{
+          '--progress-bar-color': color,
+          '--model-viewer-background-color': '#f0f2f5'
+        }}
       >
+        {/* The "Enter AR" button, only shown when `showARButton` is true. */}
         {showARButton && (
-          <button slot="ar-button" style={arButtonStyle}>
-            View in AR
+          <button
+            ref={arButtonRef}
+            slot="ar-button"
+            className="absolute z-10 px-6 py-3 text-base font-bold text-white transition-transform ease-out -translate-x-1/2 border-none rounded-full shadow-md cursor-pointer left-1/2 bg-gradient-to-r from-pink-500 to-purple-600"
+            style={{
+              bottom: 'calc(24px + env(safe-area-inset-bottom))', // Adjust for mobile navigation bars
+              transition: 'transform 0.1s ease-out, box-shadow 0.1s ease-out'
+            }}
+          >
+            Enter AR Experience
           </button>
         )}
+        {/* An invisible ground plane for shadows to be cast upon in the 3D preview. */}
+        <div className="plane" slot="environment" style={{
+          display: 'block', content: ' ', width: '1000px', height: '1000px', background: 'transparent', position: 'absolute', transform: 'translateY(-50%) rotateX(90deg)', top: '50%', left: '50%', marginLeft: '-500px', marginTop: '-500px'
+        }}></div>
+        
+        {/* Instructional text displayed during the AR session. */}
+        <div
+          slot="ar-status"
+          className="absolute left-1/2 z-10 box-border max-w-[calc(100%-32px)] -translate-x-1/2 whitespace-nowrap rounded-lg bg-black/70 px-3 py-2 text-center text-sm text-white font-sans"
+          style={{ bottom: 'calc(16px + env(safe-area-inset-bottom))' }} // Adjust for mobile navigation bars
+        >
+          Move your phone to find a surface, then tap to place
+        </div>
       </model-viewer>
     </div>
   );

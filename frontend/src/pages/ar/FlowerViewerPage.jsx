@@ -4,13 +4,14 @@ import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../../context/useUser';
 import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
 
-// Lazy load AR components
+// Lazy load AR components for better initial page load performance.
 const ARViewer = lazy(() => import('../../components/ar/ARViewer'));
 const FlowerTypeSelector = lazy(() => import('../../components/ar/FlowerTypeSelector'));
 const ColorSelector = lazy(() => import('../../components/ar/ColorSelector'));
 const ArrangementSelector = lazy(() => import('../../components/ar/ArrangementSelector'));
 const QRCodeDisplay = lazy(() => import('../../components/ar/QRCodeDisplay'));
 
+// Default starting color for each flower type.
 const defaultColors = {
   rose: '#FFFFFF',
   tulip: '#FFFFFF',
@@ -20,6 +21,7 @@ const defaultColors = {
   peony: '#FFFFFF',
 };
 
+// Map hex colors to human-readable names for display purposes (e.g., in order summary).
 const COLOR_NAMES = {
   "#ff69b4": "Hot Pink",
   "#ff0000": "Red",
@@ -31,6 +33,7 @@ const COLOR_NAMES = {
   "#ffffff": "White",
 };
 
+// Pricing structure for each flower type and arrangement.
 const FLOWER_PRICES = {
   rose: { single: 150, bouquet: 1500 },
   tulip: { single: 120, bouquet: 1200 },
@@ -40,19 +43,31 @@ const FLOWER_PRICES = {
   peony: { single: 250, bouquet: 2500 },
 };
 
+/**
+ * The main page for customizing and viewing a 3D flower model.
+ * It allows users to select flower type, arrangement, color, and quantity,
+ * and provides options to view in AR or proceed to checkout.
+ */
 const FlowerViewerPage = () => {
+  // Hooks for routing and user authentication context.
   const { type: initialType } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useUser();
+  // State management for flower customization.
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
   const [color, setColor] = useState(defaultColors[initialType] || '#FFFFFF');
   const [flowerCount, setFlowerCount] = useState(3); // New state for bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
-  const [showQR, setShowQR] = useState(false);
+  const [showQR, setShowQR] = useState(false); // Controls the visibility of the QR code modal.
   const [quantity, setQuantity] = useState(1);
   
-  // Handle generate QR code
+  // Effect to scroll to the top of the page when the component mounts.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Memoized callback to show the QR code modal.
   const handleGenerateQR = useCallback(() => {
     setShowQR(true);
   }, []);
@@ -69,7 +84,7 @@ const FlowerViewerPage = () => {
       });
   }, [flowerType, color, arrangement, totalPrice, quantity, navigate]);
 
-  // Calculate price when flower type or arrangement changes
+  // Effect to recalculate the total price whenever customization options change.
   useEffect(() => {
     const prices = FLOWER_PRICES[flowerType] || { single: 0 };
     let basePrice = 0;
@@ -84,11 +99,12 @@ const FlowerViewerPage = () => {
     setTotalPrice(basePrice * quantity);
   }, [flowerType, arrangement, flowerCount, quantity]);
 
-  // Update color to default when flowerType changes
+  // Effect to reset the color to white whenever the flower type changes.
   useEffect(() => {
     setColor(defaultColors[flowerType] || '#FFFFFF');
   }, [flowerType]);
 
+  // Formatter for displaying currency in Philippine Peso.
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
   return (
@@ -106,7 +122,7 @@ const FlowerViewerPage = () => {
 
         <div className="grid grid-cols-1 gap-6 mx-auto lg:grid-cols-2 lg:gap-8 xl:grid-cols-5 xl:max-w-7xl">
          
-         {/* Main AR Viewer */}
+         {/* 3D Model Viewer Section */}
 <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-3 dark:bg-gray-800 rounded-xl dark:border-gray-700">
   <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
     <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-white">Your Custom Flower</h2>
@@ -117,13 +133,14 @@ const FlowerViewerPage = () => {
   <div 
     className="relative flex items-center justify-center w-full overflow-hidden bg-gray-50 dark:bg-gray-900/50"
     style={{ 
-      height: '50vh',
-      minHeight: '400px',
+      height: 'clamp(300px, 50vh, 600px)', // Use clamp for responsive height
+      minHeight: '300px', // Reduce min-height for smaller screens
       maxHeight: '600px',
-      minWidth: 0,  // Important for flex containers
+      minWidth: 0,
      
     }}
   >
+    {/* Suspense fallback for the lazy-loaded ARViewer component. */}
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
@@ -139,7 +156,7 @@ const FlowerViewerPage = () => {
   </div>
 </div>
 
-          {/* Controls Panel */}
+          {/* Customization Controls Panel */}
           <div className="overflow-hidden bg-white border border-gray-200 shadow-lg lg:col-span-1 xl:col-span-2 dark:bg-gray-800 rounded-xl dark:border-gray-700">
             <div className="p-4 border-b border-gray-100 md:p-5 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Customization</h2>
@@ -151,6 +168,7 @@ const FlowerViewerPage = () => {
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Flower Type</h3>
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Choose your preferred flower style</p>
+                {/* Suspense for the lazy-loaded FlowerTypeSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
@@ -165,6 +183,7 @@ const FlowerViewerPage = () => {
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Arrangement</h3>
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Choose single stem or a full bouquet</p>
+                {/* Suspense for the lazy-loaded ArrangementSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
@@ -172,7 +191,7 @@ const FlowerViewerPage = () => {
                 </Suspense>
               </div>
 
-              {/* Flower Count Slider - only for bouquets */}
+              {/* Animated container for bouquet-specific controls. */}
               <AnimatePresence>
                 {arrangement === 'bouquet' && (
                   <Motion.div
@@ -189,6 +208,7 @@ const FlowerViewerPage = () => {
               {/* Color Picker */}
               <div className="space-y-1">
                 <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Select a color for the petals</p>
+                {/* Suspense for the lazy-loaded ColorSelector. */}
                 <Suspense fallback={
                   <div className="h-10 bg-gray-100 rounded-lg dark:bg-gray-700 animate-pulse"></div>
                 }>
@@ -225,7 +245,7 @@ const FlowerViewerPage = () => {
                 </div>
               </div>
               
-              {/* Price Display */}
+              {/* Price Display for Desktop */}
               <div className="items-center justify-between hidden pt-4 mt-4 border-t border-gray-200 lg:flex lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">Total Price:</h3>
                 <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
@@ -233,7 +253,7 @@ const FlowerViewerPage = () => {
                 </span>
               </div>
 
-              {/* Action Buttons - Desktop */}
+              {/* Action Buttons for Desktop */}
               <div className="pt-4 mt-4 space-y-3 border-t border-gray-200 lg:pt-5 lg:mt-5 dark:border-gray-700">
                 <button
                   onClick={handleGenerateQR}
@@ -253,7 +273,7 @@ const FlowerViewerPage = () => {
               </div>
             </div>
             
-            {/* Design Tips */}
+            {/* A small section with design tips for the user. */}
             <div className="p-5 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/30 dark:border-gray-700">
               <h3 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Design Tips</h3>
               <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
@@ -269,7 +289,7 @@ const FlowerViewerPage = () => {
         </div>
       </main>
 
-      {/* Sticky Footer for Mobile Actions */}
+      {/* Sticky Footer with primary actions, visible only on mobile screens. */}
       <div className="fixed bottom-0 left-0 right-0 z-40 p-3 border-t border-gray-200 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 dark:border-gray-700 lg:hidden">
         <div className="container flex items-center justify-between mx-auto space-x-3">
           <div className="flex flex-col text-left">
@@ -296,7 +316,7 @@ const FlowerViewerPage = () => {
         </div>
       </div>
 
-      {/* QR Code Modal */}
+      {/* Modal for displaying the QR code, animated with Framer Motion. */}
       <AnimatePresence>
         {showQR && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -319,6 +339,7 @@ const FlowerViewerPage = () => {
               </div>
 
               <div className="flex-grow p-4 overflow-y-auto sm:p-6">
+                {/* Suspense for the lazy-loaded QRCodeDisplay component. */}
                 <Suspense fallback={
                   <div className="flex items-center justify-center w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-xl">
                     <div className="flex flex-col items-center">
@@ -335,6 +356,7 @@ const FlowerViewerPage = () => {
                   />
                 </Suspense>
 
+                {/* Instructions on how to use the QR code for AR. */}
                 <div className="p-4 mt-6 border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:border-blue-800">
                   <h4 className="flex items-center mb-2 font-medium text-blue-800 dark:text-blue-200">
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
