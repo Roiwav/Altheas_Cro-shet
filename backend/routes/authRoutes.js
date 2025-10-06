@@ -2,10 +2,64 @@ const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const passport = require("passport");
 const User = require("../models/User");
 const { verifyToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+// Generate JWT Token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '7d'
+  });
+};
+
+// Google OAuth Routes
+router.get('/google', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+    accessType: 'offline',
+    session: false
+  })
+);
+
+// Google OAuth Callback
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: '/login',
+    failureMessage: true,
+    session: false 
+  }),
+  async (req, res) => {
+    try {
+      if (!req.user) {
+        throw new Error('Authentication failed');
+      }
+
+      const token = generateToken(req.user._id);
+      const userData = {
+        id: req.user._id,
+        email: req.user.email,
+        name: req.user.fullName || req.user.email.split('@')[0],
+        role: req.user.role || 'customer',
+        avatar: req.user.avatar
+      };
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const redirectUrl = new URL(`${frontendUrl}/auth/success`);
+      redirectUrl.searchParams.set('token', token);
+      redirectUrl.searchParams.set('user', JSON.stringify(userData));
+      
+      res.redirect(redirectUrl.toString());
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+    }
+  }
+);
 
 // REGISTER
 router.post("/register", async (req, res) => {
@@ -140,6 +194,44 @@ router.post("/change-password", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });
+
+// GOOGLE OAUTH ROUTES
+router.get('/google', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account'
+  })
+);
+
+// Google OAuth callback
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: '/login',
+    failureMessage: true 
+  }),
+  (req, res) => {
+    try {
+      // Generate JWT token
+      const token = generateToken(req.user._id);
+      
+      // Prepare user data to send to frontend
+      const userData = {
+        id: req.user._id,
+        email: req.user.email,
+        name: req.user.name || req.user.email.split('@')[0],
+        role: req.user.role || 'customer',
+        avatar: req.user.avatar
+      };
+      
+      // Redirect to frontend with token and user data
+      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`;
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+    }
+  }
+);
 
 // FORGOT PASSWORD
 router.post("/forgot-password", async (req, res) => {

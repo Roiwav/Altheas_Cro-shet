@@ -58,7 +58,7 @@ export default function App() {
         {/* Auth Pages without Layout */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/auth/success" element={<OAuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<ResetPassword />} />
         <Route path="/data-policy" element={<DataPolicy />} />
