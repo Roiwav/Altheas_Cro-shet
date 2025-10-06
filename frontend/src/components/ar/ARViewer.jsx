@@ -1,60 +1,49 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+// components/ar/ARViewer.jsx
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import '@google/model-viewer';
 
-export default function ARViewer({ 
-  flowerType = 'rose', 
-  arrangement = 'single', 
+// Map to actual files used elsewhere so AR uses the same assets
+const MODEL_PATHS = {
+  rose: { single: '/models/rose_single.glb', bouquet: '/models/rose_bouquet.glb' },
+  tulip: { single: '/models/tulip_single.glb', bouquet: '/models/tulip_bouquet.glb' },
+  sunflower: { single: '/models/sunflower_single.glb', bouquet: '/models/sunflower_bouquet.glb' },
+  lily: { single: '/models/lily_single.glb', bouquet: '/models/lily_bouquet.glb' },
+  carnation: { single: '/models/carnation_single.glb', bouquet: '/models/carnation_bouquet.glb' },
+  peony: { single: '/models/peony_single.glb', bouquet: '/models/peony_bouquet.glb' },
+};
+
+export default function ARViewer({
+  flowerType = 'rose',
+  arrangement = 'single',
   color = '#ff69b4',
-  modelSrc 
+  modelSrc, // optional override
 }) {
-  const modelRef = useRef();
+  const modelRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modelPath, setModelPath] = useState('');
 
-  // IMPORTANT: Place GLB files in /public folder
-  // Files in /public are served at root URL
-  const getModelPath = () => {
+  // Resolve src once; do not keep setting attributes during runtime
+  const modelPath = useMemo(() => {
     if (modelSrc) return modelSrc;
-    return `/models/${flowerType}_${arrangement}.glb`;
-  };
-
-  useEffect(() => {
-    const path = getModelPath();
-    setModelPath(path);
-    
-    const modelViewer = modelRef.current;
-    
-    if (modelViewer) {
-      const handleLoad = () => {
-        setIsLoading(false);
-        setError(null);
-        console.log('3D model loaded successfully');
-      };
-
-      const handleError = (event) => {
-        const errorMessage = `Failed to load 3D model from: ${path}`;
-        setError(errorMessage);
-        setIsLoading(false);
-        console.error('Model loading error:', event.detail || event);
-      };
-
-      modelViewer.addEventListener('load', handleLoad);
-      modelViewer.addEventListener('error', handleError);
-
-      return () => {
-        modelViewer.removeEventListener('load', handleLoad);
-        modelViewer.removeEventListener('error', handleError);
-      };
-    }
+    const entry = MODEL_PATHS[flowerType] || MODEL_PATHS.rose;
+    return (entry && entry[arrangement]) ? entry[arrangement] : MODEL_PATHS.rose.single;
   }, [flowerType, arrangement, modelSrc]);
 
-  // Memoize style objects to prevent re-renders
+  // Style objects are memoized so they do not trigger updates in Lit
+  const containerStyle = useMemo(() => ({
+    position: 'fixed',
+    inset: 0,
+    width: '100vw',
+    height: '100vh',
+    background: '#000',
+    overflow: 'hidden',
+  }), []);
+
   const modelViewerStyle = useMemo(() => ({
     width: '100%',
     height: '100%',
-    display: 'block',  // KEY FIX: Prevents extra spacing
-    '--progress-bar-color': color
+    display: 'block',
+    '--progress-bar-color': color,
   }), [color]);
 
   const arButtonStyle = useMemo(() => ({
@@ -70,88 +59,87 @@ export default function ARViewer({
     bottom: '20px',
     left: '50%',
     transform: 'translateX(-50%)',
-    zIndex: 1
+    zIndex: 2,
   }), [color]);
 
-  // Note: The inline styles for the loading/error divs are acceptable
-  // because those elements are unmounted when the model viewer is visible,
-  // so they don't cause re-renders on the model-viewer element itself.
+  useEffect(() => {
+    const el = modelRef.current;
+    if (!el) return;
+
+    const handleLoad = () => {
+      setIsLoading(false);
+      setError(null);
+      // Note: do not set element properties here to avoid Lit change-in-update warnings
+      // This console log is fine and visible in your earlier logs
+      console.log('3D model loaded successfully');
+    };
+
+    const handleError = (event) => {
+      const message = `Failed to load 3D model from: ${modelPath}`;
+      setError(message);
+      setIsLoading(false);
+      console.error('Model loading error:', event?.detail || event);
+    };
+
+    el.addEventListener('load', handleLoad);
+    el.addEventListener('error', handleError);
+    return () => {
+      el.removeEventListener('load', handleLoad);
+      el.removeEventListener('error', handleError);
+    };
+  }, [modelPath]);
 
   return (
-    <div style={{ 
-      width: '100%', 
-      height: '100%', 
-      position: 'relative',
-      overflow: 'hidden',  // KEY FIX: Prevents overflow
-      minWidth: 0,         // KEY FIX: For flex containers
-      minHeight: 0         // KEY FIX: For flex containers
-    }}>
+    <div style={containerStyle}>
       {isLoading && !error && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-          color: '#666',
-          background: 'rgba(255,255,255,0.9)',
-          padding: '20px',
-          borderRadius: '10px',
-          textAlign: 'center'
-        }}>
-          <div style={{ marginBottom: '10px' }}>Loading 3D model...</div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            {modelPath}
-          </div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            color: '#fff',
+            zIndex: 3,
+          }}
+        >
+          Loading 3D model...
         </div>
       )}
 
       {error && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-          color: '#fff',
-          background: 'rgba(255,0,0,0.9)',
-          padding: '20px',
-          borderRadius: '10px',
-          maxWidth: '90%',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-            Model Loading Failed
-          </div>
-          <div style={{ fontSize: '14px', marginBottom: '10px' }}>
-            {error}
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.9 }}>
-            Please ensure the GLB file exists in /public/models/
-          </div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            color: '#fff',
+            padding: 16,
+            textAlign: 'center',
+            zIndex: 3,
+          }}
+        >
+          {error}
         </div>
       )}
 
       <model-viewer
         ref={modelRef}
         src={modelPath}
-        alt={`A ${color} ${flowerType} in ${arrangement} arrangement`}
+        alt={`${flowerType} ${arrangement}`}
         ar
         ar-modes="webxr scene-viewer quick-look"
-        ar-scale="auto"
+        ar-scale="fixed"
         camera-controls
-        auto-rotate
+        touch-action="pan-y"
         shadow-intensity="1"
-        environment-image="neutral"
         exposure="1"
-        ar-placement="floor"
+        environment-image="neutral"
+        autoplay
         style={modelViewerStyle}
       >
-        <button 
-          slot="ar-button"
-          style={arButtonStyle}
-        >
-          View in Your Space
+        <button slot="ar-button" style={arButtonStyle}>
+          View in AR
         </button>
       </model-viewer>
     </div>

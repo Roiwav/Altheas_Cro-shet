@@ -1,14 +1,13 @@
+// pages/ar/ARViewerPage.jsx
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { X, QrCode, AlertTriangle } from 'lucide-react';
-import { useUser } from '../../context/useUser';
 import { ARErrorBoundary } from '../../components/ar/ARErrorBoundary';
 
 const QRCodeDisplay = React.lazy(() => import('../../components/ar/QRCodeDisplay'));
 const ARViewer = React.lazy(() => import('../../components/ar/ARViewer'));
 
 function ARViewerPage() {
-  const { isAuthenticated } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
@@ -18,9 +17,8 @@ function ARViewerPage() {
   const color = '#' + (searchParams.get('color') || 'ff69b4');
 
   useEffect(() => {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(userAgent);
-    setIsMobile(isMobileDevice);
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    setIsMobile(/android|iphone|ipad|ipod|mobile/i.test(ua));
   }, []);
 
   const handleExitAR = () => {
@@ -31,57 +29,53 @@ function ARViewerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100">
-      {/* Exit Button */}
+    <div className="relative w-screen h-screen text-white bg-black">
       <button
         onClick={handleExitAR}
-        className="fixed z-50 p-3 transition-shadow bg-white rounded-full shadow-lg top-4 right-4 hover:shadow-xl"
-        aria-label="Exit AR View"
+        className="absolute z-50 p-2 rounded-full top-3 right-3 bg-white/10 hover:bg-white/20"
+        aria-label="Close"
       >
-        <X className="w-6 h-6 text-gray-700" />
+        <X />
       </button>
 
-      {/* Desktop: Show QR Code */}
-      {!isMobile && (
-        <div className="flex items-center justify-center min-h-screen p-8">
-          <div className="max-w-md p-8 text-center bg-white shadow-2xl rounded-2xl">
-            <QrCode className="w-16 h-16 mx-auto mb-4 text-pink-500" />
-            <h2 className="mb-4 text-2xl font-bold">View in AR</h2>
-            <p className="mb-6 text-gray-600">
-              Scan this QR code with your mobile device to view the flower in Augmented Reality.
-            </p>
-            <ARErrorBoundary>
-              <Suspense fallback={<div>Generating QR Code...</div>}>
-                <QRCodeDisplay 
-                  flowerType={flowerType}
-                  arrangement={arrangement}
-                  color={color.replace('#', '')}
-                />
-              </Suspense>
-            </ARErrorBoundary>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile: Show AR Viewer */}
-      {isMobile && (
-        <ARErrorBoundary>
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 border-b-2 border-pink-500 rounded-full animate-spin"></div>
-                <p className="text-gray-700">Loading AR experience...</p>
-              </div>
+      <ARErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="grid w-full h-full place-items-center text-white/80">
+              Loading AR experience...
             </div>
-          }>
-            <ARViewer 
+          }
+        >
+          {isMobile ? (
+            <ARViewer
               flowerType={flowerType}
               arrangement={arrangement}
               color={color}
             />
-          </Suspense>
-        </ARErrorBoundary>
-      )}
+          ) : (
+            <div className="grid w-full h-full p-6 place-items-center">
+              <div className="w-full max-w-md p-6 text-black bg-white rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <QrCode className="w-5 h-5" />
+                  <h2 className="font-semibold">Scan to view in AR</h2>
+                </div>
+                <p className="mb-4 text-sm text-gray-600">
+                  Scan this QR code with a mobile device to launch the flower in Augmented Reality.
+                </p>
+                <QRCodeDisplay
+                  flowerType={flowerType}
+                  arrangement={arrangement}
+                  color={color}
+                />
+                <div className="flex items-start gap-2 mt-4 text-xs text-gray-500">
+                  <AlertTriangle className="w-4 h-4 mt-0.5" />
+                  <span>AR requires HTTPS and a supported mobile browser.</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </Suspense>
+      </ARErrorBoundary>
     </div>
   );
 }
