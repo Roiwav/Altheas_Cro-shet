@@ -91,7 +91,7 @@ export default function Navbar({
             >
               <Link to="/" className="flex items-center">
                 <span className="text-xl font-bold text-pink-600 sm:text-2xl dark:text-pink-400">
-                  Althea Cro-shet
+                  Althea's Cro-shet
                 </span>
               </Link>
             </div>

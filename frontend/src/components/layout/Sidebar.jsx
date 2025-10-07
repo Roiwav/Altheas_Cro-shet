@@ -140,7 +140,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header */}
           {/* Avatar + Fullname */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -165,7 +165,13 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
                   onChange={handleAvatarChange}
                 />
               </div>
-            ) : <div className="h-10"></div>}
+            ) : (
+              <div className={`flex-shrink-0 ${sidebarOpen ? "block" : "hidden"}`}>
+                <Link to="/" className="flex items-center">
+                  <span className="text-xl font-bold text-pink-600 sm:text-2xl dark:text-pink-400">Althea's Cro-shet</span>
+                </Link>
+              </div>
+            )}
             <div className="flex items-center gap-2 lg:hidden">
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -232,26 +238,33 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
           </nav>
 
           {/* Dark Mode Toggle */}
-          <div className="p-4 mt-auto border-t border-gray-200 dark:border-gray-700">
+          <div className={`p-4 mt-auto border-t border-gray-200 dark:border-gray-700 ${!user ? 'lg:hidden' : ''}`}>
             <button
               onClick={toggleDarkMode}
-              className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={`flex items-center w-full text-left px-4 py-2 text-sm font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${sidebarOpen || isHovered ? "px-4" : "px-2 justify-center"}`}
             >
-              {darkMode ? (
-                <>
-                  <Sun className="w-5 h-5" />
-                  <span className={`ml-3 ${!sidebarOpen && !isHovered ? "hidden" : "block"}`}>Light Mode</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-5 h-5" />
-                  <span className={`ml-3 ${!sidebarOpen && !isHovered ? "hidden" : "block"}`}>Dark Mode</span>
-                </>
-              )}
+              {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              <span className={`ml-3 ${!sidebarOpen && !isHovered ? "hidden" : "block"}`}>
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Floating Dark Mode Toggle for Guest Users on Desktop */}
+      {!user && (
+        <div className="fixed z-50 hidden bottom-5 left-5 lg:block">
+          <button
+            onClick={toggleDarkMode}
+            className="p-3 text-gray-700 bg-white rounded-full shadow-lg dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+          </button>
+        </div>
+      )}
+
       {/* Spacer for desktop view to push content */}
       <div
         className={`hidden lg:block flex-shrink-0 transition-all duration-300 ease-in-out ${

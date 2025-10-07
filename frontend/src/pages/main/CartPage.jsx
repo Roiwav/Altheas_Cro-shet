@@ -1,9 +1,11 @@
-﻿import { useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+﻿// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
+import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { useCart } from "../../hooks/useCart";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
+import { useCart } from "../../context/cart-context.js";
 import { useUser } from "../../context/useUser.js";
 
 export default function CartPage() {
@@ -15,6 +17,7 @@ export default function CartPage() {
         getId,
         updateQuantity,
         removeFromCart,
+        removeMultipleFromCart,
         shippingAddress,
         setShippingAddress,
         shippingFee,
@@ -22,11 +25,17 @@ export default function CartPage() {
     } = useCart();
 
     const { user, isAuthenticated } = useUser();
+    const { settings } = React.useContext(SettingsContext);
 
     const singleProduct = location.state?.product;
     const arOrder = location.state && !location.state.product ? location.state : null;
 
-    // Shipping fees are defined inside the effect to keep deps stable
+    // Shipping fees data
+    const shippingFees = {
+        "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
+        "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
+        "Davao City": 34, "Cagayan de Oro": 33,
+    };
 
     const [selectedItems, setSelectedItems] = useState(new Set());
 
@@ -50,11 +59,6 @@ export default function CartPage() {
     : cartItems;
 
     useEffect(() => {
-        const shippingFees = {
-            "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
-            "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
-            "Davao City": 34, "Cagayan de Oro": 33,
-        };
         if (isAuthenticated) {
             let addresses = user?.addresses || [];
 
@@ -71,7 +75,7 @@ export default function CartPage() {
                 setShippingFee(shippingFees[defaultAddress.city] || 0);
             }
         }
-    }, [isAuthenticated, user, setShippingAddress, setShippingFee]);
+    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
 
     // Calculate totals only for selected items
     const selectedCheckoutItems = checkoutItems.filter(item => selectedItems.has(getId(item)));
@@ -87,6 +91,11 @@ export default function CartPage() {
     : arOrder
     ? (arOrder.shippingFee || 0) 
     : shippingFee);
+
+    // Effect to scroll to top on component mount
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const handleSelectItem = (itemId, isSelected) => {
         const newSelectedItems = new Set(selectedItems);
@@ -107,8 +116,22 @@ export default function CartPage() {
         }
     };
 
+    const handleRemoveSelected = async () => {
+        if (selectedItems.size === 0) {
+            toast.info("No items selected to remove.");
+            return;
+        }
+
+        if (window.confirm(`Are you sure you want to remove ${selectedItems.size} selected item(s)?`)) {
+            const idsToRemove = Array.from(selectedItems);
+            await removeMultipleFromCart(idsToRemove);
+            setSelectedItems(new Set()); // Clear selection after removal
+            toast.success(`${idsToRemove.length} item(s) removed from your cart.`);
+        }
+    };
+
     // Navigate to CheckoutPage for authenticated users, signup for guests
-    const handleProceedToCheckout = (specificItems = null) => {
+    const handleProceedToCheckout = useCallback((specificItems = null) => {
         const itemsToOrder = specificItems || selectedCheckoutItems;
         
         if (itemsToOrder.length === 0) {
@@ -121,7 +144,7 @@ export default function CartPage() {
             return;
         }
 
-        // âœ… NEW: Check if user is authenticated for bulk checkout
+        // ✅ NEW: Check if user is authenticated for bulk checkout
         if (!isAuthenticated) {
             toast.info("Please sign up to checkout your items. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -142,13 +165,13 @@ export default function CartPage() {
                 shippingFee: singleProduct ? singleProduct.shippingFee : shippingFee
             } 
         });
-    };
+    }, [isAuthenticated, navigate, selectedCheckoutItems, shippingAddress, shippingFee, singleProduct]);
 
-    // âœ… UPDATED: Buy Now logic - redirect guests to signup
+    // ✅ UPDATED: Buy Now logic - redirect guests to signup
     const handleBuyNowIndividual = (item) => {
         if (!item) return;
         
-        // âœ… NEW: Check if user is authenticated for individual buy now
+        // ✅ NEW: Check if user is authenticated for individual buy now
         if (!isAuthenticated) {
             toast.info("Please sign up to purchase items directly. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -225,28 +248,29 @@ export default function CartPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 pb-10 md:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="relative flex items-center justify-between h-12 mb-6">
                     <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium"
+                        className="inline-flex items-center gap-2 font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                     >
-                        <ArrowLeft className="w-5 h-5" /> Back
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="hidden sm:inline">Back</span>
                     </button>
-                    <div className="text-center">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Shopping Cart</h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Review and manage your cart items</p>
+                    <div className="absolute text-center -translate-x-1/2 left-1/2">
+                        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl dark:text-white">Shopping Cart</h1>
+                        <p className="hidden text-sm text-gray-500 sm:block dark:text-gray-400">Review your items</p>
                     </div>
-                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <div className="flex items-center justify-end gap-1 text-green-600 w-28 dark:text-green-400">
                         <Shield className="w-4 h-4" />
-                        <span className="text-sm font-medium">Secure</span>
+                        <span className="hidden text-sm font-medium sm:inline">Secure</span>
                     </div>
                 </div>
 
-                {/* âœ… NEW: Guest user info banner for cart page */}
+                {/* ✅ NEW: Guest user info banner for cart page */}
                 {!isAuthenticated && checkoutItems.length > 0 && (
-                    <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div className="p-4 mb-6 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <UserPlus className="text-orange-600 dark:text-orange-400" />
@@ -261,7 +285,7 @@ export default function CartPage() {
                             </div>
                             <button
                                 onClick={() => navigate("/signup", { state: { from: "cart-page" } })}
-                                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                                className="px-4 py-2 font-medium text-white transition-colors bg-orange-600 rounded-lg hover:bg-orange-700"
                             >
                                 Sign Up
                             </button>
@@ -270,15 +294,15 @@ export default function CartPage() {
                 )}
 
                 {checkoutItems.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         {/* Left Column - Product Details */}
                         <div className="space-y-6">
                             {/* Products Card */}
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                <div className="bg-blue-50 dark:bg-blue-900/20 px-6 py-4 border-b border-blue-100 dark:border-blue-800">
+                            <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+                                <div className="px-6 py-4 border-b border-blue-100 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                            <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
                                                 <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                             </div>
                                             <div>
@@ -289,7 +313,7 @@ export default function CartPage() {
                                         {!singleProduct && !arOrder && (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                                                    {selectedItems.size} of {checkoutItems.length} selected
+                                                    {selectedItems.size} / {checkoutItems.length} selected
                                                 </span>
                                                 <button
                                                     onClick={handleSelectAll}
@@ -297,12 +321,23 @@ export default function CartPage() {
                                                 >
                                                     {selectedItems.size === checkoutItems.length ? 'Deselect All' : 'Select All'}
                                                 </button>
+                                                {selectedItems.size > 0 && (
+                                                    <>
+                                                        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                                                        <button
+                                                            onClick={handleRemoveSelected}
+                                                            className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400"
+                                                        >
+                                                            Remove Selected
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {checkoutItems.map((item) => {
+                                    {checkoutItems.map((item, index) => {
                                         const itemId = getId(item);
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;
@@ -316,41 +351,41 @@ export default function CartPage() {
                                                             type="checkbox"
                                                             checked={isSelected}
                                                             onChange={(e) => handleSelectItem(itemId, e.target.checked)}
-                                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-2"
+                                                            className="w-5 h-5 mt-2 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                         />
                                                     )}
                                                     <div className="relative">
                                                         <img
                                                             src={item.image}
                                                             alt={item.name}
-                                                            className="w-20 h-20 object-cover rounded-xl border border-gray-200 dark:border-gray-600"
+                                                            className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
                                                         />
-                                                        <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                                                        <div className="absolute flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-500 rounded-full -top-2 -right-2">
                                                             {currentQty}
                                                         </div>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="font-semibold text-gray-900 dark:text-white truncate">{item.name}</h4>
+                                                        <h4 className="font-semibold text-gray-900 truncate dark:text-white">{item.name}</h4>
                                                         {item.color && (
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Color: {item.color}</p>
+                                                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Color: {item.color}</p>
                                                         )}
                                                         {item.variation && (
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Variation: {item.variation}</p>
+                                                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Variation: {item.variation}</p>
                                                         )}
-                                                        <div className="flex items-center justify-between mt-3">
-                                                            <div className="flex items-center gap-2">
+                                                        <div className="flex flex-col gap-3 mt-3 sm:flex-row sm:items-center sm:justify-between">
+                                                            <div className="flex items-center">
                                                                 <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
                                                                     {currencyFormatter.format(item.price)}
                                                                 </span>
-                                                                <span className="text-sm text-gray-500 dark:text-gray-400">each</span>
+                                                                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">each</span>
                                                             </div>
                                                             {!singleProduct && !arOrder && (
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                                                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                                                    <div className="flex items-center gap-1 bg-gray-100 rounded-lg dark:bg-gray-700">
                                                                         <button 
                                                                             onClick={() => handleDecreaseQuantity(item)}
                                                                             disabled={isMinQuantity}
-                                                                            className={`p-2 rounded-l-lg text-gray-600 dark:text-gray-400 transition-colors ${
+                                                                            className={`p-2.5 sm:p-2 rounded-l-lg text-gray-600 dark:text-gray-400 transition-colors ${
                                                                                 isMinQuantity 
                                                                                     ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700' 
                                                                                     : 'hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -363,14 +398,14 @@ export default function CartPage() {
                                                                         </span>
                                                                         <button 
                                                                             onClick={() => handleIncreaseQuantity(item)}
-                                                                            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-r-lg text-gray-600 dark:text-gray-400"
+                                                                            className="p-2.5 sm:p-2 text-gray-600 rounded-r-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-gray-400"
                                                                         >
                                                                             <Plus className="w-4 h-4" />
                                                                         </button>
                                                                     </div>
                                                                     <button
                                                                         onClick={() => handleRemoveItem(itemId)}
-                                                                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                        className="p-2.5 sm:p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
                                                                         title="Remove item from cart"
                                                                     >
                                                                         <X className="w-4 h-4" />
@@ -385,18 +420,15 @@ export default function CartPage() {
                                                                     {currencyFormatter.format(item.price * currentQty)}
                                                                 </span>
                                                             </div>
-                                                            {/* âœ… UPDATED: Individual Buy Now Button - different for guests */}
-                                                            {!singleProduct && !arOrder && (
+                                                            {/* ✅ UPDATED: Individual Buy Now Button - different for guests */}
+                                                            {!singleProduct && !arOrder && isAuthenticated && (
                                                                 <button
                                                                     onClick={() => handleBuyNowIndividual(item)}
-                                                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 border ${
-                                                                        isAuthenticated
-                                                                            ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
-                                                                            : 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600'
-                                                                    }`}
+                                                                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white transition-colors bg-red-600 border border-red-600 rounded-lg sm:px-4 hover:bg-red-700"
                                                                 >
                                                                     <ShoppingBag className="w-4 h-4" />
-                                                                    {isAuthenticated ? 'Buy Now' : 'Sign Up to Buy'}
+                                                                    <span className="hidden sm:inline">Buy Now</span>
+                                                                    <span className="sm:hidden">Buy</span>
                                                                 </button>
                                                             )}
                                                         </div>
@@ -411,12 +443,12 @@ export default function CartPage() {
 
                         {/* Right Column - Cart Summary */}
                         <div className="lg:col-span-1">
-                            <div className="sticky top-24 space-y-6">
+                            <div className="sticky space-y-6 top-24">
                                 {/* Cart Summary */}
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="bg-orange-50 dark:bg-orange-900/20 px-6 py-4 border-b border-orange-100 dark:border-orange-800">
+                                <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+                                    <div className="px-6 py-4 border-b border-orange-100 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                            <div className="p-2 bg-orange-100 rounded-lg dark:bg-orange-900/30">
                                                 <CreditCard className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                                             </div>
                                             <div>
@@ -445,9 +477,9 @@ export default function CartPage() {
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="text-center py-6">
+                                            <div className="py-6 text-center">
                                                 <p className="text-gray-500 dark:text-gray-400">No items selected</p>
-                                                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                                                <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
                                                     {isAuthenticated 
                                                         ? "Select 2+ items for bulk checkout, or use 'Buy Now' for individual items"
                                                         : "Sign up to checkout items, or use 'Sign Up to Buy' for individual items"
@@ -460,26 +492,24 @@ export default function CartPage() {
 
                                 {/* Proceed to Checkout Button - Only show when 2+ items are selected */}
                                 {selectedItems.size >= 2 && (
-                                    <button
+                                     <button
                                         onClick={() => handleProceedToCheckout()}
-                                        className={`w-full py-4 font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 ${
+                                        className={`w-full py-3 sm:py-4 font-bold text-base sm:text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 ${
                                             isAuthenticated
                                                 ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
                                                 : 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white'
                                         }`}
                                     >
                                         <ShoppingBag className="w-6 h-6" />
-                                        {isAuthenticated 
-                                            ? `Proceed to Checkout (${selectedItems.size} items)`
-                                            : `Sign Up to Checkout (${selectedItems.size} items)`
-                                        }
+                                        <span className="hidden sm:inline">{isAuthenticated ? `Proceed to Checkout (${selectedItems.size} items)` : `Sign Up to Checkout (${selectedItems.size} items)`}</span>
+                                        <span className="sm:hidden">{isAuthenticated ? `Checkout (${selectedItems.size})` : `Sign Up (${selectedItems.size})`}</span>
                                     </button>
                                 )}
 
                                 {/* Helper message when less than 2 items selected */}
                                 {selectedItems.size === 1 && (
-                                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl text-center">
-                                        <p className="text-yellow-700 dark:text-yellow-300 text-sm font-medium">
+                                    <div className="p-4 text-center border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 rounded-xl">
+                                        <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
                                             {isAuthenticated
                                                 ? "Select one more item for bulk checkout, or use 'Buy Now' to purchase this item individually."
                                                 : "Select one more item for bulk checkout, or use 'Sign Up to Buy' to purchase this item individually."
@@ -491,13 +521,13 @@ export default function CartPage() {
                                 {/* Continue Shopping Button */}
                                 <button
                                     onClick={() => navigate('/shop')}
-                                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                                    className="flex items-center justify-center w-full gap-2 py-3 font-medium text-gray-800 transition-colors bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded-xl"
                                 >
                                     Continue Shopping
                                 </button>
 
                                 {/* Security Badge */}
-                                <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                                <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                                     <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     <span>Your information is secure and encrypted</span>
                                 </div>
@@ -505,16 +535,16 @@ export default function CartPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl shadow-sm">
+                    <div className="py-20 text-center bg-white shadow-sm dark:bg-gray-800 rounded-2xl">
                         <div className="max-w-md mx-auto">
-                            <ShoppingBag className="w-24 h-24 mx-auto text-gray-400 mb-6" />
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your cart is empty</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mb-8">
+                            <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-gray-400" />
+                            <h3 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Your cart is empty</h3>
+                            <p className="mb-8 text-gray-600 dark:text-gray-400">
                                 Looks like you haven't added any items to your cart yet.
                             </p>
                             <button
                                 onClick={() => navigate('/shop')}
-                                className="inline-flex items-center gap-2 px-8 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-colors"
+                                className="inline-flex items-center gap-2 px-8 py-3 font-semibold text-white transition-colors bg-orange-600 rounded-xl hover:bg-orange-700"
                             >
                                 <ShoppingBag className="w-5 h-5" />
                                 Continue Shopping

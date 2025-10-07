@@ -1,8 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { useUser } from '../../hooks/useUser';
-import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus, Info, Loader2 } from 'lucide-react';
+import { useCart } from '../../context/cart-context.js';
+import { toast } from 'react-toastify';
 
 // Lazy load AR components for better initial page load performance.
 const ARViewer = lazy(() => import('../../components/ar/ARViewer'));
@@ -48,15 +50,19 @@ const FlowerViewerPage = () => {
   const { type: initialType } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useUser();
+  const { addToCart } = useCart();
 
   // State management for flower customization.
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
-  const [color, setColor] = useState(defaultColors[initialType] || '#FFFFFF');
+  const [color, setColor] = useState('#FFFFFF');
   const [flowerCount, setFlowerCount] = useState(3); // bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false); // QR code modal
   const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(false); // To prevent race conditions on screenshot
+
+  const arViewerRef = useRef(null);
 
   // State to force remounting the Canvas on WebGL context loss.
   const [canvasKey, setCanvasKey] = useState(Date.now());
@@ -66,24 +72,63 @@ const FlowerViewerPage = () => {
     setShowQR(true);
   }, []);
 
+  // Helper to create the product object for cart/checkout
+  const createProductObject = useCallback(async () => {
+    const pricePerItem = FLOWER_PRICES[flowerType]?.[arrangement] || 0;
+    const colorName = COLOR_NAMES[color.toLowerCase()] || 'Custom';
+    const image = arViewerRef.current ? await arViewerRef.current.captureScreenshot() : '/images/placeholder-flower.png';
+
+    return {
+      productId: `custom-${flowerType}-${arrangement}-${color.replace('#', '')}`,
+      name: `${flowerType.charAt(0).toUpperCase() + flowerType.slice(1)} (${arrangement})`,
+      price: pricePerItem,
+      quantity: quantity,
+      color: colorName,
+      image: image,
+      variation: colorName,
+    };
+  }, [flowerType, arrangement, color, quantity]);
+
   // Handle place order
-  const handlePlaceOrder = useCallback(() => {
-    const colorName = COLOR_NAMES[color.toLowerCase()] || color;
+  const handlePlaceOrder = useCallback(async () => {
+    const product = await createProductObject();
+    const productForCheckout = {
+      ...product,
+      shippingFee: 0,
+      shippingAddress: null,
+    };
+
     navigate('/checkout', {
-      state: {
-        flowerType,
-        color: colorName,
-        arrangement,
-        totalPrice,
-        quantity,
-      }
+      state: { product: productForCheckout }
     });
-  }, [flowerType, color, arrangement, totalPrice, quantity, navigate]);
+  }, [createProductObject, navigate]);
+
+  // Handle adding the customized item to the cart
+  const handleAddToCart = useCallback(async () => {
+    const productToAdd = await createProductObject();
+    try {
+      await addToCart(productToAdd);
+    } catch (error) {
+      toast.error("Failed to add item to cart.");
+      console.error("Add to cart error:", error);
+    }
+  }, [createProductObject, addToCart]);
 
   // Effect to scroll to the top of the page when the component mounts.
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Effect to handle loading state when customization changes, preventing race conditions for screenshots.
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300); // A small delay to allow the model to re-render before enabling actions.
+
+    // Cleanup the timer if the component unmounts or dependencies change again quickly.
+    return () => clearTimeout(timer);
+  }, [flowerType, arrangement, color]);
 
   // Effect to recalculate the total price whenever customization options change.
   useEffect(() => {
@@ -125,7 +170,7 @@ const FlowerViewerPage = () => {
             <div
               className="relative flex items-center justify-center w-full overflow-hidden bg-gray-50 dark:bg-gray-900/50"
               style={{
-                height: 'clamp(300px, 50vh, 600px)',
+                height: 'clamp(600px, 100vh, 800px)',
                 minHeight: '300px',
                 maxHeight: '600px',
                 minWidth: 0,
@@ -138,6 +183,7 @@ const FlowerViewerPage = () => {
               }>
                 <ARViewer
                   key={canvasKey}
+                  ref={arViewerRef}
                   flowerType={flowerType}
                   color={color}
                   arrangement={arrangement}
@@ -243,23 +289,36 @@ const FlowerViewerPage = () => {
                   View in AR
                 </button>
                 <button
-                  onClick={handlePlaceOrder}
-                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg"
+                  onClick={handleAddToCart}
+                  disabled={loading}
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ShoppingCart className="w-5 h-5 mr-2" />}
+                  Add to Cart
+                </button>
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={loading}
+                  className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Check className="w-5 h-5 mr-2" />}
                   Place Order Now
                 </button>
               </div>
             </div>
             {/* A small section with design tips for the user. */}
             <div className="p-5 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/30 dark:border-gray-700">
-              <h3 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Design Tips</h3>
+              <h3 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Design Notes</h3>
               <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
                 <li className="flex items-start">
                   <svg className="h-3.5 w-3.5 text-pink-500 mr-1.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <span>Try different color combinations for unique looks</span>
+                </li>
+                <li className="flex items-start">
+                  <Info className="h-3.5 w-3.5 text-blue-500 mr-1.5 mt-0.5 flex-shrink-0" />
+                  <span>Actual product color may vary slightly due to lighting and material availability.</span>
                 </li>
               </ul>
             </div>
@@ -269,7 +328,7 @@ const FlowerViewerPage = () => {
       {/* MOBILE LAYOUT */}
       <div className="w-full lg:hidden">
         {/* 3D Viewer */}
-        <div className="w-full h-[60vh] max-h-[450px] bg-gray-100 dark:bg-gray-900/50">
+        <div className="relative w-full h-[60vh] max-h-[450px] bg-gray-100 dark:bg-gray-900/50">
           <Suspense fallback={
             <div className="grid w-full h-full place-items-center">
               <div className="flex flex-col items-center justify-center space-y-4">
@@ -278,8 +337,13 @@ const FlowerViewerPage = () => {
               </div>
             </div>
           }>
-            <ARViewer key={canvasKey} flowerType={flowerType} color={color} arrangement={arrangement} />
+            <ARViewer key={canvasKey} ref={arViewerRef} flowerType={flowerType} color={color} arrangement={arrangement} />
           </Suspense>
+          <div className="absolute bottom-0 left-0 right-0 p-2 text-center bg-black/40 backdrop-blur-sm">
+            <p className="text-xs text-white/90">
+              Drag to rotate • Pinch to zoom
+            </p>
+          </div>
         </div>
 
         {/* Content Section */}
@@ -336,6 +400,13 @@ const FlowerViewerPage = () => {
             </div>
           </div>
 
+          {/* Disclaimer Note */}
+          <div className="p-3 text-center border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:border-blue-800">
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              <strong>Please Note:</strong> Actual product color may vary slightly from the digital model due to lighting and material availability.
+            </p>
+          </div>
+
           {/* Action Buttons */}
           <div className="pt-6 mt-6 space-y-3 border-t border-gray-200 dark:border-gray-700">
             <button
@@ -344,12 +415,24 @@ const FlowerViewerPage = () => {
             >
               <QrCode className="w-5 h-5 mr-2" /> View in AR
             </button>
-            <button
-              onClick={handlePlaceOrder}
-              className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg"
-            >
-              <ShoppingCart className="w-5 h-5 mr-2" /> Place Order
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={loading}
+                className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
+                <span className="ml-2">Add to Cart</span>
+              </button>
+              <button
+                onClick={handlePlaceOrder}
+                disabled={loading}
+                className="flex items-center justify-center w-full px-4 py-3 font-medium text-white transition-all duration-200 rounded-lg shadow-md bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                <span className="ml-2">Place Order</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -401,7 +484,7 @@ const FlowerViewerPage = () => {
                   <ol className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 space-y-1.5 list-decimal list-inside">
                     <li>Open your phone's camera app</li>
                     <li>Point it at the QR code</li>
-                    <li>Tap the notification to open in AR</li>
+                    <li>Tap the button to open in AR</li>
                     <li>Allow camera access when prompted</li>
                   </ol>
                 </div>

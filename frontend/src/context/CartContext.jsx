@@ -26,10 +26,7 @@ export const CartProvider = ({ children }) => {
 
     // Improved getId function to handle variations consistently
     const getId = useCallback((product) => {
-        const baseId = product.productId || product._id || product.id;
-        const variation = product.variation || "";
-        
-        return `${baseId}${variation ? `-${variation}` : ""}`;
+        return product.productId || product._id || product.id;
     }, []);
 
     // ✅ FIXED: Use localStorage as primary storage, backend as backup
@@ -271,34 +268,25 @@ export const CartProvider = ({ children }) => {
 
     // Enhanced Add item to cart
     const addToCart = useCallback(async (product, quantity = 1) => {
-        console.log("🛒 Adding to cart:", product.name, "x", quantity);
-        
-        const productToAdd = {
-            productId: product._id || String(product.id),
-            name: product.name,
-            price: product.price,
-            image: product.image || (product.images && product.images[0]),
-            variation: product.variation || "",
-            quantity: quantity,
-        };
+        console.log("🛒 Adding to cart:", product.name, "x", product.quantity || quantity);
 
-        const id = getId(productToAdd);
+        const id = getId(product);
         const existingItem = cartItems.find(item => getId(item) === id);
 
         let newCartItems;
         if (existingItem) {
             newCartItems = cartItems.map(item =>
-                getId(item) === id ? { ...item, quantity: item.quantity + quantity } : item
+                getId(item) === id ? { ...item, quantity: item.quantity + (product.quantity || quantity) } : item
             );
             toast.success(`Updated ${product.name} quantity to ${existingItem.quantity + quantity}!`, {
-                position: "top-center",
+                position: window.innerWidth < 768 ? "top-center" : "top-right",
                 autoClose: 2000,
                 hideProgressBar: true,
             });
         } else {
-            newCartItems = [...cartItems, productToAdd];
+            newCartItems = [...cartItems, { ...product, quantity: product.quantity || quantity }];
             toast.success(`${product.name} added to cart!`, {
-                position: "top-center",
+                position: window.innerWidth < 768 ? "top-center" : "top-right",
                 autoClose: 2000,
                 hideProgressBar: true,
             });
@@ -309,6 +297,12 @@ export const CartProvider = ({ children }) => {
 
     const removeFromCart = useCallback(async (productId) => {
         const newCartItems = cartItems.filter((item) => getId(item) !== productId);
+        await saveCart(newCartItems, shippingAddress, shippingFee);
+    }, [cartItems, getId, saveCart, shippingAddress, shippingFee]);
+
+    const removeMultipleFromCart = useCallback(async (productIds) => {
+        const idsToRemove = new Set(productIds);
+        const newCartItems = cartItems.filter((item) => !idsToRemove.has(getId(item)));
         await saveCart(newCartItems, shippingAddress, shippingFee);
     }, [cartItems, getId, saveCart, shippingAddress, shippingFee]);
 
@@ -356,6 +350,7 @@ export const CartProvider = ({ children }) => {
         isCartLoading,
         addToCart,
         removeFromCart,
+        removeMultipleFromCart,
         updateQuantity,
         clearCart,
         totalQuantity,
@@ -370,6 +365,7 @@ export const CartProvider = ({ children }) => {
         isCartLoading,
         addToCart,
         removeFromCart,
+        removeMultipleFromCart,
         updateQuantity,
         clearCart,
         totalQuantity,

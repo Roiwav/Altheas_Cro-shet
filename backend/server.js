@@ -159,7 +159,12 @@ app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
-app.use("/api/v1/testimonials", testimonialRoutes);
+
+// Dynamically import ES Module routes for testimonials
+import('./routes/testimonialRoutes.js').then((testimonialModule) => {
+  app.use("/api/v1/testimonials", testimonialModule.default);
+}).catch(err => console.error("Failed to load testimonial routes:", err));
+
 
 // 🟢 Connect to MongoDB
 mongoose
