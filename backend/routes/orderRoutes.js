@@ -1,14 +1,40 @@
+// routes/orderRoutes.js
 const express = require("express");
 const router = express.Router();
-const { createOrder, getMyOrders, deleteOrder, cancelOrderItem, getAllOrders, updateOrderStatus} = require("../controllers/orderController.js");
-const { verifyToken } = require("../middleware/authMiddleware.js");
+const multer = require("multer");
+const path = require("path");
 
-// All routes in this file are automatically prefixed with /api/orders
+const {
+  createOrder,
+  getAllOrders,
+  getMyOrders,
+  getOrderById,
+  updateOrderStatus,
+  deleteOrder,
+  cancelOrderItem,
+  cancelOrderProduct, // ✅ Add this import
+} = require("../controllers/orderController");
 
-router.post("/", verifyToken, createOrder);
-router.get("/myorders", verifyToken, getMyOrders);
-router.delete("/:id", verifyToken, deleteOrder);
-router.delete("/:orderId/product/:productId", verifyToken, cancelOrderItem);
+// Multer setup for proof uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+// Routes
+router.post("/", upload.single("paymentProof"), createOrder);
 router.get("/", getAllOrders);
-router.patch("/:id/status", updateOrderStatus);
+router.get("/myorders", getMyOrders);
+router.get("/:id", getOrderById);
+router.put("/:id/status", updateOrderStatus);
+router.delete("/:id", deleteOrder);
+router.put("/:id/cancel", cancelOrderItem);
+router.delete("/:id/product/:productId", cancelOrderProduct); // ✅ Add this route
+
 module.exports = router;
