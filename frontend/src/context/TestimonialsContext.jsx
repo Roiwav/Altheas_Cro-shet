@@ -4,34 +4,12 @@ import io from 'socket.io-client';
 
 const TestimonialsContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTestimonials = () => useContext(TestimonialsContext);
 
-const defaultTestimonials = [
-  {
-    _id: 'default-1',
-    quote: 'Absolutely beautiful craftsmanship! The flowers look so real and bring so much joy to my room.',
-    author: 'Satisfied Customer',
-    rating: 5,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'default-2',
-    quote: 'I ordered a custom bouquet for my anniversary and it was perfect. My partner loved it!',
-    author: 'Happy Shopper',
-    rating: 5,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'default-3',
-    quote: 'The quality is amazing and they last forever. A wonderful and sustainable gift idea.',
-    author: 'Eco-conscious Buyer',
-    rating: 4,
-    createdAt: new Date().toISOString(),
-  },
-];
 
 export const TestimonialsProvider = ({ children }) => {
-  const [testimonials, setTestimonials] = useState(defaultTestimonials);
+  const [testimonials, setTestimonials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,16 +17,19 @@ export const TestimonialsProvider = ({ children }) => {
     try {
       setLoading(true);
       const res = await fetch('http://localhost:5001/api/v1/testimonials');
-      if (!res.ok) {
-        throw new Error('Failed to fetch testimonials');
+      if (res.ok) {
+        const data = await res.json();
+        const approved = Array.isArray(data) ? data.filter(t => t?.isApproved) : [];
+        setTestimonials(approved);
+      } else {
+        // Swallow errors (e.g., 404) and show no testimonials
+        setTestimonials([]);
       }
-      const data = await res.json();
-      // If we get real data, use it. Otherwise, stick with the defaults.
-      setTestimonials(data && data.length > 0 ? data : defaultTestimonials);
       setError(null);
-    } catch (err) {
-      setError(err.message);
-      console.error('Fetch Testimonials Error:', err);
+    } catch {
+      // Swallow network errors and show no testimonials
+      setTestimonials([]);
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -62,25 +43,50 @@ export const TestimonialsProvider = ({ children }) => {
   useEffect(() => {
     const socket = io('http://localhost:5001'); // Your backend URL
 
-    socket.on('connect', () => {
-      console.log('Connected to WebSocket server');
-    });
+    socket.on('connect', () => {});
+    // Swallow socket errors to avoid console noise when backend is unavailable
+    socket.on('connect_error', () => {});
+    socket.on('error', () => {});
 
     socket.on('testimonial_inserted', (newTestimonial) => {
-      console.log('New testimonial received via WebSocket:', newTestimonial);
-      // Add the new testimonial to the top of the list, replacing defaults if necessary
+      // Only show approved testimonials publicly
+      if (!newTestimonial?.isApproved) return;
+      setTestimonials(prev => [newTestimonial, ...prev]);
+    });
+
+    // Handle updates (e.g., admin approval toggles)
+    socket.on('testimonial_updated', (updated) => {
+      if (updated?.isApproved) {
+        setTestimonials(prev => {
+          const id = updated._id?.toString?.() || updated._id;
+          const exists = prev.some(t => (t._id?.toString?.() || t._id) === id);
+          return exists
+            ? prev.map(t => ((t._id?.toString?.() || t._id) === id ? updated : t))
+            : [updated, ...prev];
+        });
+      } else {
+        // If it became unapproved, remove from public list
+        setTestimonials(prev => prev.filter(t => (t._id?.toString?.() || t._id) !== (updated._id?.toString?.() || updated._id)));
+      }
+    });
+
+    // Some backends may emit a specific approval event
+    socket.on('testimonial_approved', (approved) => {
+      if (!approved) return;
+      const item = approved.doc || approved; // support payload variations
+      if (!item?.isApproved) return;
       setTestimonials(prev => {
-        const isDefault = prev.some(t => t._id.startsWith('default-'));
-        const list = isDefault ? [] : prev;
-        return [newTestimonial, ...list];
+        const id = item._id?.toString?.() || item._id;
+        const exists = prev.some(t => (t._id?.toString?.() || t._id) === id);
+        return exists
+          ? prev.map(t => ((t._id?.toString?.() || t._id) === id ? item : t))
+          : [item, ...prev];
       });
     });
 
     socket.on('testimonial_deleted', (deletedId) => {
-      console.log('Testimonial deletion received via WebSocket:', deletedId);
       setTestimonials(prev => prev.filter(t => t._id.toString() !== deletedId.toString()));
     });
-
     // Clean up the connection when the component unmounts
     return () => {
       socket.disconnect();

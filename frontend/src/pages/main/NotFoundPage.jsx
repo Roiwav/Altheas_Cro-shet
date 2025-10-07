@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDarkMode } from '../../context/DarkModeContext.jsx';
+import { useDarkMode } from '../../context/useDarkMode.js';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();

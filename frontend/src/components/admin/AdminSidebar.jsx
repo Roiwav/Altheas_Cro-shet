@@ -1,7 +1,7 @@
 import React from 'react';
 import logoSrc from '../../assets/images/icons/logo althea.jpg';
 import { useUser } from '../../context/useUser';
-import { useDarkMode } from '../../context/DarkModeContext.jsx';
+import { useDarkMode } from '../../context/useDarkMode.js';
 import { LogOut, Sun, Moon } from 'lucide-react';
 
 

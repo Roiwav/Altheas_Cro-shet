@@ -1,7 +1,7 @@
 // src/pages/legal/DataPolicy.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDarkMode } from '../../context/DarkModeContext.jsx';
+import { useDarkMode } from '../../context/useDarkMode.js';
 
 export default function DataPolicy() {
   const navigate = useNavigate();
