@@ -17,6 +17,10 @@ const testimonialSchema = new mongoose.Schema({
     min: 1,
     max: 5,
   },
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -83,8 +83,14 @@ export default function ProfileTab() {
         throw new Error(errorData.message || "Failed to update profile");
       }
 
-      const data = await res.json();
-      updateUser(data.user);
+      await res.json(); // consume response body (not used)
+      
+      // Update the user context with the new data
+      updateUser({
+        ...user,  // Keep existing user data
+        fullName: profile.fullName,
+        avatar: profile.avatar
+      });
       
       setProfilePassword("");
       setErrors({});
