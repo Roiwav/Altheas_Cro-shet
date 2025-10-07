@@ -1,5 +1,5 @@
 // components/ar/ARViewer.jsx
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
 import { Color } from 'three';
 import '@google/model-viewer';
 
@@ -18,7 +18,7 @@ const MODEL_PATHS = {
  * and full-screen Augmented Reality experiences. It leverages Google's <model-viewer>.
  * @param {object} props - The component props.
  */
-export default function ARViewer({
+const ARViewer = forwardRef(({
   flowerType = 'rose',
   arrangement = 'single',
   color = '#ff69b4',
@@ -26,13 +26,25 @@ export default function ARViewer({
   ar = false, // Prop to control AR functionality
   showARButton = false, // New prop to control AR button visibility
   isFullScreen = false, // New prop to control layout
-}) {
+}, ref) => {
   // Refs to directly access the <model-viewer> and its AR button.
   const modelRef = useRef(null);
   const arButtonRef = useRef(null);
   // State to manage loading and error status of the model.
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Expose a function to the parent component to capture a screenshot
+  useImperativeHandle(ref, () => ({
+    captureScreenshot: () => {
+      const modelViewer = modelRef.current;
+      if (modelViewer) {
+        // toDataURL() is a method on the <model-viewer> element
+        return modelViewer.toDataURL();
+      }
+      return null;
+    }
+  }));
 
   // Memoize the model path to prevent re-computation on every render.
   const modelPath = useMemo(() => {
@@ -192,4 +204,6 @@ export default function ARViewer({
       </model-viewer>
     </div>
   );
-}
+});
+
+export default ARViewer;

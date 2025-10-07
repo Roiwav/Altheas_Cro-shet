@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { Copy, Check, Smartphone, Download, ArrowUpRight } from 'lucide-react';
 
 // Helper function to detect mobile devices based on the user agent string.
@@ -68,39 +68,31 @@ const QRCodeDisplay = React.memo(({
 
   // Memoized function to handle downloading the QR code as an SVG file.
   const handleDownload = useCallback(() => {
-    try {
-      // Find the SVG element within the component.
-      const svg = document.querySelector('.qr-code svg');
-      if (!svg) return;
-      
-      // Serialize the SVG to a string and create a Blob.
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      
-      // Create a temporary link element to trigger the download.
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ar-flower-${flowerType}-${color.replace('#', '')}.svg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading QR code:', error);
+    const canvas = document.getElementById('qr-code-canvas');
+    if (!canvas) {
+      console.error('QR Code canvas not found');
+      return;
     }
+
+    // Create an "a" element to trigger the download
+    const link = document.createElement('a');
+    link.download = `ar-flower-${flowerType}-${color.replace('#', '')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }, [flowerType, color]);
 
   return (
     <div className={`flex flex-col items-center p-6 bg-white rounded-xl shadow-xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 ${className}`}>
       {/* QR Code visual container */}
       <div className="relative p-4 mb-4 bg-white border border-gray-100 rounded-lg shadow-sm dark:border-gray-700">
-        <QRCodeSVG 
+        <QRCodeCanvas
           value={arUrl} 
           size={200}
           level="H"
           includeMargin={false}
-          className="qr-code"
+          id="qr-code-canvas"
           // Embeds a small icon in the center of the QR code.
           imageSettings={{
             src: '/favicon.ico',
@@ -146,16 +138,18 @@ const QRCodeDisplay = React.memo(({
         
         <div className="flex flex-col space-y-2">
           {/* Direct link to open the AR experience, most useful on mobile. */}
-          <a
-            href={arUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-md text-sm font-medium transition-all transform hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Smartphone className="w-4 h-4 mr-2" />
-            {isMobile() ? 'Open in AR' : 'View on Mobile'}
-            <ArrowUpRight className="w-3.5 h-3.5 ml-1.5 opacity-80" />
-          </a>
+          {isMobile() && (
+            <a
+              href={arUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-md text-sm font-medium transition-all transform hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <Smartphone className="w-4 h-4 mr-2" />
+              Open in AR
+              <ArrowUpRight className="w-3.5 h-3.5 ml-1.5 opacity-80" />
+            </a>
+          )}
           
           {/* Button to download the QR code as an SVG file. */}
           <button
@@ -169,7 +163,7 @@ const QRCodeDisplay = React.memo(({
         
         {/* Instructional text for the user. */}
         <p className="mt-3 text-xs text-center text-gray-500 dark:text-gray-400">
-          Scan the QR code or tap the button above
+          Scan the QR code or download it to view the flower in Augmented Reality
           {!isMobile() && ' on your mobile device'}
           {isMobile() && ' to view in AR'}
         </p>
