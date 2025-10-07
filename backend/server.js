@@ -90,7 +90,6 @@ app.get('/auth/google/callback',
           id: req.user._id, 
           email: req.user.email,
           name: req.user.fullName,
-          role: req.user.role || 'user'
         },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
@@ -101,7 +100,9 @@ app.get('/auth/google/callback',
         id: req.user._id,
         email: req.user.email,
         name: req.user.fullName,
-        role: req.user.role || 'user'
+        role: req.user.role || 'user',
+        googleId: req.user.googleId,
+        hasPassword: Boolean(req.user.password)
       };
       
       // Redirect to frontend OAuth callback with token and user data
