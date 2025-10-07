@@ -1,0 +1,563 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
+import { useSearchParams } from "react-router-dom";
+import {
+  User as UserIcon,
+  Mail,
+  Image as ImageIcon,
+  MapPin,
+  Plus,
+  Trash2,
+  Lock,
+  Save,
+  Bell,
+  Palette,
+} from "lucide-react";
+
+import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import { useUser } from "../../context/useUser.js";`r`nimport ProfileTab from "../../components/user/settings/ProfileTab.jsx";`r`nimport AddressesTab from "../../components/user/settings/AddressesTab.jsx";`r`nimport SecurityTab from "../../components/user/settings/SecurityTab.jsx";`r`nimport PreferencesTab from "../../components/user/settings/PreferencesTab.jsx";
+
+// Data for city and region dropdowns
+const cityToRegionMap = {
+  "Manila": "Metro Manila",
+  "Quezon City": "Metro Manila",
+  "Calamba City": "South Luzon",
+  "Batangas City": "South Luzon",
+  "Baguio": "North Luzon",
+  "Dagupan": "North Luzon",
+  "Cebu City": "Visayas",
+  "Iloilo City": "Visayas",
+  "Davao City": "Mindanao",
+  "Cagayan de Oro": "Mindanao",
+};
+const cities = Object.keys(cityToRegionMap);
+
+export default function SettingsPage() {
+  const { user, token, updateUser } = useUser();
+  const { darkMode, toggleDarkMode } = useDarkMode();
+
+  const [searchParams] = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "profile");
+
+  const [profile, setProfile] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    avatar: "",
+  });
+  const [addresses, setAddresses] = useState([]);
+  const [security, setSecurity] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [prefs, setPrefs] = useState({ newsletter: true });
+
+  const [profilePassword, setProfilePassword] = useState("");
+  const [addressesPassword, setAddressesPassword] = useState("");
+  const [prefsPassword, setPrefsPassword] = useState("");
+
+  const [activeAddressId, setActiveAddressId] = useState(null);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // ✅ SIMPLIFIED: Restore profile & addresses when user logs in - Database as single source of truth
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        fullName: user.fullName || "",
+        username: user.username || "",
+        email: user.email || "",
+        avatar: user.avatar || "",
+      });
+
+      // SIMPLIFIED: Only use database data as source of truth
+      let userAddresses = [];
+      
+      if (Array.isArray(user.addresses) && user.addresses.length > 0) {
+        userAddresses = user.addresses.map(addr => ({
+          ...addr,
+          id: addr._id || addr.id || crypto.randomUUID()
+        }));
+      }
+
+      setAddresses(userAddresses);
+
+      const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+      setActiveAddressId(defaultAddress ? defaultAddress.id : null);
+
+      setPrefs({
+        newsletter: user.preferences?.newsletter ?? true,
+      });
+    } else {
+      // Clear state when user is null
+      setProfile({ fullName: "", username: "", email: "", avatar: "" });
+      setAddresses([]);
+      setActiveAddressId(null);
+      setPrefs({ newsletter: true });
+    }
+  }, [user]); // Only depend on user - no intermediate state dependencies
+
+  // This useEffect hook listens for changes in the URL's 'tab' parameter
+  // and updates the active tab in the component's state.
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl && tabs.some(t => t.key === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  const tabs = useMemo(
+    () => [
+      { key: "profile", label: "Profile", icon: <UserIcon className="w-4 h-4" /> },
+      { key: "addresses", label: "Addresses", icon: <MapPin className="w-4 h-4" /> },
+      { key: "security", label: "Security", icon: <Lock className="w-4 h-4" /> },
+      { key: "preferences", label: "Preferences", icon: <Palette className="w-4 h-4" /> },
+    ],
+    []
+  );
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfile((p) => ({ ...p, avatar: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveProfile = async () => {
+    if (!profilePassword) {
+      toast.error("Please enter your account password to save changes.");
+      return;
+    }
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: profile.username,
+          avatar: profile.avatar,
+          password: profilePassword,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update profile");
+      }
+
+      const data = await res.json();
+      updateUser(data.user);
+      
+      // Manually update the local profile state with the response from the server
+      setProfile({
+        fullName: data.user.fullName || "",
+        username: data.user.username || "",
+        email: data.user.email || "",
+        avatar: data.user.avatar || "",
+      });
+      setProfilePassword("");
+      toast.success("Profile updated");
+    } catch (err) {
+      console.error("Profile update error:", err);
+      toast.error(err.message || "Failed to update profile");
+    }
+  };
+
+  const addAddress = () => {
+    const id = crypto.randomUUID?.() || String(Date.now());
+    const newAddress = { 
+      id, 
+      label: "New Address", 
+      line1: "", 
+      line2: "", 
+      city: "", 
+      state: "", 
+      postalCode: "", 
+      country: "Philippines", 
+      isDefault: addresses.length === 0 
+    };
+    setAddresses((arr) => [...arr, newAddress]);
+    setActiveAddressId(id);
+    setIsEditingAddress(true);
+  };
+
+  const updateAddress = (id, field, value) => {
+    setAddresses((arr) => arr.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
+  };
+
+  const handleCityChange = (addressId, newCity) => {
+    const newRegion = cityToRegionMap[newCity] || "";
+    setAddresses((arr) =>
+      arr.map((a) =>
+        a.id === addressId
+          ? { ...a, city: newCity, state: newRegion }
+          : a
+      )
+    );
+  };
+
+  const removeAddress = (id) => {
+    let newAddresses = addresses.filter((a) => a.id !== id);
+
+    if (newAddresses.length > 0) {
+      // If the removed address was the active one, set the first one as active
+      if (activeAddressId === id) {
+        setActiveAddressId(newAddresses[0].id);
+        // If we are removing the active address, don't stay in edit mode for the new active one
+        setIsEditingAddress(false);
+      }
+
+      // If the default address was removed and another one exists, set the new first one as default
+      const defaultExists = newAddresses.some(addr => addr.isDefault);
+      if (!defaultExists) {
+        newAddresses = newAddresses.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
+      }
+    } else {
+      setActiveAddressId(null);
+      setIsEditingAddress(false); // Ensure edit form is hidden when last address is removed
+    }
+    setAddresses(newAddresses);
+    toast.info('Address removed. Click "Save addresses" to make it permanent.');
+  };
+
+  const setDefaultAddress = (id) => {
+    setAddresses((arr) => arr.map((a) => ({ ...a, isDefault: a.id === id })));
+  };
+
+  const saveAddresses = async () => {
+    if (!addressesPassword) {
+      toast.error("Please enter your account password to save changes.");
+      return;
+    }
+
+    // Validate that all addresses have the required fields filled out.
+    for (const addr of addresses) {
+      // Based on the error, line1, city, state, and postalCode are required.
+      // It's good practice to require a label and country as well.
+      if (!addr.label || !addr.line1 || !addr.city || !addr.state || !addr.postalCode || !addr.country) {
+        toast.error(`Please fill all required fields for address: "${addr.label || 'New Address'}"`);
+        setActiveAddressId(addr.id); // Switch to the incomplete address
+        return;
+      }
+    }
+    
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ addresses, password: addressesPassword }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to save addresses");
+      }
+
+      const data = await res.json();
+      
+      // ✅ CRITICAL: Update user context with fresh data from server
+      updateUser(data.user);
+      
+      setAddressesPassword("");
+      setIsEditingAddress(false); // Hide form on successful save
+      toast.success("Addresses saved successfully");
+    } catch (err) {
+      console.error("Save addresses error:", err);
+      toast.error(err.message || "Failed to save addresses");
+    }
+  };
+
+  const changePassword = async () => {
+    if (!security.newPassword || security.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    if (security.newPassword !== security.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (!token) {
+      toast.error("You must be logged in to change your password.");
+      return;
+    }
+    try {
+      const res = await fetch("http://localhost:5001/api/v1/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          currentPassword: security.currentPassword,
+          newPassword: security.newPassword,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to change password");
+      }
+
+      toast.success("Password changed");
+      setSecurity({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      console.error("Change password error:", err);
+      toast.error(err.message || "Failed to change password");
+    }
+  };
+
+  const savePreferences = async () => {
+    if (!prefsPassword) {
+      toast.error("Please enter your account password to save changes.");
+      return;
+    }
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to save changes.");
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferences: prefs, password: prefsPassword }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to save preferences");
+      }
+
+      const data = await res.json();
+      updateUser(data.user);
+      setPrefsPassword("");
+      toast.success("Preferences saved");
+    } catch (err) {
+      console.error("Save preferences error:", err);
+      toast.error(err.message || "Failed to save preferences");
+    }
+  };
+
+  const defaultAvatar =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
+
+  const activeAddress = useMemo(() => {
+    return addresses.find(addr => addr.id === activeAddressId) || null;
+  }, [addresses, activeAddressId]);
+
+  return (
+    <div className="relative z-10 bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 lg:pt-32 pb-10 lg:ml-[var(--sidebar-width,5rem)] transition-all duration-300 ease-in-out">
+      <div className="container max-w-5xl mx-auto">
+        <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
+
+        <div className="flex mb-6 space-x-2 overflow-x-auto no-scrollbar">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors whitespace-nowrap ${
+                activeTab === t.key
+                  ? "bg-pink-600 text-white border-pink-600"
+                  : "bg-white/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 bg-white border border-gray-100 shadow-xl dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+          {activeTab === "profile" && (`r`n            <ProfileTab />`r`n          )}
+                    className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    placeholder=""
+                  />
+                </Field>
+                <Field label="Email">
+                  <div className="relative">
+                    <Mail className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
+                    <input
+                      type="email"
+                      value={profile.email}
+                      onChange={() => {}}
+                      className="w-full py-2 pr-3 text-gray-900 bg-white border border-gray-200 pl-9 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      placeholder="you@example.com"
+                      readOnly
+                      title="Email changes are not available here. Contact support to update."
+                    />
+                  </div>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field label="Confirm password">
+                  <input
+                    type="password"
+                    value={profilePassword}
+                    onChange={(e) => setProfilePassword(e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    placeholder="Enter your account password to confirm"
+                  />
+                </Field>
+              </div>
+
+              <div className="flex justify-end">
+                <button onClick={saveProfile} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
+                  <Save className="w-4 h-4" /> Save changes
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "addresses" && (`r`n            <AddressesTab />`r`n          )}
+                    {addresses.map((addr) => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {activeAddress && !isEditingAddress && (
+                  <button onClick={() => setIsEditingAddress(true)} className="text-sm font-medium text-pink-600 dark:text-pink-400 hover:underline">
+                    Edit
+                  </button>
+                )}
+              </div>
+              {activeAddress && isEditingAddress && (
+                <div className="space-y-4">
+                  <div key={activeAddress.id} className={`p-4 rounded-xl border ${activeAddress.isDefault ? "border-pink-500" : "border-gray-200 dark:border-gray-700"}`}>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <Field label="Label">
+                        <input value={activeAddress.label || ""} onChange={(e) => updateAddress(activeAddress.id, "label", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Home / Office" />
+                      </Field>
+                      <Field label="Line 1">
+                        <input value={activeAddress.line1 || ""} onChange={(e) => updateAddress(activeAddress.id, "line1", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Street address" />
+                      </Field>
+                      <Field label="Line 2">
+                        <input value={activeAddress.line2 || ""} onChange={(e) => updateAddress(activeAddress.id, "line2", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Apartment, Barangay" />
+                      </Field>
+                      <Field label="City">
+                        <select
+                          value={activeAddress.city || ""}
+                          onChange={(e) => handleCityChange(activeAddress.id, e.target.value)}
+                          className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        >
+                          <option value="" disabled>Select a city</option>
+                          {cities.map(city => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="State / Province">
+                        <input
+                          value={activeAddress.state || ""}
+                          readOnly
+                          className="w-full px-3 py-2 text-gray-500 bg-gray-100 border border-gray-200 cursor-not-allowed rounded-xl dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                        />
+                      </Field>
+                      <Field label="Postal code">
+                        <input value={activeAddress.postalCode || ""} onChange={(e) => updateAddress(activeAddress.id, "postalCode", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                      </Field>
+                      <Field label="Country">
+                        <input value={activeAddress.country || ""} onChange={(e) => updateAddress(activeAddress.id, "country", e.target.value)} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                      </Field>
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer dark:text-gray-300">
+                          <input type="radio" name="defaultAddress" checked={!!activeAddress.isDefault} onChange={() => setDefaultAddress(activeAddress.id)} />
+                          Set as default
+                        </label>
+                      </div>
+                      <button onClick={() => removeAddress(activeAddress.id)} className="inline-flex items-center gap-2 px-3 py-2 text-red-600 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+                        <Trash2 className="w-4 h-4" /> Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
+                <Field label="Confirm password">
+                  <input
+                    type="password"
+                    value={addressesPassword}
+                    onChange={(e) => setAddressesPassword(e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    placeholder="Enter your account password to confirm"
+                  />
+                </Field>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={saveAddresses} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
+                  <Save className="w-4 h-4" /> Save addresses
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "security" && (`r`n            <SecurityTab />`r`n          )} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </Field>
+                <Field label="New password">
+                  <input type="password" value={security.newPassword} onChange={(e) => setSecurity((s) => ({ ...s, newPassword: e.target.value }))} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </Field>
+                <Field label="Confirm new password">
+                  <input type="password" value={security.confirmPassword} onChange={(e) => setSecurity((s) => ({ ...s, confirmPassword: e.target.value }))} className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </Field>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={changePassword} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
+                  <Lock className="w-4 h-4" /> Change password
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "preferences" && (`r`n            <PreferencesTab />`r`n          )} />
+                    <Bell className="w-4 h-4" /> Email newsletter
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
+                <Field label="Confirm password">
+                  <input
+                    type="password"
+                    value={prefsPassword}
+                    onChange={(e) => setPrefsPassword(e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    placeholder="Enter your account password to confirm"
+                  />
+                </Field>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={savePreferences} className="inline-flex items-center gap-2 px-5 py-2 text-white bg-pink-600 rounded-xl hover:bg-pink-700">
+                  <Save className="w-4 h-4" /> Save preferences
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+      {children}
+    </label>
+  );
+}
