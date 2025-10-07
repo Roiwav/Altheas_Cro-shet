@@ -1,7 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../../../context/CartContext";
+import { useCart } from "../../../hooks/useCart";
 import productImages from '../../../assets/images/productImages';
+import { toast } from "react-toastify";
 
 
 export default function Cart() {
@@ -33,10 +34,13 @@ export default function Cart() {
       return;
     }
     // Navigate to checkout page with the selected items
-    navigate("/checkout", { state: { items: selected } });
+    navigate("/checkout", { state: { cartItems: selected, fromCart: true } });
   };
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0).toFixed(2);
+  const totalPrice = cartItems.reduce((sum, item) => {
+    const q = item.quantity ?? item.qty ?? 1;
+    return sum + (item.price * q);
+  }, 0).toFixed(2);
 
   console.log('cartItems', cartItems);
 
@@ -81,7 +85,7 @@ export default function Cart() {
           </thead>
           <tbody>
             {cartItems.length > 0 ? (
-              cartItems.map((item, idx) => (
+              cartItems.map((item) => (
                 <tr key={item.id} className="border-t hover:bg-pink-50">
                   <td className="px-4 py-3 text-center">
                     <input
@@ -99,7 +103,7 @@ export default function Cart() {
                   </td>
                   <td className="px-4 py-3 flex items-center gap-3">
                     <img
-                      src={productImages[item.product_id]}
+                      src={item.image || productImages[item.product_id]}
                       alt={item.name}
                       className="w-14 h-14 object-cover rounded-lg border border-pink-200"
                     />
@@ -112,16 +116,16 @@ export default function Cart() {
                     <div className="flex justify-center items-center gap-2">
                       <button
                         onClick={() =>
-                          updateQuantity(getId(item), Math.max(1, item.qty - 1))
+                          updateQuantity(getId(item), Math.max(1, (item.quantity || item.qty || 1) - 1))
                         }
-                        disabled={item.qty <= 1}
+                        disabled={(item.quantity || item.qty || 1) <= 1}
                         className="px-2 py-1 rounded-full bg-pink-300 text-white hover:bg-pink-400 disabled:opacity-50"
                       >
                         −
                       </button>
-                      <span className="min-w-[24px] text-center">{item.qty}</span>
+                      <span className="min-w-[24px] text-center">{item.quantity || item.qty || 1}</span>
                       <button
-                        onClick={() => updateQuantity(getId(item), item.qty + 1)}
+                        onClick={() => updateQuantity(getId(item), (item.quantity || item.qty || 1) + 1)}
                         className="px-2 py-1 rounded-full bg-pink-300 text-white hover:bg-pink-400"
                       >
                         +
@@ -129,7 +133,7 @@ export default function Cart() {
                     </div>
                   </td>
                   <td className="text-center font-semibold text-pink-700">
-                    ₱{(item.price * item.qty).toFixed(2)}
+                    ₱{(item.price * (item.quantity || item.qty || 1)).toFixed(2)}
                   </td>
                 </tr>
               ))
