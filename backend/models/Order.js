@@ -1,89 +1,79 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
-const AutoIncrement = require('mongoose-sequence')(mongoose);
 
-// This defines the structure for each product within an order
-const orderProductSchema = new Schema({
-    productId: {
-        type: String, // Using String to be flexible with product IDs from different sources
-        required: true
-    },
-    name: {
-        type: String,
-        required: true
-    },
-    price: {
-        type: Number,
-        required: true
-    },
-    quantity: {
-        type: Number,
-        required: true,
-        min: 1
-    },
-    variation: String,
-
-     color: { // ✅ Add this field to capture the AR flower color
-        type: String
-     },
-     
-    image: {
-        type: String
+const orderSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  username: { type: String },
+  orderNumber: { 
+    type: String, 
+    unique: true
+  },
+  products: [
+    {
+      productId: { type: String, required: true },
+      name: String,
+      price: Number,
+      quantity: Number,
+      image: String,
+      color: String,
+      variation: String,
     }
-}, { _id: true }); // Let Mongoose manage the _id for subdocuments
-
-// This is the main schema for the 'orders' collection
-const orderSchema = new Schema({
-    userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    username: {
-        type: String,
-        required: true
-    },
-    products: [orderProductSchema],
-    orderNumber: {
-        type: Number,
-        unique: true
-        // This will be auto-populated by the plugin
-    },
-    shippingAddress: {
-        line1: { type: String, required: true },
-        line2: { type: String },
-        city: { type: String, required: true },
-        state: { type: String, required: true },
-        postalCode: { type: String, required: true },
-        country: { type: String, required: true }
-    },
-    shippingFee: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    total: {
-        type: Number,
-        required: true
-    },
-    paymentMethod: {
-        type: String,
-        required: true,
-        enum: ['GCash'],
-        default: 'GCash'
-    },
-    status: {
-        type: String,
-        enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-        default: 'pending'
-    }
-}, {
-    timestamps: true // This adds `createdAt` and `updatedAt` fields automatically
+  ],
+  shippingAddress: {
+    line1: String,
+    city: String,
+    state: String,
+    postalCode: String,
+    country: String,
+  },
+  shippingFee: Number,
+  total: Number,
+  paymentMethod: String,
+  paymentProofUrl: String,
+  paymentStatus: { type: String, default: 'Pending Verification' },
+  status: { type: String, default: 'Pending' },
+  
+  // ✅ NEW: Status message and refund info
+  statusMessage: { type: String }, // Message to show to customer
+  rejectionReason: { type: String }, // Reason for rejection
+  refundStatus: { 
+    type: String, 
+    enum: ['Not Required', 'Pending', 'Processing', 'Completed', 'Failed'],
+    default: 'Not Required'
+  },
+  refundAmount: { type: Number },
+  refundProcessedAt: { type: Date },
+  refundEstimatedDays: { type: Number, default: 7 }, // Default 7 days for refund processing
+  statusUpdatedAt: { type: Date, default: Date.now },
+  statusUpdatedBy: { type: String }, // Admin who updated the status
+  
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Add the auto-increment plugin to the schema
-orderSchema.plugin(AutoIncrement, { inc_field: 'orderNumber' });
+// Generate sequential order number before saving
+orderSchema.pre('save', async function(next) {
+  if (this.isNew && !this.orderNumber) {
+    try {
+      const lastOrder = await this.constructor.findOne(
+        { orderNumber: { $regex: /^ORD-\d+$/ } }, 
+        { orderNumber: 1 }, 
+        { sort: { orderNumber: -1 } }
+      );
+      
+      let nextNumber = 1;
+      
+      if (lastOrder && lastOrder.orderNumber) {
+        const match = lastOrder.orderNumber.match(/^ORD-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
+      }
+      
+      this.orderNumber = `ORD-${nextNumber.toString().padStart(5, '0')}`;
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
-const Order = mongoose.model('Order', orderSchema);
-
-module.exports = Order;
+module.exports = mongoose.model('Order', orderSchema);

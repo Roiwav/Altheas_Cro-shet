@@ -1,17 +1,19 @@
-// src/context/CartContext.jsx (FIXED - localStorage fallback when backend doesn't have cart endpoints)
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+// src/context/CartContext.jsx
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import Cookies from 'js-cookie';
-
-export const CartContext = createContext();
-export const useCart = () => useContext(CartContext);
-
-const GUEST_CART_ID_COOKIE = 'guest-cart-id';
+import { CartContext } from "./cart-context";
+import { GUEST_CART_ID_COOKIE } from "../utils/constants";
 
 export const CartProvider = ({ children }) => {
-    const { user, token, isAuthenticated, isLoading, fetchUser, updateUser } = useUser?.() || { user: null, token: null, isAuthenticated: false, isLoading: true, fetchUser: () => {}, updateUser: () => {} };
+    const { user, token, isAuthenticated, isLoading: _isUserLoading } = useUser?.() || { 
+        user: null, 
+        token: null, 
+        isAuthenticated: false, 
+        isLoading: true 
+    };
 
     console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
@@ -20,7 +22,7 @@ export const CartProvider = ({ children }) => {
     const [shippingFee, setShippingFee] = useState(0);
     const [isCartLoading, setIsCartLoading] = useState(true);
 
-    const API_BASE = "http://localhost:5001/api";
+    const API_BASE = "http://localhost:5001/api/v1";
 
     // Improved getId function to handle variations consistently
     const getId = useCallback((product) => {
@@ -319,44 +321,62 @@ export const CartProvider = ({ children }) => {
         await saveCart([], null, 0);
     }, [saveCart]);
 
-    const totalQuantity = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
-    const totalPrice = cartItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const totalQuantity = useMemo(() => 
+        cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0), 
+        [cartItems]
+    );
 
-    // Main effect to handle auth changes and initial load
+    const totalPrice = useMemo(
+        () => cartItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0),
+        [cartItems]
+    );
+
+    // Main effect
+    // Load cart when user state changes
     useEffect(() => {
-        if (isLoading) {
-            console.log("⏳ CartContext: Waiting for authentication to resolve...");
-            return;
+        if (!_isUserLoading) {
+            if (user && isAuthenticated && token) {
+                mergeCartOnLogin(user.id);
+            } else {
+                console.log("👻 Guest user or logged out, loading guest cart...");
+                loadCart();
+            }
         }
+    }, [isAuthenticated, user, token, _isUserLoading, loadCart, mergeCartOnLogin]);
 
-        if (isAuthenticated && user?.id && token) {
-            console.log("👤 User authenticated, merging guest cart (if any)...");
-            mergeCartOnLogin(user.id);
-        } else {
-            console.log("👻 Guest user or logged out, loading guest cart...");
-            loadCart();
-        }
-    }, [isAuthenticated, user?.id, token, isLoading, loadCart, mergeCartOnLogin]);
+    const contextValue = useMemo(() => ({
+        getId,
+        cartItems,
+        isCartLoading,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        totalQuantity,
+        totalPrice,
+        shippingAddress,
+        setShippingAddress,
+        shippingFee,
+        setShippingFee,
+    }), [
+        getId,
+        cartItems,
+        isCartLoading,
+        addToCart,
+        removeFromCart,
+                removeMultipleFromCart,
+        updateQuantity,
+        clearCart,
+        totalQuantity,
+        totalPrice,
+        shippingAddress,
+        setShippingAddress,
+        shippingFee,
+        setShippingFee,
+    ]);
 
     return (
-        <CartContext.Provider
-            value={{
-                getId,
-                cartItems,
-                isCartLoading,
-                addToCart,
-                removeFromCart,
-                removeMultipleFromCart,
-                updateQuantity,
-                clearCart,
-                totalQuantity,
-                totalPrice,
-                shippingAddress,
-                setShippingAddress,
-                shippingFee,
-                setShippingFee,
-            }}
-        >
+        <CartContext.Provider value={contextValue}>
             {children}
         </CartContext.Provider>
     );

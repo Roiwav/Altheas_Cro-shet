@@ -1,22 +1,20 @@
 // src/pages/main/CheckoutPage.jsx (UPDATED - added proof of payment image uploader)
-import { useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Loader2, MapPin, Package, CreditCard, Shield, Truck, Clock, Upload, X, Camera } from "lucide-react";
 import { toast } from "react-toastify";
 
 import gcashIcon from '../../assets/images/icons/gcash.png';
-import { SettingsContext } from "../../context/SettingsContext.jsx";
-import { useCart } from "../../context/CartContext.jsx";
+import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 
 export default function CheckoutPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    
 
     const { removeFromCart, getId } = useCart();
     const { user, isAuthenticated, token } = useUser();
-    const { settings } = React.useContext(SettingsContext);
-
     // Get data from navigation state (from CartPage or ShopPage)
     const singleProduct = location.state?.product;
     const cartItems = location.state?.cartItems || [];
@@ -181,7 +179,7 @@ export default function CheckoutPage() {
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.message || errorMessage;
-                } catch (e) { /* Ignore JSON parsing errors */ }
+                } catch { /* Ignore JSON parsing errors */ }
                 toast.error(errorMessage);
             }
         } catch (err) {
@@ -522,5 +520,5 @@ export default function CheckoutPage() {
                 </div>
             </div>
         </div>
-    );
+    ); 
 }
