@@ -62,7 +62,9 @@ async function seed() {
 
   // Optional: Uncomment to clear out all existing products before seeding
   // await Product.deleteMany({});
-
+  products.forEach(p => {
+    if (typeof p.quantity !== "number") p.quantity = 1; 
+  });
   await Product.insertMany(products);
   console.log('Seeded 50 products!');
   await mongoose.disconnect();

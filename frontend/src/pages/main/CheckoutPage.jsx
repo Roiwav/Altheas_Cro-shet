@@ -12,6 +12,11 @@ export default function CheckoutPage() {
     const location = useLocation();
     const navigate = useNavigate();
     
+    const getProductImageSrc = (image) =>
+    image && image.startsWith('/uploads')
+        ? `http://localhost:5001${image}`
+        : image || '/images/placeholder-product.jpg';
+
 
     const { removeFromCart, getId } = useCart();
     const { user, isAuthenticated, token } = useUser();
@@ -297,10 +302,11 @@ export default function CheckoutPage() {
                                         <div className="flex items-start gap-4">
                                             <div className="relative">
                                                 <img
-                                                    src={item.image}
+                                                    src={getProductImageSrc(item.image)}
                                                     alt={item.name}
-                                                    className="object-cover w-16 h-16 border border-gray-200 rounded-lg dark:border-gray-600"
+                                                    className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
                                                 />
+
                                                 <div className="absolute flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full -top-2 -right-2">
                                                     {item.quantity || 1}
                                                 </div>
