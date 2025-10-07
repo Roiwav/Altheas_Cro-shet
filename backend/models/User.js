@@ -13,7 +13,8 @@ const AddressSchema = new mongoose.Schema({
 }, { _id: false });
 
 const PreferencesSchema = new mongoose.Schema({
-  newsletter: { type: Boolean, default: true }
+  newsletter: { type: Boolean, default: true },
+  darkMode: { type: Boolean, default: true }
 }, { _id: false });
 
 const userSchema = new mongoose.Schema(

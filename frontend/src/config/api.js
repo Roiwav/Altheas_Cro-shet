@@ -1,15 +1,15 @@
 // Base URL for API requests
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
-// Helper function to make API requests
-export const apiRequest = async (endpoint, options = {}) => {
-  try {
-    const defaultHeaders = {
-      'Content-Type': 'application/json',
-    };
+  // Helper function to make API requests
+  export const apiRequest = async (endpoint, options = {}) => {
+    try {
+      const defaultHeaders = {
+        'Content-Type': 'application/json',
+      };
 
-    // Include auth token if available
-    const token = localStorage.getItem('token');
+    // Include auth token if available (prefer localStorage, fallback to sessionStorage)
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }

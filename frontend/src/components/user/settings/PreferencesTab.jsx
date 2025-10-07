@@ -3,15 +3,15 @@ import { toast } from "react-toastify";
 import { Bell, Save, Eye, EyeOff, Lock, Loader2, AlertCircle } from "lucide-react";
 
 import Field from "../../common/Field.jsx";
-import { useDarkMode } from "../../../context/DarkModeContext.jsx";
+import { useDarkMode } from "../../../context/useDarkMode.js";
 import { useUser } from "../../../context/useUser.js";
 import apiRequest from "../../../config/api.js";
 
 export default function PreferencesTab() {
   const { user, token, updateUser } = useUser();
-  const { darkMode, toggleDarkMode } = useDarkMode();
-  const [prefs, setPrefs] = useState({ newsletter: true });
-  const [initialPrefs, setInitialPrefs] = useState({ newsletter: true });
+  const { setDarkMode } = useDarkMode();
+  const [prefs, setPrefs] = useState({ newsletter: true, darkMode: true });
+  const [initialPrefs, setInitialPrefs] = useState({ newsletter: true, darkMode: true });
   const [prefsPassword, setPrefsPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -21,15 +21,22 @@ export default function PreferencesTab() {
 
   useEffect(() => {
     if (user) {
-      const nextPrefs = { newsletter: user.preferences?.newsletter ?? true };
+      const nextPrefs = { 
+        newsletter: user.preferences?.newsletter ?? true,
+        darkMode: user.preferences?.darkMode ?? true
+      };
       setPrefs(nextPrefs);
       setInitialPrefs(nextPrefs);
+      // Sync app theme immediately with account preference
+      if (typeof nextPrefs.darkMode === 'boolean') {
+        setDarkMode(nextPrefs.darkMode);
+      }
     } else {
-      const defaults = { newsletter: true };
+      const defaults = { newsletter: true, darkMode: true };
       setPrefs(defaults);
       setInitialPrefs(defaults);
     }
-  }, [user]);
+  }, [user, setDarkMode]);
 
   useEffect(() => {
     if (user) {
@@ -98,7 +105,15 @@ export default function PreferencesTab() {
         <div className="p-4 border border-gray-200 rounded-xl dark:border-gray-700">
           <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Theme</h3>
           <label className="inline-flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={darkMode} onChange={toggleDarkMode} />
+            <input 
+              type="checkbox" 
+              checked={prefs.darkMode} 
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setPrefs((p) => ({ ...p, darkMode: checked }));
+                setDarkMode(checked);
+              }} 
+            />
             <span className="text-gray-700 dark:text-gray-300">Enable dark mode</span>
           </label>
         </div>

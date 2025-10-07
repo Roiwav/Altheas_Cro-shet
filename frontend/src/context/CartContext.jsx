@@ -36,7 +36,7 @@ export const CartProvider = ({ children }) => {
 
         console.log("💾 Saving cart:", { 
             itemCount: items.length, 
-            userId: userId ? `${userId.substring(0,8)}...` : null,
+            userId: userId ? `${String(userId).substring(0,8)}...` : null,
             isAuthenticated 
         });
 
@@ -103,10 +103,10 @@ export const CartProvider = ({ children }) => {
     // ✅ FIXED: Load cart from localStorage, try backend as fallback
     const loadCart = useCallback(async () => {
         setIsCartLoading(true);
-        const userId = user?.id;
+        const userId = user?.id || user?._id || user?.userId || null;
 
         console.log("📂 Loading cart:", { 
-            userId: userId ? `${userId.substring(0,8)}...` : null,
+            userId: userId ? `${String(userId).substring(0,8)}...` : null,
             isAuthenticated 
         });
 
@@ -144,7 +144,6 @@ export const CartProvider = ({ children }) => {
                 if (res.ok) {
                     cartData = await res.json();
                     console.log("📱 Loaded cart from backend:", cartData.items?.length || 0, "items");
-                    
                     // Save to localStorage for future use
                     localStorage.setItem(`user-cart-${userId}`, JSON.stringify(cartData));
                 } else if (res.status === 404) {
@@ -172,11 +171,13 @@ export const CartProvider = ({ children }) => {
     }, [user, token, isAuthenticated]);
 
     // ✅ IMPROVED: Manual merge function for localStorage-based carts
-    const manualMergeGuestCart = useCallback(async (userId) => {
-        console.log("🔄 Starting localStorage cart merge for user:", userId.substring(0,8) + '...');
+    const manualMergeGuestCart = useCallback(async (rawUserId) => {
+        const userId = rawUserId || user?.id || user?._id || user?.userId || null;
+        const uidLog = userId ? String(userId).substring(0,8) + '...' : 'unknown';
+        console.log("🔄 Starting localStorage cart merge for user:", uidLog);
         
         const guestCartJson = localStorage.getItem('guest-cart');
-        const userCartJson = localStorage.getItem(`user-cart-${userId}`);
+        const userCartJson = userId ? localStorage.getItem(`user-cart-${userId}`) : null;
         
         let guestItems = [];
         let userItems = [];
@@ -188,8 +189,8 @@ export const CartProvider = ({ children }) => {
             try {
                 const guestCart = JSON.parse(guestCartJson);
                 guestItems = guestCart.items || [];
-                mergedShippingAddress = guestCart.shippingAddress;
-                mergedShippingFee = guestCart.shippingFee || 0;
+                mergedShippingAddress = guestCart.shippingAddress ?? mergedShippingAddress;
+                mergedShippingFee = guestCart.shippingFee ?? mergedShippingFee;
                 console.log("👻 Found guest cart:", guestItems.length, "items");
             } catch (e) {
                 console.error("Failed to parse guest cart:", e);
@@ -214,22 +215,18 @@ export const CartProvider = ({ children }) => {
 
         if (guestItems.length === 0 && userItems.length === 0) {
             console.log("ℹ️ No cart items to merge");
-            return;
+            return [];
         }
 
         // Merge items (combine quantities for duplicates)
         const mergedItems = [...userItems];
-
         for (const guestItem of guestItems) {
             const guestItemId = getId(guestItem);
             const existingIndex = mergedItems.findIndex(item => getId(item) === guestItemId);
-
             if (existingIndex >= 0) {
-                // Combine quantities
                 mergedItems[existingIndex].quantity = (mergedItems[existingIndex].quantity || 1) + (guestItem.quantity || 1);
                 console.log(`🔄 Combined quantities for: ${guestItem.name}`);
             } else {
-                // Add new item
                 mergedItems.push(guestItem);
                 console.log(`➕ Added new item: ${guestItem.name}`);
             }
@@ -250,12 +247,17 @@ export const CartProvider = ({ children }) => {
         }
 
         return mergedItems;
-    }, [getId, saveCart]);
+    }, [getId, saveCart, user]);
 
     // ✅ IMPROVED: Merge carts on login
-    const mergeCartOnLogin = useCallback(async (userId) => {
-        console.log(`🔄 Starting cart merge for user: ${userId.substring(0,8)}...`);
-        
+    const mergeCartOnLogin = useCallback(async (rawUserId) => {
+        const userId = rawUserId || user?.id || user?._id || user?.userId || null;
+        const uidLog = userId ? String(userId).substring(0,8) : 'unknown';
+        console.log(`🔄 Starting cart merge for user: ${uidLog}...`);
+        if (!userId) {
+            await loadCart();
+            return;
+        }
         try {
             await manualMergeGuestCart(userId);
         } catch (error) {
@@ -264,21 +266,22 @@ export const CartProvider = ({ children }) => {
             await loadCart();
             toast.info("Welcome back! Loading your cart...");
         }
-    }, [manualMergeGuestCart, loadCart]);
+    }, [manualMergeGuestCart, loadCart, user]);
 
     // Enhanced Add item to cart
     const addToCart = useCallback(async (product, quantity = 1) => {
-        console.log("🛒 Adding to cart:", product.name, "x", product.quantity || quantity);
+        console.log("🛒 Adding to cart:", product?.name, "x", product?.quantity || quantity);
 
         const id = getId(product);
         const existingItem = cartItems.find(item => getId(item) === id);
 
         let newCartItems;
         if (existingItem) {
+            const newQty = (existingItem.quantity || 0) + (product.quantity || quantity);
             newCartItems = cartItems.map(item =>
-                getId(item) === id ? { ...item, quantity: item.quantity + (product.quantity || quantity) } : item
+                getId(item) === id ? { ...item, quantity: newQty } : item
             );
-            toast.success(`Updated ${product.name} quantity to ${existingItem.quantity + quantity}!`, {
+            toast.success(`Updated ${product.name} quantity to ${newQty}!`, {
                 position: window.innerWidth < 768 ? "top-center" : "top-right",
                 autoClose: 2000,
                 hideProgressBar: true,
@@ -331,12 +334,11 @@ export const CartProvider = ({ children }) => {
         [cartItems]
     );
 
-    // Main effect
     // Load cart when user state changes
     useEffect(() => {
         if (!_isUserLoading) {
             if (user && isAuthenticated && token) {
-                mergeCartOnLogin(user.id);
+                mergeCartOnLogin(user?.id || user?._id || user?.userId);
             } else {
                 console.log("👻 Guest user or logged out, loading guest cart...");
                 loadCart();

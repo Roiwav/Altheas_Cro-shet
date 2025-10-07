@@ -2,13 +2,11 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
-import DarkModeToggle from './components/layout/DarkModeToggle.jsx';
 import AdminRoute from './components/auth/AdminRoute';
 import AdminPage from './pages/admin/AdminPage';
 import HomePage from './pages/main/HomePage';
 import { useEffect, useState } from 'react';
 import FlowerViewerPage from './pages/ar/FlowerViewerPage';
-import ARViewerPage from './pages/ar/ARViewerPage';
 import AboutUs from './pages/main/AboutUs';
 import Contact from './pages/main/Contact';
 import ShopPage from './pages/main/ShopPage';
@@ -30,6 +28,7 @@ import DataPolicy from './pages/main/DataPolicy.jsx';
 import ServiceTerm from './pages/main/ServiceTerm.jsx';
 import NotFoundPage from './pages/main/NotFoundPage.jsx';
 import ResetPassword from './pages/auth/ResetPassword.jsx';
+import ARViewerPage from './pages/ar/ARViewerPage.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -49,7 +48,6 @@ export default function App() {
 
   return (
     <>
-      <DarkModeToggle sidebarOpen={sidebarOpen} />
       <Routes>
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminPage />} />
