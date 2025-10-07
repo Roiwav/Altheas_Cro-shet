@@ -129,6 +129,11 @@ const CustomerService = ({ onClick, isMobile = false }) => (
                   Terms & Conditions
                 </Link>
               </li>
+              <li>
+                <Link to="/feedback" className="transition hover:text-white" onClick={onClick}>
+                  Feedback
+                </Link>
+              </li>
             </ul>
           </div>
 );

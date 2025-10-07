@@ -62,20 +62,20 @@ const FlowerTypeSelector = React.memo(({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Flower Type</h3>
+      
       
       {/* Mobile/Tablet - Dropdown */}
-      <div className="md:hidden">
+      <div className="hidden">
         <Listbox value={selectedType} onChange={onSelect}>
           {({ open }) => (
             <div className="relative">
-              <Listbox.Button className="relative w-full py-2 pl-3 pr-10 text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm cursor-default focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 sm:text-sm">
+              <Listbox.Button className="relative w-full py-2 pl-3 pr-10 text-left bg-white border border-gray-300 rounded-lg shadow-sm cursor-default dark:bg-gray-800 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 sm:text-sm">
                 <span className="flex items-center">
                   <span className="text-pink-600 dark:text-pink-400">{selectedFlower.icon}</span>
-                  <span className="ml-2 block truncate text-gray-900 dark:text-gray-100">{selectedFlower.name}</span>
+                  <span className="block ml-2 text-gray-900 truncate dark:text-gray-100">{selectedFlower.name}</span>
                 </span>
-                <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                  <ChevronDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                <span className="absolute inset-y-0 right-0 flex items-center pr-2 ml-3 pointer-events-none">
+                  <ChevronDown className="w-5 h-5 text-gray-400" aria-hidden="true" />
                 </span>
               </Listbox.Button>
               
@@ -88,7 +88,7 @@ const FlowerTypeSelector = React.memo(({
                 leave="transition ease-in duration-75"
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
-                className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm"
+                className="absolute z-10 w-full py-1 mt-1 overflow-auto text-base bg-white rounded-md shadow-lg dark:bg-gray-800 max-h-60 ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
               >
                 {FLOWER_TYPES.map((type) => (
                   <Listbox.Option
@@ -112,7 +112,7 @@ const FlowerTypeSelector = React.memo(({
                             className={`${active ? 'text-pink-600 dark:text-pink-400' : 'text-pink-600 dark:text-pink-400'}
                               absolute inset-y-0 right-0 flex items-center pr-4`}
                           >
-                            <Check className="h-5 w-5" aria-hidden="true" />
+                            <Check className="w-5 h-5" aria-hidden="true" />
                           </span>
                         ) : null}
                       </>
@@ -126,7 +126,7 @@ const FlowerTypeSelector = React.memo(({
       </div>
       
       {/* Desktop - Grid */}
-      <div className="hidden md:grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4">
         {FLOWER_TYPES.map((type) => (
           <button
             key={type.id}

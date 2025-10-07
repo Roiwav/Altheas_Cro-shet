@@ -25,7 +25,7 @@ const ColorSelector = React.memo(({
         type="button"
         onClick={() => onSelect(hex)}
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-all transform hover:scale-110 ${
-          selectedColor === hex
+          selectedColor.toLowerCase() === hex.toLowerCase()
             ? 'border-pink-500 ring-2 ring-offset-2 ring-pink-300 scale-110'
             : 'border-gray-300 dark:border-gray-600 hover:border-pink-400'
         }`}

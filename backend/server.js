@@ -13,7 +13,6 @@ const cartRoutes = require("./routes/cartRoutes.js");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const orderRoutes = require("./routes/orderRoutes.js");
-const testimonialRoutes = require("./testimonialRoutes");
 
 dotenv.config();
 
@@ -137,7 +136,12 @@ app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/v1/testimonials", testimonialRoutes);
+
+// Dynamically import ES Module routes for testimonials
+import('./routes/testimonialRoutes.js').then((testimonialModule) => {
+  app.use("/api/v1/testimonials", testimonialModule.default);
+}).catch(err => console.error("Failed to load testimonial routes:", err));
+
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)

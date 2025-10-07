@@ -52,7 +52,7 @@ const FlowerViewerPage = () => {
   // State management for flower customization.
   const [flowerType, setFlowerType] = useState(initialType || 'rose');
   const [arrangement, setArrangement] = useState('single');
-  const [color, setColor] = useState(defaultColors[initialType] || '#FFFFFF');
+  const [color, setColor] = useState('#FFFFFF');
   const [flowerCount, setFlowerCount] = useState(3); // bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false); // QR code modal
@@ -269,7 +269,7 @@ const FlowerViewerPage = () => {
       {/* MOBILE LAYOUT */}
       <div className="w-full lg:hidden">
         {/* 3D Viewer */}
-        <div className="w-full h-[60vh] max-h-[450px] bg-gray-100 dark:bg-gray-900/50">
+        <div className="relative w-full h-[60vh] max-h-[450px] bg-gray-100 dark:bg-gray-900/50">
           <Suspense fallback={
             <div className="grid w-full h-full place-items-center">
               <div className="flex flex-col items-center justify-center space-y-4">
@@ -280,6 +280,11 @@ const FlowerViewerPage = () => {
           }>
             <ARViewer key={canvasKey} flowerType={flowerType} color={color} arrangement={arrangement} />
           </Suspense>
+          <div className="absolute bottom-0 left-0 right-0 p-2 text-center bg-black/40 backdrop-blur-sm">
+            <p className="text-xs text-white/90">
+              Drag to rotate • Pinch to zoom
+            </p>
+          </div>
         </div>
 
         {/* Content Section */}
