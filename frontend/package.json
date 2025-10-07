@@ -34,7 +34,6 @@
     "react-toastify": "^11.0.5",
     "socket.io-client": "^4.8.1",
     "tailwind-scrollbar-hide": "^4.0.0",
-    "three": "^0.173.0",
     "webxr": "^0.0.0"
   },
   "devDependencies": {
