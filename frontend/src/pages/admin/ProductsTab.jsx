@@ -53,47 +53,44 @@ const ProductsTab = ({ isDarkMode }) => {
     setNewImagePreview(null);
   };
 
-  const handleNewProductSubmit = (e) => {
-    e.preventDefault();
+  const handleNewProductSubmit = async (e) => {
+  e.preventDefault();
 
-    // --- Validation ---
-    if (!editFormData.productName?.trim()) {
-      toast.error('Product name is required.');
-      return;
-    }
-    if (!editFormData.description?.trim()) {
-      toast.error('Product description is required.');
-      return;
-    }
-    const priceValue = parseFloat(editFormData.price);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      toast.error('Please enter a valid positive price.');
-      return;
-    }
-    const quantityValue = parseInt(editFormData.quantity, 10);
-    if (isNaN(quantityValue) || quantityValue < 0) {
-      toast.error('Please enter a valid non-negative quantity.');
-      return;
-    }
-    if (!newImage) {
-      toast.error('Product image is required.');
-      return;
-    }
+  if (!editFormData.productName || !editFormData.description || !newImage) {
+    toast.error("Please fill out all fields and upload an image.");
+    return;
+  }
 
-    // Backend logic will be added here later
-    console.log({
-      productName: editFormData.productName,
-      description: editFormData.description,
-      price: editFormData.price,
-      quantity: editFormData.quantity,
-      newImage,
+  const formData = new FormData();
+  formData.append("name", editFormData.productName);
+  formData.append("description", editFormData.description);
+  formData.append("price", editFormData.price);
+  formData.append("quantity", editFormData.quantity);
+  formData.append("image", newImage);
+
+  try {
+    const res = await fetch("http://localhost:5001/api/v1/products", {
+      method: "POST",
+      body: formData,
     });
-    toast.success(`Product "${editFormData.productName}" has been staged for creation.`);
-    // Reset form
-    setEditFormData({});
-    handleNewRemoveImage();
-    setShowAddProductForm(false); // Hide form after submission
-  };
+    const data = await res.json();
+
+    if (res.ok) {
+      toast.success("Product added successfully!");
+      setProducts((prev) => [data.product, ...prev]);
+      setShowAddProductForm(false);
+      setEditFormData({});
+      setNewImage(null);
+      setNewImagePreview(null);
+    } else {
+      toast.error(data.message || "Failed to add product.");
+    }
+  } catch (error) {
+    console.error("Error adding product:", error);
+    toast.error("Server error.");
+  }
+};
+
 
   const handleEditClick = (product) => {
     setEditingProduct(product);

@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import productList from "../../data/productList";
+// import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
 import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
@@ -82,6 +82,9 @@ export default function ShopPage() {
   const [modalQuantity, setModalQuantity] = useState(1);
   const [directCheckoutProduct, setDirectCheckoutProduct] = useState(null);
 
+  const [products, setProducts] = useState([]);
+
+
   // This effect sets the initial shipping info when the page loads or user changes.
   useEffect(() => {
     if (isAuthenticated && user?.addresses?.length > 0) {
@@ -98,6 +101,20 @@ export default function ShopPage() {
       setSelectedAddressId("");
     }
   }, [isAuthenticated, user]);
+
+    useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("http://localhost:5001/api/v1/products");
+        const data = await res.json();
+        setProducts(data.products || []); // adjust depending on your backend response
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Effect to handle selected product changes, for setting default variation
   useEffect(() => {
@@ -185,7 +202,7 @@ export default function ShopPage() {
   
   // Filter and sort products
   const processedProducts = React.useMemo(() => {
-    let products = [...productList];
+    let productsToShow = [...products];
 
     // Filter by category
     if (selectedCategory !== "All") {
