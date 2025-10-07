@@ -8,12 +8,13 @@ const dotenv = require("dotenv");
 const path = require("path");
 
 // 🟢 Load environment variables
-dotenv.config();
+dotenv.config(); 
 const session = require('express-session');
 const passport = require('passport');
 
 // 🟢 Import routes
 const setupChangeStream = require("./testimonialChangeStream.js");
+const productRoutes = require("./routes/productRoutes.js");
 const cartRoutes = require("./routes/cartRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
@@ -159,7 +160,9 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/cart", cartRoutes);
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/users", userRoutes);
-  app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
+  app.use("/api/orders", orderRoutes); 
+app.use("/api/v1/products", productRoutes);
+
 
   // Testimonials routes (CommonJS)
   app.use("/api/v1/testimonials", testimonialRoutes);

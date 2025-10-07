@@ -12,6 +12,12 @@ export default function CartPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
+    const getProductImageSrc = (image) =>
+    image && image.startsWith('/uploads')
+        ? `http://localhost:5001${image}`
+        : image || '/images/placeholder-product.jpg';
+
+
     const {
         cartItems,
         getId,
@@ -356,10 +362,12 @@ export default function CartPage() {
                                                     )}
                                                     <div className="relative">
                                                         <img
-                                                            src={item.image}
+                                                            src={getProductImageSrc(item.image)}
                                                             alt={item.name}
                                                             className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
                                                         />
+
+
                                                         <div className="absolute flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-500 rounded-full -top-2 -right-2">
                                                             {currentQty}
                                                         </div>

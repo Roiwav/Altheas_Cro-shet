@@ -20,6 +20,12 @@ import {
   User
 } from 'lucide-react';
 
+const getProductImageSrc = (image) =>
+  image && image.startsWith('/uploads')
+    ? `http://localhost:5001${image}`
+    : image || '/images/placeholder-product.jpg';
+
+
 // Helper functions
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString(undefined, { 
   year: 'numeric', 
@@ -413,12 +419,12 @@ const OrdersPage = () => {
                   {order.products?.map(item => (
                     <div key={item.productId || item._id} className="flex gap-4">
                       <div className="flex-shrink-0">
-                        <img 
-                          src={item.image || '/images/placeholder-product.jpg'} 
-                          alt={item.name} 
-                          className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                          onError={(e)=>{e.target.src='/images/placeholder-product.jpg'}}
+                        <img
+                          src={getProductImageSrc(item.image)}
+                          alt={item.name}
+                          className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
                         />
+
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
