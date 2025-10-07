@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { useUser } from '../../hooks/useUser';
 import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus, Info, Loader2 } from 'lucide-react';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../context/cart-context.js';
 import { toast } from 'react-toastify';
 
 // Lazy load AR components for better initial page load performance.

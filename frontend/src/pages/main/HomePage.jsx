@@ -11,7 +11,7 @@ import { useUser } from '../../context/useUser.js';
 // Product data and context for featured products
 import productList from '../../data/productList.js';
 import productImages from '../../assets/images/productImages.js';
-import { useCart } from '../../hooks/useCart';
+import { useCart } from '../../context/cart-context.js';
 
 // Currency formatter (same as in ShopPage)
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
@@ -353,10 +353,7 @@ function Testimonials() {
   }, [testimonials]);
 
   // We'll show up to 10 of the most recent testimonials to keep the DOM from getting too large.
-  const testimonialsToDisplay = testimonials
-    .filter(testimonial => testimonial.rating >= 4)
-    .slice(0, 10);
-
+  const testimonialsToDisplay = testimonials.slice(0, 10);
 
   if (testimonialsToDisplay.length === 0) {
     return (

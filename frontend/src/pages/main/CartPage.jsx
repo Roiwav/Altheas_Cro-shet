@@ -1,9 +1,11 @@
-﻿import { useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+﻿// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
+import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { useCart } from "../../hooks/useCart";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
+import { useCart } from "../../context/cart-context.js";
 import { useUser } from "../../context/useUser.js";
 
 export default function CartPage() {
@@ -23,11 +25,17 @@ export default function CartPage() {
     } = useCart();
 
     const { user, isAuthenticated } = useUser();
+    const { settings } = React.useContext(SettingsContext);
 
     const singleProduct = location.state?.product;
     const arOrder = location.state && !location.state.product ? location.state : null;
 
-    // Shipping fees are defined inside the effect to keep deps stable
+    // Shipping fees data
+    const shippingFees = {
+        "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
+        "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
+        "Davao City": 34, "Cagayan de Oro": 33,
+    };
 
     const [selectedItems, setSelectedItems] = useState(new Set());
 
@@ -51,11 +59,6 @@ export default function CartPage() {
     : cartItems;
 
     useEffect(() => {
-        const shippingFees = {
-            "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
-            "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
-            "Davao City": 34, "Cagayan de Oro": 33,
-        };
         if (isAuthenticated) {
             let addresses = user?.addresses || [];
 
@@ -72,7 +75,7 @@ export default function CartPage() {
                 setShippingFee(shippingFees[defaultAddress.city] || 0);
             }
         }
-    }, [isAuthenticated, user, setShippingAddress, setShippingFee]);
+    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
 
     // Calculate totals only for selected items
     const selectedCheckoutItems = checkoutItems.filter(item => selectedItems.has(getId(item)));
@@ -88,6 +91,11 @@ export default function CartPage() {
     : arOrder
     ? (arOrder.shippingFee || 0) 
     : shippingFee);
+
+    // Effect to scroll to top on component mount
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const handleSelectItem = (itemId, isSelected) => {
         const newSelectedItems = new Set(selectedItems);
@@ -123,7 +131,7 @@ export default function CartPage() {
     };
 
     // Navigate to CheckoutPage for authenticated users, signup for guests
-    const handleProceedToCheckout = (specificItems = null) => {
+    const handleProceedToCheckout = useCallback((specificItems = null) => {
         const itemsToOrder = specificItems || selectedCheckoutItems;
         
         if (itemsToOrder.length === 0) {
@@ -136,7 +144,7 @@ export default function CartPage() {
             return;
         }
 
-        // âœ… NEW: Check if user is authenticated for bulk checkout
+        // ✅ NEW: Check if user is authenticated for bulk checkout
         if (!isAuthenticated) {
             toast.info("Please sign up to checkout your items. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -157,13 +165,13 @@ export default function CartPage() {
                 shippingFee: singleProduct ? singleProduct.shippingFee : shippingFee
             } 
         });
-    };
+    }, [isAuthenticated, navigate, selectedCheckoutItems, shippingAddress, shippingFee, singleProduct]);
 
-    // âœ… UPDATED: Buy Now logic - redirect guests to signup
+    // ✅ UPDATED: Buy Now logic - redirect guests to signup
     const handleBuyNowIndividual = (item) => {
         if (!item) return;
         
-        // âœ… NEW: Check if user is authenticated for individual buy now
+        // ✅ NEW: Check if user is authenticated for individual buy now
         if (!isAuthenticated) {
             toast.info("Please sign up to purchase items directly. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -260,7 +268,7 @@ export default function CartPage() {
                     </div>
                 </div>
 
-                {/* âœ… NEW: Guest user info banner for cart page */}
+                {/* ✅ NEW: Guest user info banner for cart page */}
                 {!isAuthenticated && checkoutItems.length > 0 && (
                     <div className="p-4 mb-6 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
                         <div className="flex items-center justify-between">
@@ -329,7 +337,7 @@ export default function CartPage() {
                                     </div>
                                 </div>
                                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {checkoutItems.map((item) => {
+                                    {checkoutItems.map((item, index) => {
                                         const itemId = getId(item);
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;
@@ -412,7 +420,7 @@ export default function CartPage() {
                                                                     {currencyFormatter.format(item.price * currentQty)}
                                                                 </span>
                                                             </div>
-                                                            {/* âœ… UPDATED: Individual Buy Now Button - different for guests */}
+                                                            {/* ✅ UPDATED: Individual Buy Now Button - different for guests */}
                                                             {!singleProduct && !arOrder && isAuthenticated && (
                                                                 <button
                                                                     onClick={() => handleBuyNowIndividual(item)}
