@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../../context/useUser";
-import { useCart } from "../../context/CartContext.jsx";
+import { useCart } from "../../hooks/useCart";
 import { ShoppingCart, User, Menu, LayoutDashboard, LogOut } from "lucide-react";
 
 export default function Navbar({

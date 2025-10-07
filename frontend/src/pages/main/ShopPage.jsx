@@ -1,7 +1,7 @@
 // src/pages/main/ShopPage.jsx (UPDATED - guest cart checkout redirect to signup)
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FaThLarge, FaList, FaShoppingCart, FaSearch } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -9,7 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
-import { useCart } from "../../context/CartContext.jsx";
+import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 
 // Currency formatter
@@ -48,7 +48,7 @@ const categories = [
   "Bouquet",
   "Single Stem",
   "Arrangement",
-  "Custom",
+  "Custom"
 ];
 
 // Placeholder image
@@ -57,6 +57,7 @@ const placeholderImage =
 
 export default function ShopPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     addToCart,
     totalQuantity,
@@ -79,6 +80,7 @@ export default function ShopPage() {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [selectedVariation, setSelectedVariation] = useState("");
   const [modalQuantity, setModalQuantity] = useState(1);
+  const [directCheckoutProduct, setDirectCheckoutProduct] = useState(null);
 
   // This effect sets the initial shipping info when the page loads or user changes.
   useEffect(() => {
@@ -108,6 +110,46 @@ export default function ShopPage() {
     // Reset quantity to 1 whenever the modal opens for a new product
     setModalQuantity(1);
   }, [selectedProduct]);
+
+  // Handle direct checkout from gallery and product modal opening
+  useEffect(() => {
+    // Check if we're coming from a product click in the gallery
+    if (location.state?.openProductModal && location.state?.selectedProduct) {
+      const { selectedProduct: productFromState } = location.state;
+      
+      // Find the matching product in the shop's product list using case-insensitive name comparison
+      const productFromList = productList.find(p => {
+        const shopProductName = p.name?.trim().toLowerCase() || '';
+        const galleryProductName = productFromState.name?.trim().toLowerCase() || '';
+        return shopProductName === galleryProductName;
+      });
+      
+      // If we found a matching product in the shop, use it (with the gallery image)
+      if (productFromList) {
+        setSelectedProduct({
+          ...productFromList,
+          image: productFromState.image || productFromList.image
+        });
+      } else {
+        // Fallback to the product data from the gallery
+        setSelectedProduct(productFromState);
+      }
+      
+      // Clear the navigation state to prevent reopening on refresh
+      window.history.replaceState(null, '');
+    }
+    // Handle direct checkout flow (existing functionality)
+    else if (location.state?.showCheckout && location.state?.selectedProduct) {
+      setDirectCheckoutProduct({
+        ...location.state.selectedProduct,
+        quantity: location.state.quantity || 1
+      });
+      // Clear the state to prevent showing the checkout again on refresh
+      window.history.replaceState(null, '');
+    }
+    
+    // Only run this effect when location.state changes
+  }, [location.state]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 

@@ -1,11 +1,9 @@
-// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
-import { useLocation, useNavigate } from "react-router-dom";
+﻿import { useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { SettingsContext } from "../../context/SettingsContext.jsx";
-import { useCart } from "../../context/CartContext.jsx";
+import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 
 export default function CartPage() {
@@ -24,17 +22,11 @@ export default function CartPage() {
     } = useCart();
 
     const { user, isAuthenticated } = useUser();
-    const { settings } = React.useContext(SettingsContext);
 
     const singleProduct = location.state?.product;
     const arOrder = location.state && !location.state.product ? location.state : null;
 
-    // Shipping fees data
-    const shippingFees = {
-        "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
-        "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
-        "Davao City": 34, "Cagayan de Oro": 33,
-    };
+    // Shipping fees are defined inside the effect to keep deps stable
 
     const [selectedItems, setSelectedItems] = useState(new Set());
 
@@ -58,6 +50,11 @@ export default function CartPage() {
     : cartItems;
 
     useEffect(() => {
+        const shippingFees = {
+            "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
+            "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
+            "Davao City": 34, "Cagayan de Oro": 33,
+        };
         if (isAuthenticated) {
             let addresses = user?.addresses || [];
 
@@ -74,7 +71,7 @@ export default function CartPage() {
                 setShippingFee(shippingFees[defaultAddress.city] || 0);
             }
         }
-    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
+    }, [isAuthenticated, user, setShippingAddress, setShippingFee]);
 
     // Calculate totals only for selected items
     const selectedCheckoutItems = checkoutItems.filter(item => selectedItems.has(getId(item)));
@@ -124,7 +121,7 @@ export default function CartPage() {
             return;
         }
 
-        // ✅ NEW: Check if user is authenticated for bulk checkout
+        // âœ… NEW: Check if user is authenticated for bulk checkout
         if (!isAuthenticated) {
             toast.info("Please sign up to checkout your items. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -147,11 +144,11 @@ export default function CartPage() {
         });
     };
 
-    // ✅ UPDATED: Buy Now logic - redirect guests to signup
+    // âœ… UPDATED: Buy Now logic - redirect guests to signup
     const handleBuyNowIndividual = (item) => {
         if (!item) return;
         
-        // ✅ NEW: Check if user is authenticated for individual buy now
+        // âœ… NEW: Check if user is authenticated for individual buy now
         if (!isAuthenticated) {
             toast.info("Please sign up to purchase items directly. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -247,7 +244,7 @@ export default function CartPage() {
                     </div>
                 </div>
 
-                {/* ✅ NEW: Guest user info banner for cart page */}
+                {/* âœ… NEW: Guest user info banner for cart page */}
                 {!isAuthenticated && checkoutItems.length > 0 && (
                     <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                         <div className="flex items-center justify-between">
@@ -305,7 +302,7 @@ export default function CartPage() {
                                     </div>
                                 </div>
                                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {checkoutItems.map((item, index) => {
+                                    {checkoutItems.map((item) => {
                                         const itemId = getId(item);
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;
@@ -388,7 +385,7 @@ export default function CartPage() {
                                                                     {currencyFormatter.format(item.price * currentQty)}
                                                                 </span>
                                                             </div>
-                                                            {/* ✅ UPDATED: Individual Buy Now Button - different for guests */}
+                                                            {/* âœ… UPDATED: Individual Buy Now Button - different for guests */}
                                                             {!singleProduct && !arOrder && (
                                                                 <button
                                                                     onClick={() => handleBuyNowIndividual(item)}

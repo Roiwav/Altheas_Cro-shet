@@ -11,7 +11,7 @@ import { useUser } from '../../context/useUser.js';
 // Product data and context for featured products
 import productList from '../../data/productList.js';
 import productImages from '../../assets/images/productImages.js';
-import { useCart } from '../../context/CartContext.jsx';
+import { useCart } from '../../hooks/useCart';
 
 // Currency formatter (same as in ShopPage)
 const currencyFormatter = new Intl.NumberFormat("en-PH", {

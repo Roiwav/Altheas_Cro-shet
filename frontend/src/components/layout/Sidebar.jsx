@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -19,18 +19,12 @@ import {
 } from "lucide-react";
 import { useDarkMode } from "../../context/DarkModeContext.jsx";
 import { useUser } from "../../context/useUser.js";
-import { useCart } from "../../context/CartContext.jsx";
 
 export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, scrollToSection, aboutRef, contactRef }) {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
-  const { cartItems } = useCart();
-
-  const totalQuantity = Array.isArray(cartItems)
-    ? cartItems.reduce((sum, item) => sum + item.qty, 0)
-    : 0;
 
   // Prevent browser's back/forward swipe gesture on mobile
   useEffect(() => {
@@ -96,14 +90,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
 
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
 
-  const handleSignOut = () => {
-    // Clear user session and redirect to home
-    localStorage.removeItem('token');
-    updateUser(null);
-    navigate('/');
-    setSidebarOpen(false);
-    toast.success('Successfully signed out');
-  };
+  // Note: sign-out is handled in Navbar; no local handler here to avoid duplication
 
   const Menus = user
     ? [
