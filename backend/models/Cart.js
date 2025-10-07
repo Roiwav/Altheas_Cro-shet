@@ -27,8 +27,11 @@ const cartSchema = new Schema({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        unique: true,
         sparse: true // Allows multiple documents to have a null userId
+    },
+    guestId: { // ✅ Add this field
+        type: String,
+        sparse: true // Allows multiple documents to have a null guestId
     },
     username: {
         type: String,
@@ -42,6 +45,10 @@ const cartSchema = new Schema({
 }, {
     timestamps: true
 });
+
+// ✅ Add compound index to ensure uniqueness
+cartSchema.index({ userId: 1 }, { unique: true, sparse: true });
+cartSchema.index({ guestId: 1 }, { unique: true, sparse: true });
 
 const Cart = mongoose.model('Cart', cartSchema);
 
