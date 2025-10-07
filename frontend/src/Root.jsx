@@ -5,7 +5,8 @@ import { CartProvider } from "./context/CartContext.jsx";
 import { TestimonialsProvider } from "./context/TestimonialsContext.jsx";
 import SettingsProvider from "./context/SettingsContext.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
-import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext.jsx";
+import DarkModeProvider from "./context/DarkModeContext.jsx";
+import { useDarkMode } from "./context/useDarkMode.js";
 
 // Get initial user from localStorage
 const initialUser = JSON.parse(localStorage.getItem("user")) || null;

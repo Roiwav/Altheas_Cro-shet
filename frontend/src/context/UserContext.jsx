@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useCallback, useRef } from "
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { applyDarkMode } from "./darkModeUtils";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
 axios.defaults.baseURL = API_URL;
@@ -107,6 +108,11 @@ export const UserProvider = ({ children }) => {
           }));
         }
 
+        // Apply account theme if available
+        if (typeof userData?.preferences?.darkMode === 'boolean') {
+          applyDarkMode(userData.preferences.darkMode);
+        }
+
         // Update state
         setUser(userData);
         
@@ -179,14 +185,18 @@ export const UserProvider = ({ children }) => {
         };
       }
       
-      // Set auth header for axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-      
-      // Update state
+      // Apply account theme if available
+      if (typeof processedUser?.preferences?.darkMode === 'boolean') {
+        applyDarkMode(processedUser.preferences.darkMode);
+      }
+
+      // Set context state immediately for authenticated UI
       setUser(processedUser);
       setToken(authToken);
-      setIsAuthenticated(true);
-      
+
+      // Set auth header for axios
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+
       // Clear any conflicting address data from old localStorage
       localStorage.removeItem("userAddresses");
       
@@ -234,6 +244,11 @@ export const UserProvider = ({ children }) => {
         }));
       }
       
+      // Apply theme immediately if updated preferences include darkMode
+      if (typeof updated?.preferences?.darkMode === 'boolean') {
+        applyDarkMode(updated.preferences.darkMode);
+      }
+
       // Persist updated user wherever it was stored
       if (localStorage.getItem("token")) {
         localStorage.setItem("user", JSON.stringify(updated));

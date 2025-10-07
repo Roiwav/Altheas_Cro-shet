@@ -17,7 +17,7 @@ import {
   Image as ImageIcon,
   HelpCircle,
 } from "lucide-react";
-import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import { useDarkMode } from "../../context/useDarkMode.js";
 import { useUser } from "../../context/useUser.js";
 
 export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, scrollToSection, aboutRef, contactRef }) {

@@ -9,7 +9,7 @@ import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
 import FeedbackTab from "./FeedbackTab.jsx";
 import SubscribersTab from "./SubscribersTab.jsx";
-import { useDarkMode } from "../../context/DarkModeContext.jsx";
+import { useDarkMode } from "../../context/useDarkMode.js";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight, Menu as MenuIcon } from "lucide-react";
 import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
 import { toast } from 'react-toastify';
@@ -32,6 +32,10 @@ export default function AdminPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10); // Number of items per page
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'descending' });
+  
+  // Calculate total pages based on orders and items per page
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('adminActiveTab') || 'dashboard';
   });

@@ -49,7 +49,7 @@ router.post("/set-password", verifyToken, async (req, res) => {
         username: user.username,
         avatar: user.avatar || "",
         addresses: user.addresses || [],
-        preferences: user.preferences || { newsletter: true },
+        preferences: user.preferences || { newsletter: true, darkMode: true },
         role: user.role,
         hasPassword: true
       }
@@ -59,46 +59,6 @@ router.post("/set-password", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });
-
-// Google OAuth Routes
-router.get('/google', 
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    prompt: 'select_account'
-  })
-);
-
-// Google OAuth callback
-router.get('/google/callback', 
-  passport.authenticate('google', { 
-    failureRedirect: '/login',
-    failureMessage: true 
-  }),
-  (req, res) => {
-    try {
-      // Generate JWT token
-      const token = generateToken(req.user._id);
-      
-      // Prepare user data to send to frontend
-      const userData = {
-        id: req.user._id,
-        email: req.user.email,
-        name: req.user.name || req.user.email.split('@')[0],
-        role: req.user.role || 'customer',
-        avatar: req.user.avatar,
-        googleId: req.user.googleId,
-        hasPassword: Boolean(req.user.password)
-      };
-      
-      // Redirect to frontend with token and user data
-      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`;
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error('Google OAuth callback error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
-    }
-  }
-);
 
 // REGISTER
 router.post("/register", async (req, res) => {
@@ -129,7 +89,7 @@ router.post("/register", async (req, res) => {
         username: user.username,
         avatar: user.avatar || "",
         addresses: user.addresses || [],
-        preferences: user.preferences || { newsletter: true },
+        preferences: user.preferences || { newsletter: true, darkMode: true },
         role: user.role,
         hasPassword: Boolean(user.password)
       }
@@ -165,7 +125,7 @@ router.post("/login", async (req, res) => {
         username: user.username, 
         avatar: user.avatar || "", 
         addresses: user.addresses || [],
-        preferences: user.preferences || { newsletter: true },
+        preferences: user.preferences || { newsletter: true, darkMode: true },
         role: user.role,
         googleId: user.googleId,
         hasPassword: Boolean(user.password)
@@ -193,7 +153,7 @@ router.get("/me", verifyToken, async (req, res) => {
       username: user.username,
       avatar: user.avatar || "",
       addresses: user.addresses || [],
-      preferences: user.preferences || { newsletter: true },
+      preferences: user.preferences || { newsletter: true, darkMode: true },
       role: user.role,
       googleId: user.googleId,
       hasPassword: Boolean(user.password)
@@ -203,7 +163,6 @@ router.get("/me", verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user data' });
   }
 });
-
 // CHANGE PASSWORD
 router.post("/change-password", verifyToken, async (req, res) => {
   try {
