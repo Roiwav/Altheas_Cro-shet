@@ -181,7 +181,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
             ) : (
               <div className={`flex-shrink-0 ${sidebarOpen ? "block" : "hidden"}`}>
                 <Link to="/" className="flex items-center">
-                  <span className="text-xl font-bold text-pink-600 sm:text-2xl dark:text-pink-400">Althea Cro-shet</span>
+                  <span className="text-xl font-bold text-pink-600 sm:text-2xl dark:text-pink-400">Althea's Cro-shet</span>
                 </Link>
               </div>
             )}

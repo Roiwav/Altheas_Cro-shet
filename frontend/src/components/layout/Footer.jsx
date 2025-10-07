@@ -43,7 +43,7 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="pt-8 mt-8 text-sm text-center border-t border-gray-800 sm:mt-12">
-          <p>&copy; {new Date().getFullYear()} Althea's Cro-Shet. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Althea's Cro-shet. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -52,7 +52,7 @@ export default function Footer() {
 
 const BrandInfo = ({ isMobile = false }) => (
   <div className={isMobile ? 'mb-8' : ''}>
-    <h2 className="mb-4 text-2xl font-bold text-white">Althea's Cro-Shet</h2>
+    <h2 className="mb-4 text-2xl font-bold text-white">Althea's Cro-shet</h2>
     <p className={`mb-6 text-sm ${isMobile ? 'mx-auto max-w-xs' : ''}`}>
               Handcrafted crochet flowers designed to brighten every corner of your life.
             </p>
