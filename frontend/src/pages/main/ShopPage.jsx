@@ -1,5 +1,3 @@
-// src/pages/main/ShopPage.jsx (UPDATED - guest cart checkout redirect to signup)
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaThLarge, FaList, FaShoppingCart, FaSearch } from "react-icons/fa";
@@ -7,18 +5,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// import productList from "../../data/productList";
+import productList from "../../data/productList";
 import productImages from "../../assets/images/productImages.js";
 import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 
-// Currency formatter
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
 });
 
-// Regions & Shipping
 const regions = {
   "Metro Manila": ["Manila", "Quezon City"],
   "South Luzon": ["Calamba City", "Batangas City"],
@@ -42,7 +38,6 @@ const shippingFees = {
 const defaultRegion = "South Luzon";
 const defaultCity = "Calamba City";
 
-// Categories for filtering
 const categories = [
   "All",
   "Bouquet",
@@ -51,7 +46,6 @@ const categories = [
   "Custom"
 ];
 
-// Placeholder image
 const placeholderImage =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
 
@@ -70,11 +64,9 @@ export default function ShopPage() {
   const [page, setPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [view, setView] = useState("list"); // 'list' or 'grid'
+  const [view, setView] = useState("list");
   const [sortBy, setSortBy] = useState("default");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  
-  // ✅ Use CartContext state for region and city
   const [localRegion, setLocalRegion] = useState(defaultRegion);
   const [localCity, setLocalCity] = useState(defaultCity);
   const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -82,10 +74,39 @@ export default function ShopPage() {
   const [modalQuantity, setModalQuantity] = useState(1);
   const [directCheckoutProduct, setDirectCheckoutProduct] = useState(null);
 
-  const [products, setProducts] = useState([]);
+  // NEW: State for backend products
+  const [productsFromBackend, setProductsFromBackend] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // NEW: Fetch backend products only once on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:5001/api/v1/products?isActive=true");
+        const data = await response.json();
+        if (response.ok && Array.isArray(data.products)) {
+          setProductsFromBackend(data.products);
+        } else {
+          setProductsFromBackend([]);
+        }
+      } catch (err) {
+        setProductsFromBackend([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
 
-  // This effect sets the initial shipping info when the page loads or user changes.
+  // Merge products: show all hardcoded plus unique backend (by name).
+  const combinedProducts = React.useMemo(() => {
+    const namesInHardcoded = new Set(productList.map(p => p.name.trim().toLowerCase()));
+    const uniqueBackend = productsFromBackend.filter(
+      prod => !namesInHardcoded.has((prod.name || '').trim().toLowerCase())
+    );
+    return [...productList, ...uniqueBackend];
+  }, [productsFromBackend]);
+
   useEffect(() => {
     if (isAuthenticated && user?.addresses?.length > 0) {
       const defaultAddress = user.addresses.find(a => a.isDefault) || user.addresses[0];
@@ -95,90 +116,54 @@ export default function ShopPage() {
         setLocalCity(defaultAddress.city);
       }
     } else {
-      // Fallback for guests or users without addresses
       setLocalRegion(defaultRegion);
       setLocalCity(defaultCity);
       setSelectedAddressId("");
     }
   }, [isAuthenticated, user]);
 
-    useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("http://localhost:5001/api/v1/products");
-        const data = await res.json();
-        setProducts(data.products || []); // adjust depending on your backend response
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  // Effect to handle selected product changes, for setting default variation
   useEffect(() => {
     if (selectedProduct && selectedProduct.variations?.length > 0) {
-      // Set the first variation as the default when the modal opens
       setSelectedVariation(selectedProduct.variations[0]);
     } else {
       setSelectedVariation("");
     }
-    // Reset quantity to 1 whenever the modal opens for a new product
     setModalQuantity(1);
   }, [selectedProduct]);
 
-  // Handle direct checkout from gallery and product modal opening
   useEffect(() => {
-    // Check if we're coming from a product click in the gallery
     if (location.state?.openProductModal && location.state?.selectedProduct) {
       const { selectedProduct: productFromState } = location.state;
-      
-      // Find the matching product in the shop's product list using case-insensitive name comparison
-      const productFromList = productList.find(p => {
+      const productFromList = combinedProducts.find(p => {
         const shopProductName = p.name?.trim().toLowerCase() || '';
         const galleryProductName = productFromState.name?.trim().toLowerCase() || '';
         return shopProductName === galleryProductName;
       });
-      
-      // If we found a matching product in the shop, use it (with the gallery image)
       if (productFromList) {
         setSelectedProduct({
           ...productFromList,
           image: productFromState.image || productFromList.image
         });
       } else {
-        // Fallback to the product data from the gallery
         setSelectedProduct(productFromState);
       }
-      
-      // Clear the navigation state to prevent reopening on refresh
       window.history.replaceState(null, '');
-    }
-    // Handle direct checkout flow (existing functionality)
-    else if (location.state?.showCheckout && location.state?.selectedProduct) {
+    } else if (location.state?.showCheckout && location.state?.selectedProduct) {
       setDirectCheckoutProduct({
         ...location.state.selectedProduct,
         quantity: location.state.quantity || 1
       });
-      // Clear the state to prevent showing the checkout again on refresh
       window.history.replaceState(null, '');
     }
-    
-    // Only run this effect when location.state changes
-  }, [location.state]);
+  }, [location.state, combinedProducts]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 
-  // Reset page to 1 when search query changes
   useEffect(() => {
     setPage(1);
   }, [searchQuery, sortBy, selectedCategory]);
 
-  // This useEffect hook syncs the local shipping choices with the CartContext.
   useEffect(() => {
-    // The fee is calculated directly in the JSX. This effect's job is to
-    // keep the global cart context aware of the shipping details.
     const fee = shippingFees[localCity] || 0;
     let addressToSet;
     if (isAuthenticated && selectedAddressId) {
@@ -193,30 +178,25 @@ export default function ShopPage() {
         country: "Philippines"
       };
     }
-
     if (addressToSet) {
       setShippingAddress(addressToSet);
     }
     setShippingFee(fee);
   }, [localRegion, localCity, isAuthenticated, user, selectedAddressId, setShippingAddress, setShippingFee]);
-  
-  // Filter and sort products
-  const processedProducts = React.useMemo(() => {
-    let productsToShow = [...products];
 
-    // Filter by category
+  // Replace all uses of productList in the rest of the shop page code with combinedProducts!
+  const processedProducts = React.useMemo(() => {
+    let products = [...combinedProducts];
     if (selectedCategory !== "All") {
       products = products.filter(p => p.category === selectedCategory);
     }
-
-    // Filter by search query
     if (searchQuery.length >= 3) {
-      products = products.filter((product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      products = products.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-
-    // Sort products
     switch (sortBy) {
       case "price-asc":
         products.sort((a, b) => a.price - b.price);
@@ -224,11 +204,11 @@ export default function ShopPage() {
       case "price-desc":
         products.sort((a, b) => b.price - a.price);
         break;
-      // Add more sorting options here if needed (e.g., by name)
+      default:
+        break;
     }
-
     return products;
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy, combinedProducts]);
 
   const itemsPerPage = 20;
   const paginatedProducts = processedProducts.slice(
@@ -237,44 +217,40 @@ export default function ShopPage() {
   );
   const totalPages = Math.ceil(processedProducts.length / itemsPerPage);
 
-  // Get product image safely
   const getImageSrc = (product) => {
     if (productImages?.[product.id]) return productImages[product.id];
     if (productImages?.[String(product.id)]) return productImages[String(product.id)];
-    if (product.image && typeof product.image === "string") return product.image;
+    if (product.image && typeof product.image === "string") {
+      if (product.image.startsWith('http') || product.image.startsWith('/uploads'))
+        return product.image.startsWith("/uploads")
+          ? `http://localhost:5001${product.image}`
+          : product.image;
+      return product.image;
+    }
     return placeholderImage;
   };
 
-  // Handle Add to Cart (works for both guest and authenticated users)
   const handleAddToCart = async (product) => {
     if (!product) return;
-    // Create a product object that includes the selected variation
     const productToAdd = {
       ...product,
-      variation: selectedVariation || "", // Ensure variation is always a string
+      variation: selectedVariation || "",
     };
-
     try {
-      // ✅ addToCart works for both guests (saves in cookie) and authenticated users (saves to backend)
       await addToCart(productToAdd, modalQuantity);
-      
       setSelectedProduct(null);
     } catch (err) {
-      // Only show error toast if something goes wrong
       toast.error("Failed to add to cart.");
       console.error(err);
     }
   };
 
-  // ✅ UPDATED: Handle Buy Now - redirect guests to signup for direct checkout
   const handleBuyNow = () => {
     if (!selectedProduct) return;
-
-    // ✅ NEW: Check if user is authenticated for Buy Now
     if (!isAuthenticated) {
       toast.info("Please sign up to purchase items directly. You can add items to cart as a guest!");
       navigate("/signup", {
-        state: { 
+        state: {
           from: "shop-buy-now",
           product: {
             ...selectedProduct,
@@ -286,29 +262,24 @@ export default function ShopPage() {
       setSelectedProduct(null);
       return;
     }
-
     const shippingFee = shippingFees[localCity] || 0;
     let shippingAddress;
     if (isAuthenticated && selectedAddressId) {
       shippingAddress = user.addresses.find(a => a.id === selectedAddressId);
     } else {
-      // For guests, create a partial address object that still works
       shippingAddress = {
         state: localRegion,
         city: localCity,
         line1: "N/A", postalCode: "N/A", country: "Philippines"
       };
     }
-    // Pass all necessary info in the product object for the checkout page
-    // Standardize the object to look like a cart item for consistency
-    // This ensures the object structure is identical to items from the cart.
     const productForCheckout = {
-      _id: String(selectedProduct.id),
-      productId: String(selectedProduct.id),
+      _id: String(selectedProduct.id || selectedProduct._id),
+      productId: String(selectedProduct.id || selectedProduct._id),
       name: selectedProduct.name,
       price: selectedProduct.price,
       image: getImageSrc(selectedProduct),
-      variation: selectedVariation || "", // Ensure variation is always a string
+      variation: selectedVariation || "",
       quantity: modalQuantity,
       shippingFee,
       shippingAddress,
@@ -316,6 +287,17 @@ export default function ShopPage() {
     navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
   };
+
+  if (loading) {
+    return (
+      <main className="relative z-10 min-h-screen pt-16 pb-16 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading products...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>

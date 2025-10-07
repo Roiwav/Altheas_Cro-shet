@@ -1,49 +1,42 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
-import { Plus, ImageIcon, UploadCloud, Trash2 } from 'lucide-react';
+import { Plus, ImageIcon, UploadCloud } from 'lucide-react';
+import productList from "../../data/productList";
 
 const ProductsTab = ({ isDarkMode }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddProductForm, setShowAddProductForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null); // State to hold product being edited
-  const [editFormData, setEditFormData] = useState({}); // Form data for editing
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [newImage, setNewImage] = useState(null);
+  const [newImagePreview, setNewImagePreview] = useState(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      // Replace with your actual backend endpoint to fetch products
-      fetch('/api/v1/products')
+      fetch('http://localhost:5001/api/v1/products')
         .then(response => response.json())
         .then(data => {
           if (Array.isArray(data.products)) {
             setProducts(data.products);
           } else {
-            console.error('Failed to fetch products:', data.message || 'Invalid data structure');
+            setProducts([]);
           }
-          setLoading(false);
         })
-        .catch(error => {
-          console.error('Error fetching products:', error);
-          setLoading(false);
-        });
+        .catch(() => setProducts([]))
+        .finally(() => setLoading(false));
     };
-
     fetchProducts();
   }, []);
-
-  const [newImage, setNewImage] = useState(null);
-  const [newImagePreview, setNewImagePreview] = useState(null);
 
   const handleNewImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setNewImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewImagePreview(reader.result);
-      };
+      reader.onloadend = () => setNewImagePreview(reader.result);
       reader.readAsDataURL(file);
     }
   };
@@ -54,55 +47,48 @@ const ProductsTab = ({ isDarkMode }) => {
   };
 
   const handleNewProductSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!editFormData.productName || !editFormData.description || !newImage) {
-    toast.error("Please fill out all fields and upload an image.");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("name", editFormData.productName);
-  formData.append("description", editFormData.description);
-  formData.append("price", editFormData.price);
-  formData.append("quantity", editFormData.quantity);
-  formData.append("image", newImage);
-
-  try {
-    const res = await fetch("http://localhost:5001/api/v1/products", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      toast.success("Product added successfully!");
-      setProducts((prev) => [data.product, ...prev]);
-      setShowAddProductForm(false);
-      setEditFormData({});
-      setNewImage(null);
-      setNewImagePreview(null);
-    } else {
-      toast.error(data.message || "Failed to add product.");
+    e.preventDefault();
+    if (!editFormData.productName || !editFormData.description || !newImage || !editFormData.price || !editFormData.quantity) {
+      toast.error("All fields and image required.");
+      return;
     }
-  } catch (error) {
-    console.error("Error adding product:", error);
-    toast.error("Server error.");
-  }
-};
-
+    const formData = new FormData();
+    formData.append("name", editFormData.productName);
+    formData.append("description", editFormData.description);
+    formData.append("price", editFormData.price);
+    formData.append("quantity", editFormData.quantity);
+    formData.append("image", newImage);
+    try {
+      const res = await fetch("http://localhost:5001/api/v1/products", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Product added!");
+        setProducts((prev) => [data.product, ...prev]);
+        setShowAddProductForm(false);
+        setEditFormData({});
+        setNewImage(null);
+        setNewImagePreview(null);
+      } else {
+        toast.error(data.message || "Failed to add product.");
+      }
+    } catch {
+      toast.error("Server error.");
+    }
+  };
 
   const handleEditClick = (product) => {
     setEditingProduct(product);
     setEditFormData({
-      id: product.id,
       productName: product.name,
       description: product.description,
       price: product.price,
       quantity: product.quantity,
     });
-    setNewImagePreview(product.image); // Assuming product.image holds the URL
-    setShowAddProductForm(false); // Hide add form if editing
+    setNewImagePreview(product.image && product.image.startsWith("/uploads") ? `http://localhost:5001${product.image}` : product.image);
+    setShowAddProductForm(false);
   };
 
   const handleEditFormChange = (e) => {
@@ -110,52 +96,45 @@ const ProductsTab = ({ isDarkMode }) => {
     setEditFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEditProductSubmit = (e) => {
+  // === BACKEND-ENABLED EDIT ===
+  const handleEditProductSubmit = async (e) => {
     e.preventDefault();
 
-    // --- Validation ---
-    if (!editFormData.productName?.trim()) {
-      toast.error('Product name is required.');
+    if (!editFormData.productName?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.quantity) {
+      toast.error("All fields required.");
       return;
     }
-    if (!editFormData.description?.trim()) {
-      toast.error('Product description is required.');
-      return;
-    }
-    const priceValue = parseFloat(editFormData.price);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      toast.error('Please enter a valid positive price.');
-      return;
-    }
-    const quantityValue = parseInt(editFormData.quantity, 10);
-    if (isNaN(quantityValue) || quantityValue < 0) {
-      toast.error('Please enter a valid non-negative quantity.');
-      return;
-    }
-    if (!newImage && !newImagePreview) { // Check if no new image and no existing preview
-      toast.error('Product image is required.');
-      return;
+    const formData = new FormData();
+    formData.append("name", editFormData.productName);
+    formData.append("description", editFormData.description);
+    formData.append("price", editFormData.price);
+    formData.append("quantity", editFormData.quantity);
+    if (newImage) {
+      formData.append("image", newImage);
     }
 
-    // Backend logic will be added here later
-    console.log('Updating product:', editFormData.id, {
-      productName: editFormData.productName,
-      description: editFormData.description,
-      price: editFormData.price,
-      quantity: editFormData.quantity,
-      image: newImage || newImagePreview, // Use new image if uploaded, else existing preview
-    });
-    toast.success(`Product "${editFormData.productName}" updated.`);
-
-    // Update products list in state (frontend only)
-    setProducts(prevProducts => prevProducts.map(p =>
-      p.id === editFormData.id ? { ...p, ...editFormData, image: newImagePreview } : p
-    ));
-
-    setEditingProduct(null); // Close modal
-    setEditFormData({});
-    setNewImage(null);
-    setNewImagePreview(null);
+    try {
+      const res = await fetch(
+        `http://localhost:5001/api/v1/products/${editingProduct._id}`,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Product updated!");
+        setProducts(prev => prev.map(p => p._id === editingProduct._id ? data.product : p));
+        setEditingProduct(null);
+        setEditFormData({});
+        setNewImage(null);
+        setNewImagePreview(null);
+      } else {
+        toast.error(data.message || "Failed.");
+      }
+    } catch {
+      toast.error("Error updating product.");
+    }
   };
 
   const handleCancelEdit = () => {
@@ -165,15 +144,34 @@ const ProductsTab = ({ isDarkMode }) => {
     setNewImagePreview(null);
   };
 
-  const handleDeleteClick = (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      // Backend logic will be added here later
-      console.log('Deleting product with ID:', productId);
-      toast.success('Product deleted.');
-      // Update products list in state (frontend only)
-      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+  // === BACKEND-ENABLED DELETE ===
+  const handleDeleteClick = async (productId, productName) => {
+    if (window.confirm(`Are you sure you want to delete "${productName}"?`)) {
+      try {
+        const res = await fetch(`http://localhost:5001/api/v1/products/${productId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          toast.success("Product deleted.");
+          setProducts(prev => prev.filter(p => p._id !== productId));
+        } else {
+          const data = await res.json();
+          toast.error(data.message || "Failed to delete.");
+        }
+      } catch {
+        toast.error("Server error.");
+      }
     }
   };
+
+  // Merge static and backend products
+  const allProductsToShow = React.useMemo(() => {
+    const namesInHardcoded = new Set(productList.map(p => p.name.trim().toLowerCase()));
+    const backendProductsUnique = products.filter(
+      p => !namesInHardcoded.has((p.name || '').trim().toLowerCase())
+    );
+    return [...productList, ...backendProductsUnique];
+  }, [products]);
 
   return (
     <div className="space-y-8">
@@ -200,9 +198,7 @@ const ProductsTab = ({ isDarkMode }) => {
                   {newImagePreview ? (
                     <div>
                       <img src={newImagePreview} alt="Product preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
-                      <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">
-                        Remove Image
-                      </button>
+                      <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">Remove Image</button>
                     </div>
                   ) : (
                     <>
@@ -254,7 +250,7 @@ const ProductsTab = ({ isDarkMode }) => {
         </div>
       )}
 
-      {/* Edit Product Modal */}
+      {/* Edit Modal */}
       <Transition appear show={editingProduct !== null} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={handleCancelEdit}>
           <Transition.Child
@@ -268,7 +264,6 @@ const ProductsTab = ({ isDarkMode }) => {
           >
             <div className="fixed inset-0 bg-black bg-opacity-75" />
           </Transition.Child>
-
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex items-center justify-center min-h-full p-4 text-center">
               <Transition.Child
@@ -285,7 +280,7 @@ const ProductsTab = ({ isDarkMode }) => {
                     Edit Product: {editingProduct?.name}
                   </Dialog.Title>
                   <form onSubmit={handleEditProductSubmit} className="grid grid-cols-1 gap-6 mt-4 lg:grid-cols-2">
-                    {/* Image Uploader for Edit */}
+                    {/* Image uploader (edit) */}
                     <div className="space-y-4">
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Image</label>
                       <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-300'} border-dashed rounded-md`}>
@@ -293,9 +288,7 @@ const ProductsTab = ({ isDarkMode }) => {
                           {newImagePreview ? (
                             <div>
                               <img src={newImagePreview} alt="Product preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
-                              <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">
-                                Remove Image
-                              </button>
+                              <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">Remove Image</button>
                             </div>
                           ) : (
                             <>
@@ -307,14 +300,13 @@ const ProductsTab = ({ isDarkMode }) => {
                                 </label>
                                 <p className={`pl-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>or drag and drop</p>
                               </div>
-                              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>PNG, JPG, GIF up to 10MB</p>
+                              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>PNG, JPG up to 10MB</p>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    {/* Product Details for Edit */}
+                    {/* Product Details for edit */}
                     <div className="space-y-4">
                       <div>
                         <label htmlFor="productName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
@@ -330,13 +322,11 @@ const ProductsTab = ({ isDarkMode }) => {
                           <input type="number" id="price" name="price" value={editFormData.price || ''} onChange={handleEditFormChange} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
                         </div>
                         <div>
-                          <label htmlFor="quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quantity Available</label>
+                          <label htmlFor="quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quantity</label>
                           <input type="number" id="quantity" name="quantity" value={editFormData.quantity || ''} onChange={handleEditFormChange} required min="0" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
                         </div>
                       </div>
                     </div>
-
-                    {/* Form Actions */}
                     <div className="flex justify-end mt-4 space-x-3 lg:col-span-2">
                       <button
                         type="button"
@@ -360,7 +350,6 @@ const ProductsTab = ({ isDarkMode }) => {
         </Dialog>
       </Transition>
 
-      {/* Existing Products List */}
       {loading ? (
         <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading products...</p>
       ) : (
@@ -374,8 +363,8 @@ const ProductsTab = ({ isDarkMode }) => {
               </tr>
             </thead>
             <tbody className={`${isDarkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
-              {products.map(product => (
-                <tr key={product.id} className={isDarkMode ? 'hover:bg-gray-700/50' : ''}>
+              {allProductsToShow.map(product => (
+                <tr key={product._id || product.id} className={isDarkMode ? 'hover:bg-gray-700/50' : ''}>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
                     {product.name}
                   </td>
@@ -383,20 +372,26 @@ const ProductsTab = ({ isDarkMode }) => {
                     ₱{parseFloat(product.price).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                    <button
-                      onClick={() => handleEditClick(product)}
-                      className="mr-2 text-pink-600 hover:text-pink-800"
-                      title="Edit Product"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(product.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete Product"
-                    >
-                      Delete
-                    </button>
+                    {product._id ? (
+                      <>
+                        <button
+                          onClick={() => handleEditClick(product)}
+                          className="mr-2 text-pink-600 hover:text-pink-800"
+                          title="Edit Product"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(product._id, product.name)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete Product"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">Static</span>
+                    )}
                   </td>
                 </tr>
               ))}
