@@ -15,48 +15,87 @@ const generateToken = (id) => {
   });
 };
 
+// NEW: SET PASSWORD (for OAuth users without local password)
+router.post("/set-password", verifyToken, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({ message: "New password is required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.password) {
+      return res.status(400).json({ message: "Password already set. Use change-password instead." });
+    }
+
+    user.password = newPassword; // will be hashed by pre-save middleware
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password set successfully",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+        addresses: user.addresses || [],
+        preferences: user.preferences || { newsletter: true },
+        role: user.role,
+        hasPassword: true
+      }
+    });
+  } catch (error) {
+    console.error('Set password error:', error);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+});
+
 // Google OAuth Routes
 router.get('/google', 
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
-    prompt: 'select_account',
-    accessType: 'offline',
-    session: false
+    prompt: 'select_account'
   })
 );
 
-// Google OAuth Callback
+// Google OAuth callback
 router.get('/google/callback', 
   passport.authenticate('google', { 
     failureRedirect: '/login',
-    failureMessage: true,
-    session: false 
+    failureMessage: true 
   }),
-  async (req, res) => {
+  (req, res) => {
     try {
-      if (!req.user) {
-        throw new Error('Authentication failed');
-      }
-
+      // Generate JWT token
       const token = generateToken(req.user._id);
+      
+      // Prepare user data to send to frontend
       const userData = {
         id: req.user._id,
         email: req.user.email,
-        name: req.user.fullName || req.user.email.split('@')[0],
+        name: req.user.name || req.user.email.split('@')[0],
         role: req.user.role || 'customer',
-        avatar: req.user.avatar
+        avatar: req.user.avatar,
+        googleId: req.user.googleId,
+        hasPassword: Boolean(req.user.password)
       };
-
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const redirectUrl = new URL(`${frontendUrl}/auth/success`);
-      redirectUrl.searchParams.set('token', token);
-      redirectUrl.searchParams.set('user', JSON.stringify(userData));
       
-      res.redirect(redirectUrl.toString());
+      // Redirect to frontend with token and user data
+      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`;
+      res.redirect(redirectUrl);
     } catch (error) {
-      console.error('OAuth callback error:', error);
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+      console.error('Google OAuth callback error:', error);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
     }
   }
 );
@@ -91,7 +130,8 @@ router.post("/register", async (req, res) => {
         avatar: user.avatar || "",
         addresses: user.addresses || [],
         preferences: user.preferences || { newsletter: true },
-        role: user.role
+        role: user.role,
+        hasPassword: Boolean(user.password)
       }
     });
   } catch (err) {
@@ -126,7 +166,9 @@ router.post("/login", async (req, res) => {
         avatar: user.avatar || "", 
         addresses: user.addresses || [],
         preferences: user.preferences || { newsletter: true },
-        role: user.role 
+        role: user.role,
+        googleId: user.googleId,
+        hasPassword: Boolean(user.password)
       } 
     });
   } catch (err) {
@@ -135,10 +177,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// NEW: GET CURRENT USER DATA - This is the missing endpoint!
+// NEW: GET CURRENT USER DATA
 router.get("/me", verifyToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -152,7 +194,9 @@ router.get("/me", verifyToken, async (req, res) => {
       avatar: user.avatar || "",
       addresses: user.addresses || [],
       preferences: user.preferences || { newsletter: true },
-      role: user.role
+      role: user.role,
+      googleId: user.googleId,
+      hasPassword: Boolean(user.password)
     });
   } catch (error) {
     console.error('Fetch user error:', error);
@@ -160,7 +204,7 @@ router.get("/me", verifyToken, async (req, res) => {
   }
 });
 
-// NEW: CHANGE PASSWORD ENDPOINT (if you don't have it elsewhere)
+// CHANGE PASSWORD
 router.post("/change-password", verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -188,50 +232,12 @@ router.post("/change-password", verifyToken, async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    res.json({ success: true, message: "Password changed successfully" });
+    res.json({ success: true, message: "Password changed successfully", hasPassword: true });
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 });
-
-// GOOGLE OAUTH ROUTES
-router.get('/google', 
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    prompt: 'select_account'
-  })
-);
-
-// Google OAuth callback
-router.get('/google/callback', 
-  passport.authenticate('google', { 
-    failureRedirect: '/login',
-    failureMessage: true 
-  }),
-  (req, res) => {
-    try {
-      // Generate JWT token
-      const token = generateToken(req.user._id);
-      
-      // Prepare user data to send to frontend
-      const userData = {
-        id: req.user._id,
-        email: req.user.email,
-        name: req.user.name || req.user.email.split('@')[0],
-        role: req.user.role || 'customer',
-        avatar: req.user.avatar
-      };
-      
-      // Redirect to frontend with token and user data
-      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`;
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error('Google OAuth callback error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
-    }
-  }
-);
 
 // FORGOT PASSWORD
 router.post("/forgot-password", async (req, res) => {

@@ -64,7 +64,6 @@ const updateUser = async (req, res) => {
       user.username = username;
       user.lastUsernameChangeAt = new Date();
     }
-
     // Handle other updates
     if (avatar !== undefined) user.avatar = avatar;
     if (addresses !== undefined) user.addresses = addresses;
@@ -83,6 +82,7 @@ const updateUser = async (req, res) => {
         preferences: updatedUser.preferences,
         lastUsernameChangeAt: updatedUser.lastUsernameChangeAt,
         role: updatedUser.role,
+        hasPassword: Boolean(updatedUser.password),
       },
     });
   } catch (error) {
@@ -90,7 +90,7 @@ const updateUser = async (req, res) => {
     if (error.code === 11000) { // Duplicate key error
       return res.status(400).json({ message: "Username is already taken." });
     }
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
