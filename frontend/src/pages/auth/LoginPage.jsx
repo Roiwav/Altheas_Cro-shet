@@ -1,5 +1,5 @@
 // src/pages/auth/LoginPage.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight, X } from "lucide-react";
 import { useUser } from "../../context/useUser";
@@ -25,49 +25,41 @@ export default function LoginPage() {
   const errorParam = searchParams.get("error");
   const errorMessage = searchParams.get("message");
 
-  // ✅ Handle OAuth success redirects
+  // ✅ Handle OAuth success redirects (skip if we already have an error in URL)
   const handleOAuthRedirect = useCallback(async () => {
+    if (searchParams.get("error")) return; // avoid double-handling
+
     const token = searchParams.get("token");
     const user = searchParams.get("user");
-    const error = searchParams.get("error");
-
-    if (error) {
-      toast.error(error || "An error occurred during login");
-      return;
-    }
 
     if (token && user) {
       try {
         // Parse the user data from the URL
         const parsedUser = JSON.parse(decodeURIComponent(user));
-        
+
         // Store token in localStorage
         localStorage.setItem("token", token);
-        
+
         // Call the login function from UserContext with isOAuth flag
         await login(parsedUser, token, { isOAuth: true });
-        
-        // Show success message
-        toast.success("Successfully logged in with Google!");
-        
+
         // Clean up the URL by removing the token and user data
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
-        
+
         // Navigate to the original URL or home page
         navigate(from, { replace: true });
       } catch (error) {
         console.error("Error processing OAuth callback:", error);
-        toast.error("Failed to process login. Please try again.");
+        toast.error("Failed to process login. Please try again.", { toastId: "oauth-error" });
       }
     }
   }, [login, navigate, from, searchParams]);
-  // ✅ Handle OAuth error messages
+  // ✅ Handle OAuth error messages (once) and success redirect
   useEffect(() => {
-    if (error) setError("");
-
     if (errorParam) {
       const errorMessages = {
+        google_auth_failed: "Google sign-in was canceled.",
         oauth_failed: "Google login failed. Please try again.",
         oauth_error: errorMessage || "An error occurred during login.",
         no_user: "No account found with this email. Please sign up first.",
@@ -77,22 +69,22 @@ export default function LoginPage() {
         session_expired: "Your session has expired. Please try logging in again.",
       };
 
-      const message =
-        errorMessages[errorParam] || "An error occurred during login.";
+      const message = errorMessages[errorParam] || (errorMessage || "An error occurred during login.");
 
-      toast.error(message);
+      toast.error(message, { toastId: "oauth-error" });
       setError(message);
 
-      // clean URL
+      // Clean URL
       const url = new URL(window.location.href);
       url.searchParams.delete("error");
       url.searchParams.delete("message");
       window.history.replaceState({}, document.title, url);
+      return; // prevent calling handleOAuthRedirect in the same tick
     }
 
-    // Also handle success redirect
+    // Handle success redirect if present
     handleOAuthRedirect();
-  }, [errorParam, errorMessage, error, handleOAuthRedirect]);
+  }, [errorParam, errorMessage, handleOAuthRedirect]);
 
 
   // ✅ Controlled input handler
@@ -126,33 +118,6 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // ✅ Hardcoded admin login check
-      if (
-        (formData.identifier.trim() === "admin" ||
-          formData.identifier.trim() === "admi@gmail.com") &&
-        formData.password === "admin123"
-      ) {
-        const adminUser = {
-          username: "admin",
-          email: "admi@gmail.com",
-          role: "admin",
-        };
-
-        // Save to context + storage
-        login(adminUser, "dummy-admin-token");
-        if (rememberMe) {
-          localStorage.setItem("token", "dummy-admin-token");
-          localStorage.setItem("user", JSON.stringify(adminUser));
-        } else {
-          sessionStorage.setItem("token", "dummy-admin-token");
-          sessionStorage.setItem("user", JSON.stringify(adminUser));
-        }
-
-        toast.success("Welcome, Admin!");
-        navigate("/admin", { replace: true });
-        return;
-      }
-
       // ✅ Normal login flow
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -193,13 +158,15 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ Bubbles background effect
-  useBubbles("login-container", {
+  const bubbleOptions = useMemo(() => ({
     count: 20,
     sizeRange: [6, 16],
     durationRange: [10, 20],
     opacity: 0.18,
-  });
+  }), []);
+
+  // ✅ Bubbles background effect
+  useBubbles("login-container", bubbleOptions);
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

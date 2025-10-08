@@ -19,3 +19,13 @@ const verifyToken = async (req, res, next) => {
 };
 
 module.exports = { verifyToken };
+
+// Additional export: requireAdmin guard
+module.exports.requireAdmin = (req, res, next) => {
+  try {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) return next();
+    return res.status(403).json({ message: 'Forbidden: Admins only' });
+  } catch (e) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+};

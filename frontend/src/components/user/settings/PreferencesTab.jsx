@@ -10,8 +10,8 @@ import apiRequest from "../../../config/api.js";
 export default function PreferencesTab() {
   const { user, token, updateUser } = useUser();
   const { setDarkMode } = useDarkMode();
-  const [prefs, setPrefs] = useState({ newsletter: true, darkMode: true });
-  const [initialPrefs, setInitialPrefs] = useState({ newsletter: true, darkMode: true });
+  const [prefs, setPrefs] = useState({ darkMode: true });
+  const [initialPrefs, setInitialPrefs] = useState({ darkMode: true });
   const [prefsPassword, setPrefsPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +22,6 @@ export default function PreferencesTab() {
   useEffect(() => {
     if (user) {
       const nextPrefs = { 
-        newsletter: user.preferences?.newsletter ?? true,
         darkMode: user.preferences?.darkMode ?? true
       };
       setPrefs(nextPrefs);
@@ -32,7 +31,7 @@ export default function PreferencesTab() {
         setDarkMode(nextPrefs.darkMode);
       }
     } else {
-      const defaults = { newsletter: true, darkMode: true };
+      const defaults = { darkMode: true };
       setPrefs(defaults);
       setInitialPrefs(defaults);
     }
@@ -115,17 +114,6 @@ export default function PreferencesTab() {
               }} 
             />
             <span className="text-gray-700 dark:text-gray-300">Enable dark mode</span>
-          </label>
-        </div>
-        <div className="p-4 border border-gray-200 rounded-xl dark:border-gray-700">
-          <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Notifications</h3>
-          <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              checked={prefs.newsletter}
-              onChange={(e) => setPrefs((p) => ({ ...p, newsletter: e.target.checked }))}
-            />
-            <Bell className="w-4 h-4" /> Email newsletter
           </label>
         </div>
       </div>

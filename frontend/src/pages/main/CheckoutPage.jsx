@@ -14,6 +14,8 @@ import PaymentProofCard from "../../components/checkout/PaymentProofCard.jsx";
 import OrderSummaryCard from "../../components/checkout/OrderSummaryCard.jsx";
 import PaymentMethodCard from "../../components/checkout/PaymentMethodCard.jsx";
 import PlaceOrderButton from "../../components/checkout/PlaceOrderButton.jsx";
+import Modal from "../../components/common/Modal.jsx";
+import AddressesTab from "../../components/user/settings/AddressesTab.jsx";
 
 // Shipping fee/region logic
 const regions = {
@@ -53,6 +55,8 @@ export default function CheckoutPage() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [paymentProof, setPaymentProof] = useState(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState(null);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
   const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
@@ -60,9 +64,18 @@ export default function CheckoutPage() {
   const [derivedShippingFee, setDerivedShippingFee] = useState(0);
   const [derivedDeliveryEstimate, setDerivedDeliveryEstimate] = useState("");
 
+  const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+  const currentAddress = selectedAddress || passedShippingAddress || defaultAddress;
+
+  useEffect(() => {
+    if (user && !selectedAddress) {
+      setSelectedAddress(defaultAddress);
+    }
+  }, [user, defaultAddress, selectedAddress]);
+
   // Watch the (possibly changed) address for shipping calculation
   useEffect(() => {
-    let addressObj = singleProduct?.shippingAddress || passedShippingAddress;
+    let addressObj = currentAddress;
     if (addressObj && addressObj.city) {
       const region = getRegionByCity(addressObj.city);
       const feeObj = shippingFees[region] || { min: 0, estimated: "N/A" };
@@ -72,7 +85,7 @@ export default function CheckoutPage() {
       setDerivedShippingFee(passedShippingFee || 0);
       setDerivedDeliveryEstimate("N/A");
     }
-  }, [singleProduct, passedShippingAddress, passedShippingFee]);
+  }, [currentAddress, passedShippingFee, user]);
 
   useEffect(() => {
     if (checkoutItems.length === 0) {
@@ -90,18 +103,14 @@ export default function CheckoutPage() {
   const shippingFee = derivedShippingFee;
 
   const totalCost = subtotal + shippingFee;
-  const currentAddress = singleProduct
-    ? singleProduct.shippingAddress
-    : passedShippingAddress;
 
   const handleChangeAddress = () => {
-    navigate("/settings", {
-      state: {
-        activeTab: "addresses",
-        returnTo: location.pathname,
-        returnState: location.state,
-      },
-    });
+    setIsAddressModalOpen(true);
+  };
+
+  const handleSelectAddress = (address) => {
+    setSelectedAddress(address);
+    setIsAddressModalOpen(false);
   };
 
   const handlePaymentProofUpload = (event) => {
@@ -258,6 +267,14 @@ export default function CheckoutPage() {
             <span className="text-sm font-medium">Secure</span>
           </div>
         </div>
+
+        <Modal
+          isOpen={isAddressModalOpen}
+          onClose={() => setIsAddressModalOpen(false)}
+          title="Manage Your Addresses"
+        >
+          <AddressesTab onSelectAddress={handleSelectAddress} isSelectMode={true} />
+        </Modal>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Left Column */}

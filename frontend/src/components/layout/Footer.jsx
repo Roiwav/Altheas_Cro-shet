@@ -120,11 +120,6 @@ const CustomerService = ({ onClick, isMobile = false }) => (
                 </Link>
               </li>
               <li>
-        <Link to="/shipping-returns" className="transition hover:text-white" onClick={onClick}>
-                  Shipping & Returns
-                </Link>
-              </li>
-              <li>
         <Link to="/service-terms" className="transition hover:text-white" onClick={onClick}>
                   Terms & Conditions
                 </Link>

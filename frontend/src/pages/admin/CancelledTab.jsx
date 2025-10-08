@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Search, Eye } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useUser } from '../../context/useUser.js';
 
 import useOrders from '../../hooks/useOrders.js';
 import OrderDetailsModal from '../../components/admin/orders/OrderDetailsModal.jsx';
@@ -19,7 +21,9 @@ export default function CancelledTab({ isDarkMode }) {
   const {
     orders,
     loading,
+    refetch,
   } = useOrders();
+  const { token: authToken, user } = useUser();
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -37,11 +41,13 @@ export default function CancelledTab({ isDarkMode }) {
           rows.push({
             id: `${order._id}:${p.productId || p._id}`,
             orderId: order._id,
+            productId: p.productId || p._id,
             orderNumber: order.orderNumber,
             username: order.username,
             status: order.status,
             productName: p.name,
             quantity: p.quantity,
+            price: p.price,
             reason: p.cancellationReason || 'No reason provided',
             cancelledAt: p.cancelledAt,
             order,
@@ -67,6 +73,80 @@ export default function CancelledTab({ isDarkMode }) {
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
   const pageStart = (currentPage - 1) * itemsPerPage;
   const pageItems = filtered.slice(pageStart, pageStart + itemsPerPage);
+
+  // Confirm modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmItem, setConfirmItem] = useState(null); // { orderId, productId, productName, defaultAmount }
+  const [etaHours, setEtaHours] = useState(24);
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+
+  const _openConfirm = (row) => {
+    const defaultAmount = (Number(row.price) || 0) * (Number(row.quantity) || 1);
+    setConfirmItem({
+      orderId: row.orderId,
+      productId: row.productId,
+      productName: row.productName,
+      defaultAmount,
+    });
+    setEtaHours(24);
+    setAmount(String(defaultAmount));
+    setMessage(`Your refund for ${row.productName} is being processed and will be returned within 24 hour(s).`);
+    setConfirmOpen(true);
+  };
+
+  const submitConfirm = async () => {
+    if (!confirmItem) return;
+    try {
+      if (user && user.role && user.role !== 'admin') {
+        throw new Error('Forbidden: Admins only');
+      }
+      // Resolve and sanitize token
+      const rawToken =
+        authToken ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        '';
+      const cleanToken = String(rawToken)
+        .trim()
+        .replace(/^Bearer\s+/i, '')
+        .replace(/^"|"$/g, '');
+
+      if (!cleanToken) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+      // Proceed; backend will return 401 if token is invalid
+
+      const res = await fetch(
+        `http://localhost:5001/api/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${cleanToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            etaHours: Number(etaHours) || 24,
+            amount: Number(amount) || confirmItem.defaultAmount,
+            message,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (res.status === 403) throw new Error('Forbidden: Admins only');
+      if (res.status === 401) throw new Error(data.message || 'Not authorized, token failed');
+      if (!res.ok) throw new Error(data.message || 'Failed to confirm cancellation');
+      toast.success('Cancellation confirmed and customer notified');
+      setConfirmOpen(false);
+      setConfirmItem(null);
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to confirm cancellation');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -136,12 +216,18 @@ export default function CancelledTab({ isDarkMode }) {
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.reason}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 space-x-2">
                       <button
                         onClick={() => { setSelectedOrder(c.order); setShowOrderModal(true); }}
                         className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-pink-600 rounded-md hover:bg-pink-700"
                       >
                         <Eye className="w-4 h-4 mr-1" /> View Order
+                      </button>
+                      <button
+                        onClick={() => _openConfirm(c)}
+                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-pink-600 rounded-md hover:bg-pink-700"
+                      >
+                        Confirm Refund
                       </button>
                     </td>
                   </tr>
@@ -204,6 +290,34 @@ export default function CancelledTab({ isDarkMode }) {
         isDarkMode={isDarkMode}
         onOpenProof={() => {}}
       />
+
+      {/* Confirm Refund Modal */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmOpen(false)}>
+          <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} w-full max-w-md rounded-lg p-5`} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Confirm Refund</h3>
+            <p className="text-sm mb-4">Send a refund confirmation to the customer for <strong>{confirmItem?.productName}</strong>.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm mb-1">ETA (hours)</label>
+                <input type="number" value={etaHours} onChange={(e) => setEtaHours(e.target.value)} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} min={1} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Refund Amount (PHP)</label>
+                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Message to customer</label>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmOpen(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Cancel</button>
+              <button onClick={submitConfirm} className="px-3 py-1.5 text-sm rounded-md bg-pink-600 text-white hover:bg-pink-700">Confirm & Notify</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

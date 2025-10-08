@@ -4,6 +4,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 
+const { verifyToken, requireAdmin } = require('../middleware/authMiddleware');
 const {
   createOrder,
   getAllOrders,
@@ -12,7 +13,8 @@ const {
   updateOrderStatus,
   deleteOrder,
   cancelOrderItem,
-  cancelOrderProduct, // ✅ Add this import
+  cancelOrderProduct,
+  confirmCancelledProduct,
 } = require("../controllers/orderController");
 
 // Multer setup for proof uploads (memory storage for Cloudinary)
@@ -37,6 +39,13 @@ router.get("/:id", getOrderById);
 router.put("/:id/status", updateOrderStatus);
 router.delete("/:id", deleteOrder);
 router.put("/:id/cancel", cancelOrderItem);
-router.delete("/:id/product/:productId", cancelOrderProduct); // ✅ Add this route
+router.delete("/:id/product/:productId", cancelOrderProduct);
+// Admin confirms a cancelled product and notifies customer
+router.post(
+  "/:id/product/:productId/confirm-cancel",
+  verifyToken,
+  requireAdmin,
+  confirmCancelledProduct
+);
 
 module.exports = router;

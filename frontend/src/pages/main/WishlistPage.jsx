@@ -21,6 +21,10 @@ export default function WishlistPage() {
   }, [username, syncWishlistCount]);
 
   const handleToggle = (product) => {
+    if (!user) {
+      toast.warn("Please log in to modify your wishlist.");
+      return;
+    }
     const { added, items: next } = toggleWishlist(username, product);
     setItems(next);
     toast[added ? "success" : "info"](added ? "Added to wishlist" : "Removed from wishlist");
@@ -29,7 +33,7 @@ export default function WishlistPage() {
 
   if (!items.length) {
     return (
-      <main className="relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 px-6 md:px-20">
+      <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 px-6 md:px-20 transition-all duration-300 ease-in-out ${user ? 'md:ml-[var(--sidebar-width,5rem)]' : ''}`}>
         <div className="max-w-5xl mx-auto text-center py-20">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-3">Your Wishlist is Empty</h1>
           <p className="text-gray-600 dark:text-gray-300 mb-8">Browse the shop and add items you love.</p>
@@ -42,7 +46,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <main className="relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 px-6 md:px-20">
+    <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 px-6 md:px-20 transition-all duration-300 ease-in-out ${user ? 'md:ml-[var(--sidebar-width,5rem)]' : ''}`}>
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">My Wishlist</h1>
@@ -77,7 +81,7 @@ export default function WishlistPage() {
                 <Link
                   to="/shop"
                   state={{ openProductModal: true, selectedProduct: it }}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                  className="inline-flex items-center px-4 py-2 bg-pink-500 hover:bg-pink-900 text-white rounded-lg"
                 >
                   <FaShoppingCart className="mr-2" /> Buy Now!
                 </Link>

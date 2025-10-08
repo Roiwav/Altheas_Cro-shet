@@ -2,6 +2,8 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const { setIo } = require('./socket');
+const jwtLib = require('jsonwebtoken');
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -18,10 +20,50 @@ const cartRoutes = require("./routes/cartRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
 const orderRoutes = require("./routes/orderRoutes.js");
+const notificationRoutes = require("./routes/notificationRoutes.js");
 const testimonialRoutes = require("./testimonialRoutes.js");
 const productRoutes = require("./routes/productRoutes.js");
+const User = require("./models/User");
 
 const app = express();
+
+// Seeder: ensure a default admin account exists
+async function ensureAdmin() {
+  try {
+    const email = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const username = process.env.ADMIN_USERNAME || 'admin';
+    const password = process.env.ADMIN_PASSWORD || 'admin123';
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      await User.create({
+        fullName: 'Admin',
+        username,
+        email,
+        password, // will be hashed by pre-save hook
+        role: 'admin',
+      });
+      console.log(`👤 Seeded default admin: ${email}`);
+    } else {
+      let updated = false;
+      if (user.role !== 'admin') {
+        user.role = 'admin';
+        updated = true;
+      }
+      // If account was created via OAuth and has no password, set one
+      if (!user.password && password) {
+        user.password = password; // will be hashed by pre-save hook
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+        console.log(`🔐 Ensured admin privileges for: ${email}`);
+      }
+    }
+  } catch (e) {
+    console.error('Admin seeding error:', e);
+  }
+}
 
 // 🟢 Create HTTP server
 const server = http.createServer(app);
@@ -33,6 +75,27 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   }
+});
+
+// Make io available to other modules
+setIo(io);
+
+// Socket.IO: simple auth + join user room for notifications
+io.on('connection', (socket) => {
+  // Client should emit 'register' with JWT token
+  socket.on('register', (token) => {
+    try {
+      if (!token) return socket.emit('register:error', 'Missing token');
+      const decoded = jwtLib.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.id || decoded._id;
+      if (!userId) return socket.emit('register:error', 'Invalid token');
+      const room = `user:${userId}`;
+      socket.join(room);
+      socket.emit('register:ok', { room });
+    } catch (e) {
+      socket.emit('register:error', 'Invalid token');
+    }
+  });
 });
 
 // Session configuration
@@ -143,6 +206,7 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/users", userRoutes);
   app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
+  app.use("/api/notifications", notificationRoutes);
 
   // 🟢 Serve uploaded images (proof of payment, etc.)
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -167,8 +231,10 @@ mongoose
   .connect(process.env.MONGO_URI, { // This should be your Atlas connection string
     useUnifiedTopology: true,
   })
-  .then(() => {
+  .then(async () => {
     console.log("✅ MongoDB Connected");
+    // Ensure admin exists before starting streams/routes that might rely on it
+    await ensureAdmin();
     // Setup testimonial change stream after DB connection
     setupChangeStream(io);
   })

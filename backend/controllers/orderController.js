@@ -1,6 +1,8 @@
 const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
 const cloudinary = require('../config/cloudinary');
+const Notification = require('../models/Notification');
+const { getIo } = require('../socket');
 
 // ✅ Create new order
 const createOrder = async (req, res) => {
@@ -222,6 +224,7 @@ const cancelOrderProduct = async (req, res) => {
     order.products[productIndex].cancelled = true;
     order.products[productIndex].cancellationReason = cancellationReason || 'No reason provided';
     order.products[productIndex].cancelledAt = new Date();
+    order.products[productIndex].refundStatus = 'Pending';
 
     // Add a status message about the cancellation
     order.statusMessage = `Item "${order.products[productIndex].name}" cancelled: ${cancellationReason || 'No reason provided'}`;
@@ -267,6 +270,69 @@ const cancelOrderProduct = async (req, res) => {
   }
 };
 
+// ✅ Admin: confirm a cancelled product and notify customer
+const confirmCancelledProduct = async (req, res) => {
+  try {
+    const { id: orderId, productId } = req.params;
+    const { etaHours = 24, amount, message } = req.body || {};
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const p = order.products.find(
+      (product) => (product.productId === productId || product._id?.toString() === productId)
+    );
+    if (!p) return res.status(404).json({ message: 'Product not found in order' });
+    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
+
+    // Set refund details
+    const refundAmount = typeof amount === 'number' ? amount : (p.price || 0) * (p.quantity || 1);
+    p.refundStatus = 'Processing';
+    p.refundAmount = refundAmount;
+    p.refundETAHours = Number(etaHours) || 24;
+    p.refundConfirmedAt = new Date();
+
+    // Optional: update order level message
+    order.statusMessage = message || `Your refund for ${p.name} is being processed and will be returned within ${p.refundETAHours} hour(s).`;
+    order.statusUpdatedAt = new Date();
+
+    await order.save();
+
+    // Create a notification for the user
+    try {
+      const createdNotif = await Notification.create({
+        userId: order.userId,
+        title: 'Refund processing',
+        message: `Your cancellation for "${p.name}" has been confirmed. Refund of ₱${refundAmount?.toFixed(2)} will be returned within ${p.refundETAHours} hour(s).`,
+        type: 'refund',
+        orderId: order._id.toString(),
+      });
+
+      // Emit a socket event to the user's room for real-time updates
+      try {
+        const io = getIo();
+        if (io) {
+          io.to(`user:${order.userId}`).emit('notification:new', createdNotif);
+        }
+      } catch (emitErr) {
+        console.error('Socket emit failed:', emitErr);
+      }
+    } catch (e) {
+      console.error('Failed to create notification:', e);
+      // Do not fail the request because of notification issues
+    }
+
+    res.json({
+      message: 'Cancellation confirmed and customer notified',
+      order,
+      success: true,
+    });
+  } catch (error) {
+    console.error('❌ Error confirming cancelled product:', error);
+    res.status(500).json({ message: 'Failed to confirm cancelled product' });
+  }
+};
+
 // ✅ Delete order
 const deleteOrder = async (req, res) => {
   try {
@@ -289,4 +355,5 @@ module.exports = {
   deleteOrder,
   cancelOrderItem,
   cancelOrderProduct,
+  confirmCancelledProduct,
 };
