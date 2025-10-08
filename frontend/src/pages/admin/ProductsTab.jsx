@@ -88,6 +88,12 @@ const ProductsTab = ({ isDarkMode }) => {
           ? a.price - b.price
           : b.price - a.price
       );
+    } else if (sortBy === "date") {
+      sorted.sort((a, b) =>
+        sortOrder === "asc"
+          ? new Date(a.createdAt) - new Date(b.createdAt)
+          : new Date(b.createdAt) - new Date(a.createdAt)
+      );
     }
     return sorted;
   }, [products, sortBy, sortOrder, searchQuery]);
@@ -450,10 +456,10 @@ const ProductsTab = ({ isDarkMode }) => {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Manage Products</h2>
-        <div className="flex items-stretch flex-grow gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-grow sm:flex-grow-0 sm:w-64">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-grow">
             <Search className="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
             <input
               type="text"
@@ -463,9 +469,10 @@ const ProductsTab = ({ isDarkMode }) => {
               className={`block w-full py-2 pl-10 pr-3 border rounded-md leading-5 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:border-pink-500' : 'bg-white border-gray-300 text-gray-900 focus:border-pink-500'}`}
             />
           </div>
-          <button onClick={() => setIsManageCategoriesOpen(true)} className={`p-2 border rounded-md shadow-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsManageCategoriesOpen(true)} className={`p-2 border rounded-md shadow-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
+              <Settings className="w-5 h-5" />
+            </button>
           <button
             onClick={() => setShowAddProductForm(!showAddProductForm)}
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
@@ -473,6 +480,7 @@ const ProductsTab = ({ isDarkMode }) => {
             <Plus className="w-5 h-5 mr-2" />
             {showAddProductForm ? 'Cancel' : 'Add Product'}
           </button>
+          </div>
         </div>
       </div>
 
@@ -518,7 +526,7 @@ const ProductsTab = ({ isDarkMode }) => {
                 <textarea id="description" name="description" rows="4" value={addProductFormData.description || ''} onChange={handleAddFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}></textarea>
               </div>
               <div>
-                <label htmlFor="category" className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Category</label>
+                <label htmlFor="category" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Category</label>
                 {isAddingNewCategory ? (
                   <div className="flex items-center gap-2">
                     <input
@@ -526,7 +534,7 @@ const ProductsTab = ({ isDarkMode }) => {
                       placeholder="New category name"
                       value={addProductFormData.category || ''}
                       onChange={(e) => handleAddFormChange({ target: { name: 'category', value: e.target.value } })}
-                      className={`block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+                      className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
                       autoFocus
                     />
                     <button type="button" onClick={() => setIsAddingNewCategory(false)} className={`p-2 rounded-md ${isDarkMode ? 'text-gray-400 hover:bg-gray-600' : 'text-gray-500 hover:bg-gray-200'}`}>
@@ -540,7 +548,7 @@ const ProductsTab = ({ isDarkMode }) => {
                     value={addProductFormData.category || ''}
                     onChange={handleCategoryChange}
                     required
-                    className={`block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+                    className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
                   >
                     <option value="" disabled>Select a category</option>
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -991,6 +999,16 @@ const ProductsTab = ({ isDarkMode }) => {
                 >
                   Price{sortBy === "price" && (sortOrder === "asc" ? " ↑" : " ↓")}
                 </th>
+                <th
+                  className={`px-6 py-3 text-left text-xs font-medium cursor-pointer select-none ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
+                  onClick={() => {
+                    if (sortBy === "date") setSortOrder(o => o === "asc" ? "desc" : "asc");
+                    else { setSortBy("date"); setSortOrder("desc"); }
+                  }}
+                  title="Sort by Date Added"
+                >
+                  Date Added{sortBy === "date" && (sortOrder === "asc" ? " ↑" : " ↓")}
+                </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                   Category
                 </th>
@@ -1015,6 +1033,9 @@ const ProductsTab = ({ isDarkMode }) => {
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
                     ₱{parseFloat(product.price).toLocaleString()}
+                  </td>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {new Date(product.createdAt).toLocaleDateString()}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     {product.category}
@@ -1054,8 +1075,8 @@ const ProductsTab = ({ isDarkMode }) => {
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <div className="flex items-center space-x-2 text-sm">
+        <div className="flex flex-col items-center justify-between gap-4 mt-4 md:flex-row">
+          <div className="flex items-center self-start space-x-2 text-sm md:self-center">
             <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Items per page:</span>
             <select
               value={itemsPerPage}
@@ -1070,7 +1091,7 @@ const ProductsTab = ({ isDarkMode }) => {
               <option value={50}>50</option>
             </select>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center self-end space-x-2 md:self-center">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
