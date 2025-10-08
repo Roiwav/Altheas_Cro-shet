@@ -41,15 +41,6 @@ const shippingFees = {
 const defaultRegion = "South Luzon";
 const defaultCity = "Calamba City";
 
-// Categories for filtering
-const categories = [
-  "All",
-  "Bouquet",
-  "Single Stem",
-  "Arrangement",
-  "Custom",
-];
-
 // Placeholder image
 const placeholderImage =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
@@ -160,7 +151,7 @@ export default function ShopPage() {
   useEffect(() => {
     if (location.state?.openProductModal && location.state?.selectedProduct) {
       const { selectedProduct: productFromState } = location.state;
-      const productFromList = productList.find((p) => {
+      const productFromList = combinedProducts.find((p) => {
         const shopProductName = p.name?.trim().toLowerCase() || "";
         const galleryProductName = productFromState.name?.trim().toLowerCase() || "";
         return shopProductName === galleryProductName;
@@ -217,7 +208,7 @@ export default function ShopPage() {
 
   // Replace all uses of productList in the rest of the shop page code with combinedProducts!
   const processedProducts = React.useMemo(() => {
-    let products = [...productList];
+    let products = [...combinedProducts];
 
     if (selectedCategory !== "All") {
       products = products.filter((p) => p.category === selectedCategory);
@@ -279,7 +270,6 @@ export default function ShopPage() {
   // Add to Cart
   const handleAddToCart = async (product) => {
     if (!product) return;
-    const productToAdd = { ...product, variation: selectedVariation || "" };
     const productToAdd = {
       ...product,
       variation: selectedVariation || "",
