@@ -40,6 +40,11 @@ const ProductsTab = ({ isDarkMode }) => {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc"); 
 
+  const getProductImageSrc = (img) =>
+  img && img.startsWith('/uploads')
+    ? `http://localhost:5001${img}`
+    : img || '/images/placeholder-product.jpg';
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -188,25 +193,18 @@ const ProductsTab = ({ isDarkMode }) => {
     formData.append("image", newImage);
 
     try {
-      const res = await fetch("http://localhost:5001/api/v1/products", {
-        method: "POST",
+      const res = await fetch('http://localhost:5001/api/v1/products', {
+    method: 'POST',
         body: formData,
       });
       const data = await res.json();
-      if (res.ok) {
-        if (data.product) {
-          toast.success("Product added!");
-          setProducts((prev) => [data.product, ...prev]);
-          // If a new category was added, update the categories list
-          if (!categories.includes(data.product.category)) {
-            setCategories(prev => [...prev, data.product.category].sort());
-          }
-          setIsAddingNewCategory(false);
-        }
+      if (res.ok && data.product) {
+        setProducts(prev => [data.product, ...prev]);
         setShowAddProductForm(false);
         setAddProductFormData({});
         setNewImage(null);
         setNewImagePreview(null);
+        toast.success("Product added!");
       } else {
         toast.error(data.message || "Failed to add product.");
       }
@@ -263,23 +261,20 @@ const ProductsTab = ({ isDarkMode }) => {
     }
 
     try {
-      const res = await fetch(
-        `http://localhost:5001/api/v1/products/${editingProduct._id}`,
-        {
-          method: "PUT",
-          body: formData,
-        }
-      );
+      const res = await fetch(`http://localhost:5001/api/v1/products/${editingProduct._id}`, {
+        method: 'PUT',
+        body: formData,
+      });
       const data = await res.json();
-      if (res.ok) {
-        toast.success("Product updated!");
+      if (res.ok && data.product) {
         setProducts(prev => prev.map(p => p._id === editingProduct._id ? data.product : p));
         setEditingProduct(null);
         setEditFormData({});
-        setNewImage(null);
-        setNewImagePreview(null);
+        setEditImage(null);
+        setEditImagePreview(null);
+        toast.success("Product updated!");
       } else {
-        toast.error(data.message || "Failed.");
+        toast.error(data.message || "Failed to update.");
       }
     } catch {
       toast.error("Error updating product.");
@@ -495,7 +490,9 @@ const ProductsTab = ({ isDarkMode }) => {
                 <div className="space-y-1 text-center">
                   {newImagePreview ? (
                     <div>
-                      <img src={newImagePreview} alt="Product preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
+                      <img
+                        src={getProductImageSrc(newImagePreview || editingProduct?.image)}
+                        alt="Preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
                       <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">Remove Image</button>
                     </div>
                   ) : (
@@ -671,8 +668,8 @@ const ProductsTab = ({ isDarkMode }) => {
                             </div>
                           )}
                           {newImagePreview && (
-                            <img 
-                              src={newImagePreview} 
+                            <img
+                              src={getProductImageSrc(newImagePreview || editingProduct?.image)}
                               alt="Preview" 
                               className={`object-contain w-auto h-32 rounded-md transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
                               onLoad={() => setIsImageLoading(false)}
