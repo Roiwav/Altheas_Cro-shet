@@ -237,8 +237,8 @@ export default function ShopPage() {
         state: foundRegion,
         city: localCity,
         label: "Guest Address",
-        line1: "N/A",
-        postalCode: "N/A",
+        line1: "",
+        postalCode: "",
         country: "Philippines",
       };
     }
@@ -298,6 +298,10 @@ export default function ShopPage() {
   // Wishlist helpers
   const inWishlist = (id) => wishlistItems.some((it) => String(it.id) === String(id));
   const handleToggleWishlist = (product) => {
+    if (!isAuthenticated) {
+      toast.warn("Please log in to add items to your wishlist.");
+      return;
+    }
     const payload = { ...product, image: getImageSrc(product) };
     const { added, items } = toggleWishlist(username, payload);
     setWishlistItems(items);
@@ -470,11 +474,11 @@ export default function ShopPage() {
             {paginatedProducts.map((product) => (
               <motion.div
                 key={product._id || product.id}
-                layout
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
+                layout="position"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={`relative group border rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all flex overflow-hidden ${view === 'grid' ? 'flex-col' : 'flex-row items-center'}`}
               >
                 {/* Heart button */}

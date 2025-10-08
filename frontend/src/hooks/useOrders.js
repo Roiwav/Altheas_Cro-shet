@@ -12,25 +12,29 @@ export default function useOrders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrders, setSelectedOrders] = useState([]);
 
+  const refetch = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:5001/api/orders', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : data.orders || []);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      toast.error('Failed to fetch orders.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setLoading(true);
-    fetch('http://localhost:5001/api/orders', {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setOrders(Array.isArray(data) ? data : data.orders || []);
-      })
-      .catch((err) => {
-        console.error('Error fetching orders:', err);
-        toast.error('Failed to fetch orders.');
-      })
-      .finally(() => setLoading(false));
+    refetch();
   }, []);
 
   const searchedOrders = useMemo(() => {
@@ -212,5 +216,6 @@ export default function useOrders() {
     updateOrderStatus,
     updateMultipleStatuses,
     exportToCsv,
+    refetch,
   };
 }

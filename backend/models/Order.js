@@ -19,6 +19,11 @@ const orderSchema = new mongoose.Schema({
       cancelled: { type: Boolean, default: false },
       cancellationReason: String,
       cancelledAt: Date,
+      // Refund tracking per product
+      refundStatus: { type: String, enum: ['Not Required', 'Pending', 'Processing', 'Completed', 'Failed'], default: 'Pending' },
+      refundAmount: { type: Number },
+      refundETAHours: { type: Number },
+      refundConfirmedAt: { type: Date },
     }
   ],
   shippingAddress: {

@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../../context/useUser";
 import { useCart } from "../../hooks/useCart";
-import { ShoppingCart, User, Menu, LayoutDashboard, LogOut } from "lucide-react";
+import useNotifications from "../../hooks/useNotifications";
+import { ShoppingCart, User, Menu, LayoutDashboard, LogOut, Bell } from "lucide-react";
 
 export default function Navbar({
   sidebarOpen,
@@ -14,10 +15,14 @@ export default function Navbar({
   
   // Get cart items for the cart icon counter
   const { cartItems } = useCart();
+  // Notifications
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,6 +36,9 @@ export default function Navbar({
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -117,6 +125,51 @@ export default function Navbar({
           )}
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* Notifications */}
+            {isAuthenticated && !isAuthPage && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setIsNotifOpen((v) => !v)}
+                  className="relative inline-flex p-2 text-gray-700 rounded-full hover:text-pink-600 dark:text-gray-300 dark:hover:text-pink-400"
+                  aria-label="Notifications"
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {isNotifOpen && (
+                  <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] bg-white rounded-md shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Notifications</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllAsRead} className="text-xs text-pink-600 hover:underline">Mark all as read</button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {(notifications || []).slice(0, 10).map((n) => (
+                        <div key={n._id} className="px-3 py-2 flex items-start gap-2 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <div className={`mt-1 w-2 h-2 rounded-full ${n.read ? 'bg-gray-300 dark:bg-gray-600' : 'bg-pink-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{n.title}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{n.message}</p>
+                            <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
+                          </div>
+                          {!n.read && (
+                            <button onClick={() => markAsRead(n._id)} className="text-xs text-pink-600 hover:underline">Read</button>
+                          )}
+                        </div>
+                      ))}
+                      {(!notifications || notifications.length === 0) && (
+                        <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No notifications</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {/* Cart */}
             {!isAuthPage && (
               <Link

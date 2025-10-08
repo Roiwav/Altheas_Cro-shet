@@ -20,7 +20,7 @@ const cities = Object.values(regions).flat();
 const cityToRegionMap = {};
 Object.entries(regions).forEach(([region, arr]) => arr.forEach(c => { cityToRegionMap[c] = region; }));
 
-export default function AddressesTab() {
+export default function AddressesTab({ onSelectAddress, isSelectMode = false }) {
   const { user, token, updateUser } = useUser();
   const [addresses, setAddresses] = useState([]);
   const [addressesPassword, setAddressesPassword] = useState("");
@@ -224,10 +224,13 @@ export default function AddressesTab() {
             return (
               <div
                 key={address.id}
+                onClick={() => isSelectMode && !isEditingThis && onSelectAddress(address)}
                 className={`relative p-5 transition-all border rounded-xl ${
                   address.isDefault 
                     ? 'border-2 border-pink-500 bg-pink-50/50 dark:bg-pink-900/10' 
                     : 'border-gray-200 dark:border-gray-700 hover:border-pink-300 dark:hover:border-pink-700'
+                } ${
+                  isSelectMode ? 'cursor-pointer hover:shadow-lg' : ''
                 }`}
                 style={{ height: "auto" }}
               >
@@ -465,7 +468,7 @@ export default function AddressesTab() {
         </div>
       )}
 
-      {!isEditingAddress && addresses.length > 0 && (
+      {!isEditingAddress && addresses.length > 0 && !isSelectMode && (
         <div className="flex items-center justify-between p-4 mt-6 bg-gray-50 rounded-lg dark:bg-gray-800/50">
           <div className="flex items-center gap-3">
             <div className="p-2 text-pink-600 rounded-full bg-pink-50 dark:bg-pink-900/20">
