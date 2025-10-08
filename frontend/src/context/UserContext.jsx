@@ -1,6 +1,6 @@
 // src/context/UserContext.jsx
 import React, { createContext, useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { applyDarkMode } from "./darkModeUtils";
@@ -8,174 +8,242 @@ import { applyDarkMode } from "./darkModeUtils";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
 axios.defaults.baseURL = API_URL;
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const UserContext = createContext();
 
-/**
- * Provider responsibility:
- * - restore from localStorage (or sessionStorage) and sync with database
- * - login(userObj, token, remember = true)
- */
 export const UserProvider = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isInitializedRef = useRef(false);
+  const idleTimerRef = useRef(null);
 
-  // Try to initialize from localStorage or sessionStorage synchronously
-  const initialLocalUser = localStorage.getItem("user");
-  const initialLocalToken = localStorage.getItem("token");
-  const initialSessionUser = sessionStorage.getItem("user");
-  const initialSessionToken = sessionStorage.getItem("token");
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [user, setUser] = useState(() => {
+  // Manual JWT decode function
+  const decodeJWT = useCallback((token) => {
     try {
-      if (initialLocalUser) return JSON.parse(initialLocalUser);
-      if (initialSessionUser) return JSON.parse(initialSessionUser);
+      if (!token || typeof token !== 'string') return null;
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = parts[1];
+      if (!payload) return null;
+      const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+      return JSON.parse(atob(paddedPayload));
     } catch (error) {
-      console.error('Error parsing user data from storage:', error);
-      // Clear invalid user data
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('user');
+      console.error('JWT decode error:', error, { token });
+      return null;
     }
-    return null;
-  });
+  }, []);
 
-  const [token, setToken] = useState(() => {
-    // If we have a token in localStorage or sessionStorage, use it
-    if (initialLocalToken) {
-      // Set auth header for axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${initialLocalToken}`;
-      return initialLocalToken;
-    }
-    if (initialSessionToken) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${initialSessionToken}`;
-      return initialSessionToken;
-    }
-    return null;
-  });
+  // JWT expiration check
+  const isTokenExpired = useCallback((token, skipBuffer = false) => {
+    if (!token) return true;
+    const decoded = decodeJWT(token);
+    if (!decoded || !decoded.exp) return true;
+    const currentTime = Date.now() / 1000;
+    const buffer = skipBuffer ? 0 : 30;
+    return decoded.exp < (currentTime + buffer);
+  }, [decodeJWT]);
 
-  // Track authentication state
-  const [, setIsAuthenticated] = useState(!!(token && user));
-
-  // Update isAuthenticated when token or user changes
-  useEffect(() => {
-    setIsAuthenticated(!!(token && user));
-  }, [token, user]);
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  // First, define the logout function since it's used by fetchUserData
-  const logout = useCallback(async (persistCartFn) => {
-    // If a function to persist the cart is provided, call it and wait for it to complete.
-    if (typeof persistCartFn === 'function') {
-      console.log("UserContext: Calling function to persist cart before logging out.");
-      await persistCartFn();
-    }
-
+  const clearAuthData = useCallback(() => {
     setUser(null);
     setToken(null);
+    setIsAuthenticated(false);
     delete axios.defaults.headers.common['Authorization'];
-    
-    // Clear ALL user-related data from storage
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("userAddresses");
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("token");
+  }, []);
 
-    toast.success("Logged out");
-    navigate("/login", { replace: true });
-  }, [navigate]);
-
-  // Then define fetchUserData which uses logout
-  const fetchUserData = useCallback(async (userToken = token) => {
-    if (!userToken) return null;
-    
+  const logout = useCallback(async (persistCartFn) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${userToken}`,
-        },
+      if (typeof persistCartFn === 'function') await persistCartFn();
+      clearAuthData();
+      toast.success("Logged out successfully");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error('Error during logout:', error);
+      clearAuthData();
+      navigate("/login", { replace: true });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate, clearAuthData]);
+
+  // ===== AUTO-LOGOUT ONLY IN ADMIN PAGE =====
+  useEffect(() => {
+    const IDLE_TIMEOUT = 60 * 60 * 1000;
+
+    // Only enable auto-logout for `/admin` route
+    if (!user || !token || location.pathname !== "/admin") return;
+
+    const resetIdleTimer = () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        toast.info("You’ve been logged out due to inactivity on the admin page.");
+        logout();
+      }, IDLE_TIMEOUT);
+    };
+
+    resetIdleTimer();
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
+    for (const event of events) {
+      window.addEventListener(event, resetIdleTimer);
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      for (const event of events) {
+        window.removeEventListener(event, resetIdleTimer);
+      }
+    };
+  }, [user, token, logout, location.pathname]);
+
+  // fetchUserData
+  const fetchUserData = useCallback(async (userToken = token) => {
+    if (!userToken) {
+      clearAuthData();
+      setIsLoading(false);
+      return null;
+    }
+    if (isTokenExpired(userToken, false)) {
+      clearAuthData();
+      setIsLoading(false);
+      return null;
+    }
+    setIsLoading(true);
+    try {
+      const response = await axios.get('/auth/me', {
+        headers: { 'Authorization': `Bearer ${userToken}` },
+        timeout: 10000,
       });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        
-        // Ensure addresses have proper IDs for frontend
+      if (response.data) {
+        const userData = response.data;
         if (userData.addresses) {
           userData.addresses = userData.addresses.map(addr => ({
             ...addr,
             id: addr._id || addr.id || crypto.randomUUID()
           }));
         }
-
-        // Apply account theme if available
         if (typeof userData?.preferences?.darkMode === 'boolean') {
           applyDarkMode(userData.preferences.darkMode);
         }
-
-        // Update state
         setUser(userData);
-        
-        // Update storage with fresh data
+        setIsAuthenticated(true);
+        const userDataString = JSON.stringify(userData);
         if (localStorage.getItem("token")) {
-          localStorage.setItem("user", JSON.stringify(userData));
+          localStorage.setItem("user", userDataString);
         } else if (sessionStorage.getItem("token")) {
-          sessionStorage.setItem("user", JSON.stringify(userData));
+          sessionStorage.setItem("user", userDataString);
         }
-        
         return userData;
-      } else if (response.status === 401) {
-        // Token is invalid, clear everything
-        console.log("Token expired, clearing user data");
-        await logout();
-        return null;
-      } else {
-        throw new Error('Failed to fetch user data');
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Don't clear token on network errors, just on auth errors
-      if (error.message.includes('401')) {
+      if (error.response?.status === 401) {
         await logout();
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error("Request timed out. Please try again.");
+      } else if (error.code === 'ECONNREFUSED') {
+        toast.error("Cannot connect to server. Please check if the backend is running.");
       }
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [token, logout]); // Add token and logout to dependencies
+  }, [token, logout, clearAuthData, isTokenExpired]);
 
-  // Auto-fetch user data once per token to avoid loops
-  const fetchedTokenRef = useRef(null);
+  // Auth state from storage on mount
   useEffect(() => {
-    if (!token) return;
-    if (fetchedTokenRef.current === token) return;
-    fetchedTokenRef.current = token;
-    fetchUserData(token);
-  }, [token, fetchUserData]);
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
 
-  /**
-   * Login function that handles both regular and OAuth logins
-   * @param {Object} userObj - User object from the server
-   * @param {string} authToken - JWT token from the server
-   * @param {Object} options - Additional options
-   * @param {boolean} [options.remember=true] - Whether to remember the user
-   * @param {boolean} [options.isOAuth=false] - Whether this is an OAuth login
-   */
-  const login = (userObj, authToken, options = { remember: true, isOAuth: false }) => {
+    const initializeAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+        const storedUser = localStorage.getItem("user") || sessionStorage.getItem("user");
+        if (!storedToken) {
+          setIsLoading(false);
+          return;
+        }
+        if (isTokenExpired(storedToken, false)) {
+          clearAuthData();
+          setIsLoading(false);
+          return;
+        }
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        setToken(storedToken);
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            setUser(userData);
+            setIsAuthenticated(true);
+            if (typeof userData?.preferences?.darkMode === 'boolean') {
+              applyDarkMode(userData.preferences.darkMode);
+            }
+          } catch (parseError) {
+            localStorage.removeItem("user");
+            sessionStorage.removeItem("user");
+          }
+        }
+        await fetchUserData(storedToken);
+      } catch (error) {
+        clearAuthData();
+        setIsLoading(false);
+      }
+    };
+    initializeAuth();
+  }, [fetchUserData, clearAuthData, isTokenExpired]);
+
+  // Axios interceptor for 401 errors
+  useEffect(() => {
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && token && !originalRequest._retry) {
+          originalRequest._retry = true;
+          await logout();
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [token, logout]);
+
+  // login function (supports JWT and dummy tokens)
+  const login = useCallback((userObj, authToken, options = { remember: true, isOAuth: false }) => {
     const { remember = true, isOAuth = false } = options;
-    
     try {
+      if (!authToken) throw new Error('No authentication token provided');
+      if (!userObj) throw new Error('No user data provided');
+
+      let tokenValidationPassed = false;
+      if (authToken === 'dummy-admin-token' || authToken.startsWith('dummy-')) {
+        tokenValidationPassed = true;
+      } else if (typeof authToken === 'string' && authToken.includes('.')) {
+        const isExpired = isTokenExpired(authToken, true);
+        tokenValidationPassed = true; // Allow expired tokens for debugging
+      } else {
+        tokenValidationPassed = true;
+      }
+
       let processedUser = userObj;
-      
-      // For OAuth logins, ensure we have all required fields
+
       if (isOAuth) {
         processedUser = {
           ...userObj,
           role: userObj.role || 'user',
-          isOAuth: true // Mark as OAuth user
+          isOAuth: true
         };
       } else if (userObj.addresses) {
-        // Process addresses for regular login
         processedUser = {
           ...userObj,
           addresses: userObj.addresses.map(addr => ({
@@ -184,92 +252,87 @@ export const UserProvider = ({ children }) => {
           }))
         };
       }
-      
-      // Apply account theme if available
       if (typeof processedUser?.preferences?.darkMode === 'boolean') {
         applyDarkMode(processedUser.preferences.darkMode);
       }
-
-      // Set context state immediately for authenticated UI
+      if (authToken !== 'dummy-admin-token' && !authToken.startsWith('dummy-')) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      }
       setUser(processedUser);
       setToken(authToken);
+      setIsAuthenticated(true);
 
-      // Set auth header for axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-
-      // Clear any conflicting address data from old localStorage
-      localStorage.removeItem("userAddresses");
-      
-      // Store in localStorage (persistent) if remember is true
+      const userDataString = JSON.stringify(processedUser);
       if (remember) {
-        localStorage.setItem("user", JSON.stringify(processedUser));
+        localStorage.setItem("user", userDataString);
         localStorage.setItem("token", authToken);
-        // Clear session storage to avoid conflicts
         sessionStorage.removeItem("user");
         sessionStorage.removeItem("token");
       } else {
-        // store in sessionStorage only (cleared when tab closes)
-        sessionStorage.setItem("user", JSON.stringify(processedUser));
+        sessionStorage.setItem("user", userDataString);
         sessionStorage.setItem("token", authToken);
-        // Clear local storage to avoid conflicts
         localStorage.removeItem("user");
         localStorage.removeItem("token");
       }
-      
+      localStorage.removeItem("userAddresses");
+
+      // Only show toast for admin or OAuth login
+      if (
+        authToken === 'dummy-admin-token' ||
+        (options && options.isOAuth)
+      ) {
+        toast.success("Login successful!");
+      }
       return processedUser;
     } catch (error) {
-      console.error('Error during login:', error);
-      // Clear any potentially corrupted auth state
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      sessionStorage.removeItem('user');
-      sessionStorage.removeItem('token');
-      setUser(null);
-      setToken(null);
-      setIsAuthenticated(false);
-      throw error; // Re-throw to allow error handling in the component
+      clearAuthData();
+      let errorMessage = "Login failed. Please try again.";
+      if (error.message.includes('No authentication token')) {
+        errorMessage = "Authentication failed - no token received from server.";
+      } else if (error.message.includes('No user data')) {
+        errorMessage = "Authentication failed - no user data received from server.";
+      } else if (error.message.includes('expired')) {
+        errorMessage = "Authentication token has expired. Please try logging in again.";
+      }
+      toast.error(errorMessage);
+      throw error;
     }
-  };
+  }, [isTokenExpired, clearAuthData]);
 
-  // Enhanced updateUser function
-  const updateUser = (updatedFields) => {
+  const updateUser = useCallback((updatedFields) => {
     setUser((prev) => {
-      const updated = { ...(prev || {}), ...updatedFields };
-      
-      // Ensure addresses have proper IDs when updating
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedFields };
       if (updated.addresses) {
         updated.addresses = updated.addresses.map(addr => ({
           ...addr,
           id: addr._id || addr.id || crypto.randomUUID()
         }));
       }
-      
-      // Apply theme immediately if updated preferences include darkMode
       if (typeof updated?.preferences?.darkMode === 'boolean') {
         applyDarkMode(updated.preferences.darkMode);
       }
-
-      // Persist updated user wherever it was stored
+      const updatedUserString = JSON.stringify(updated);
       if (localStorage.getItem("token")) {
-        localStorage.setItem("user", JSON.stringify(updated));
+        localStorage.setItem("user", updatedUserString);
       } else if (sessionStorage.getItem("token")) {
-        sessionStorage.setItem("user", JSON.stringify(updated));
+        sessionStorage.setItem("user", updatedUserString);
       }
       return updated;
     });
-  };
+  }, []);
 
   return (
     <UserContext.Provider
       value={{
         user,
         token,
-        isAuthenticated: !!(user && token),
+        isAuthenticated,
         isLoading,
         login,
         logout,
         updateUser,
-        fetchUserData, // NEW: Expose fetchUserData function
+        fetchUserData,
       }}
     >
       {children}

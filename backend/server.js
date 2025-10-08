@@ -152,6 +152,8 @@ app.get('/auth/check', (req, res) => {
   // Testimonials routes (CommonJS)
   app.use("/api/v1/testimonials", testimonialRoutes);
 
+  app.use('/uploads', express.static('uploads'));
+
 
 // 🟢 Check for MongoDB URI
 if (!process.env.MONGO_URI) {
