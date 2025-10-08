@@ -202,6 +202,7 @@ const cancelOrderItem = async (req, res) => {
 const cancelOrderProduct = async (req, res) => {
   try {
     const { id: orderId, productId } = req.params;
+    const { cancellationReason } = req.body;
     
     const order = await Order.findById(orderId);
     if (!order) {
@@ -217,28 +218,46 @@ const cancelOrderProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found in order" });
     }
 
-    // Remove the product from the order
-    order.products.splice(productIndex, 1);
+    // Mark the product as cancelled instead of removing it
+    order.products[productIndex].cancelled = true;
+    order.products[productIndex].cancellationReason = cancellationReason || 'No reason provided';
+    order.products[productIndex].cancelledAt = new Date();
 
-    // If no products left, delete the entire order
-    if (order.products.length === 0) {
-      await Order.findByIdAndDelete(orderId);
+    // Add a status message about the cancellation
+    order.statusMessage = `Item "${order.products[productIndex].name}" cancelled: ${cancellationReason || 'No reason provided'}`;
+    order.statusUpdatedAt = new Date();
+
+    // Check if all products are cancelled
+    const allCancelled = order.products.every(product => product.cancelled);
+    
+    if (allCancelled) {
+      order.status = 'Cancelled';
+      order.statusMessage = 'All items in this order have been cancelled';
+      order.statusUpdatedAt = new Date();
+      
+      await order.save();
+      
       return res.status(200).json({ 
-        message: "Product cancelled and order deleted", 
-        orderDeleted: true 
+        message: "All items cancelled and order closed", 
+        order,
+        orderDeleted: false
       });
     }
 
-    // Recalculate total
-    const newSubtotal = order.products.reduce((sum, item) => 
-      sum + (item.price * item.quantity), 0
-    );
+    // Recalculate total only for non-cancelled items
+    const newSubtotal = order.products
+      .filter(product => !product.cancelled)
+      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
     order.total = newSubtotal + (order.shippingFee || 0);
 
     await order.save();
 
+    // TODO: Notify admin about the cancellation
+    // You can implement email or notification system here
+
     res.status(200).json({ 
-      message: "Product cancelled successfully", 
+      message: "Item cancelled successfully", 
       order,
       orderDeleted: false 
     });

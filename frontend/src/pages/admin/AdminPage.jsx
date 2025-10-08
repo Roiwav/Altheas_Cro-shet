@@ -5,6 +5,7 @@ import { useUser } from "../../context/useUser";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
 import AdminSidebar from "../../components/admin/AdminSidebar.jsx";
 import OrdersTab from "./OrdersTab.jsx";
+import CancelledTab from "./CancelledTab.jsx";
 import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
 import FeedbackTab from "./FeedbackTab.jsx";
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "cancelled", label: "Cancelled", icon: XCircle },
     { id: "products", label: "Products", icon: Box },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: SettingsIcon },
@@ -374,6 +376,7 @@ export default function AdminPage() {
             <div className="transition-all duration-300 ease-in-out">
               {activeTab === "dashboard" && renderDashboard()}
               {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} />}
+              {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} />}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
               {activeTab === "feedback" && <FeedbackTab isDarkMode={isDarkMode} />}
               {activeTab === "settings" && <SettingsTab isDarkMode={isDarkMode} />}
