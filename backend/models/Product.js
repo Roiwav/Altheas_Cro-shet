@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     quantity: { type: Number, required: true },
     image: { type: String, required: true }, // store image URL or filename
+    imagePublicId: { type: String }, // optional: Cloudinary public ID for product image
     category: { type: String, default: "Uncategorized" },
     isFeatured: { type: Boolean, default: false },
   },

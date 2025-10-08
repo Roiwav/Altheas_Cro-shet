@@ -11,16 +11,11 @@ const {
   bulkUpdateCategory,
   bulkDeleteProducts,
 } = require("../controllers/productController");
- 
+
 const router = express.Router();
 
-// 🖼️ Multer setup for image upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "/uploads/products"),
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+// 🖼️ Multer setup for image upload (memory storage for Cloudinary)
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // ✅ Create new product - now uses controller

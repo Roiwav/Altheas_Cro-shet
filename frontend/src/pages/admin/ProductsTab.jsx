@@ -1,7 +1,11 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, Fragment, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { Plus, ImageIcon, UploadCloud, Search, Star, Loader2, X as XIcon, Settings, Trash2, AlertTriangle, Edit, Check, X, ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
+// eslint-disable-next-line no-unused-vars
+import { formatPHP } from '../../utils/currency';
 
 const ProductsTab = ({ isDarkMode }) => {
   const baseCategories = ["Bouquet", "Single Stem", "Arrangement", "Custom"];
@@ -39,11 +43,10 @@ const ProductsTab = ({ isDarkMode }) => {
   // Sorting state
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc"); 
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterFeatured, setFilterFeatured] = useState('all'); // all | featured | not
 
-  const getProductImageSrc = (img) =>
-  img && img.startsWith('/uploads')
-    ? `http://localhost:5001${img}`
-    : img || '/images/placeholder-product.jpg';
+  // Use shared util to resolve product image sources (supports Cloudinary URLs and local uploads)
 
   useEffect(() => {
     fetchProducts();
@@ -52,7 +55,7 @@ const ProductsTab = ({ isDarkMode }) => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5001/api/v1/products');
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
       const data = await res.json();
       if (Array.isArray(data.products)) {
         setProducts(data.products);
@@ -71,13 +74,22 @@ const ProductsTab = ({ isDarkMode }) => {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, sortOrder]);
+  }, [searchQuery, sortBy, sortOrder, filterCategory, filterFeatured]);
 
   // Sorting logic
   const sortedProducts = React.useMemo(() => {
-    const filtered = products.filter(product =>
+    let filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(p => p.category === filterCategory);
+    }
+    if (filterFeatured === 'featured') {
+      filtered = filtered.filter(p => p.isFeatured);
+    } else if (filterFeatured === 'not') {
+      filtered = filtered.filter(p => !p.isFeatured);
+    }
 
     let sorted = [...filtered];
 
@@ -101,7 +113,7 @@ const ProductsTab = ({ isDarkMode }) => {
       );
     }
     return sorted;
-  }, [products, sortBy, sortOrder, searchQuery]);
+  }, [products, sortBy, sortOrder, searchQuery, filterCategory, filterFeatured]);
 
   // When paginated products change, clear selection that is not on the current page
   useEffect(() => {
@@ -193,7 +205,7 @@ const ProductsTab = ({ isDarkMode }) => {
     formData.append("image", newImage);
 
     try {
-      const res = await fetch('http://localhost:5001/api/v1/products', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`, {
     method: 'POST',
         body: formData,
       });
@@ -227,9 +239,7 @@ const ProductsTab = ({ isDarkMode }) => {
     // Use a more robust way to set the image preview URL, similar to ShopPage
     if (product.image) {
       setIsImageLoading(true); // Start loading
-      const imageUrl = product.image.startsWith("/uploads")
-        ? `http://localhost:5001${product.image}`
-        : product.image;
+      const imageUrl = getProductImageSrc(product.image);
       setNewImagePreview(imageUrl);
     } else {
       setIsImageLoading(false); // No image to load
@@ -261,7 +271,7 @@ const ProductsTab = ({ isDarkMode }) => {
     }
 
     try {
-      const res = await fetch(`http://localhost:5001/api/v1/products/${editingProduct._id}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${editingProduct._id}`, {
         method: 'PUT',
         body: formData,
       });
@@ -270,8 +280,8 @@ const ProductsTab = ({ isDarkMode }) => {
         setProducts(prev => prev.map(p => p._id === editingProduct._id ? data.product : p));
         setEditingProduct(null);
         setEditFormData({});
-        setEditImage(null);
-        setEditImagePreview(null);
+        setNewImage(null);
+        setNewImagePreview(null);
         toast.success("Product updated!");
       } else {
         toast.error(data.message || "Failed to update.");
@@ -296,7 +306,7 @@ const ProductsTab = ({ isDarkMode }) => {
 
   const handleToggleFeatured = async (productId) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/v1/products/${productId}/toggle-featured`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${productId}/toggle-featured`, {
         method: 'PATCH',
       });
       const data = await res.json();
@@ -340,7 +350,7 @@ const ProductsTab = ({ isDarkMode }) => {
     const productIds = productsToMove.map(p => p._id);
 
     try {
-      const res = await fetch('http://localhost:5001/api/v1/products/bulk-update-category', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/bulk-update-category`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productIds, newCategory: newCategoryForMove }),
@@ -379,7 +389,7 @@ const ProductsTab = ({ isDarkMode }) => {
     }
 
     try {
-      const res = await fetch('http://localhost:5001/api/v1/products/update-category-name', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/update-category-name`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ oldCategory: editingCategory, newCategory: newCategoryName }),
@@ -414,7 +424,7 @@ const ProductsTab = ({ isDarkMode }) => {
 
     if (itemToDelete.type === 'single') {
       try {
-        const res = await fetch(`http://localhost:5001/api/v1/products/${itemToDelete.id}`, { method: "DELETE" });
+        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${itemToDelete.id}`, { method: "DELETE" });
         if (res.ok) {
           toast.success(`Product "${itemToDelete.name}" deleted.`);
           fetchProducts(); // Refetch to update list
@@ -427,7 +437,7 @@ const ProductsTab = ({ isDarkMode }) => {
       }
     } else if (itemToDelete.type === 'bulk') {
       try {
-        const res = await fetch('http://localhost:5001/api/v1/products/bulk', {
+        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/bulk`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ productIds: itemToDelete.ids }),
