@@ -2,6 +2,7 @@
 const Product = require("../models/Product");
 const fs = require('fs');
 const path = require('path');
+const productCloudinary = require('../config/productCloudinary');
 
 /**
  * @desc    Create a new product
@@ -11,7 +12,36 @@ const path = require('path');
 const createProduct = async (req, res) => {
   try {
     const { name, description, price, quantity, category, isFeatured } = req.body;
-    const image = req.file ? `/uploads/products/${req.file.filename}` : null;
+
+    // Upload product image to Cloudinary (product account)
+    let imageUrl = null;
+    let imagePublicId = null;
+
+    if (req.file && req.file.buffer) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          productCloudinary.uploader
+            .upload_stream(
+              {
+                folder: 'products',
+                resource_type: 'image',
+              },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            )
+            .end(req.file.buffer);
+        });
+        imageUrl = uploadResult.secure_url;
+        imagePublicId = uploadResult.public_id;
+      } catch (err) {
+        console.error('Cloudinary product upload error:', err);
+        return res.status(500).json({ message: 'Failed to upload product image' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Product image is required' });
+    }
 
     const newProduct = new Product({
       name,
@@ -20,7 +50,8 @@ const createProduct = async (req, res) => {
       quantity,
       category,
       isFeatured,
-      image,
+      image: imageUrl,
+      imagePublicId,
     });
 
     await newProduct.save();
@@ -30,11 +61,10 @@ const createProduct = async (req, res) => {
       product: newProduct,
     });
   } catch (error) {
-    console.error("❌ Error creating product:", error);
+    console.error("Error creating product:", error);
     res.status(500).json({ message: "Failed to create product due to a server error." });
   }
 };
-
 /**
  * @desc    Get all products
  * @route   GET /api/v1/products
@@ -86,8 +116,37 @@ const updateProduct = async (req, res) => {
       product.category = category || product.category;
       product.isFeatured = isFeatured !== undefined ? isFeatured : product.isFeatured;
 
-      if (req.file) {
-        product.image = `/uploads/products/${req.file.filename}`;
+      if (req.file && req.file.buffer) {
+        // Delete old Cloudinary image if it exists
+        if (product.imagePublicId) {
+          try {
+            await productCloudinary.uploader.destroy(product.imagePublicId);
+          } catch (err) {
+            console.warn('Failed to delete old Cloudinary product image:', err?.message || err);
+          }
+        }
+
+        try {
+          const uploadResult = await new Promise((resolve, reject) => {
+            productCloudinary.uploader
+              .upload_stream(
+                {
+                  folder: 'products',
+                  resource_type: 'image',
+                },
+                (error, result) => {
+                  if (error) return reject(error);
+                  resolve(result);
+                }
+              )
+              .end(req.file.buffer);
+          });
+          product.image = uploadResult.secure_url;
+          product.imagePublicId = uploadResult.public_id;
+        } catch (err) {
+          console.error('Cloudinary product upload error (update):', err);
+          return res.status(500).json({ message: 'Failed to upload product image' });
+        }
       }
 
       const updatedProduct = await product.save();
@@ -111,10 +170,15 @@ const deleteProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (product) {
-      // If the product has an image, delete it from the filesystem
-      if (product.image) {
+      // If the product has an image, delete it from Cloudinary or filesystem (legacy)
+      if (product.imagePublicId) {
+        try {
+          await productCloudinary.uploader.destroy(product.imagePublicId);
+        } catch (err) {
+          console.warn('Failed to delete Cloudinary product image:', err?.message || err);
+        }
+      } else if (product.image && typeof product.image === 'string' && product.image.startsWith('/uploads')) {
         const imagePath = path.join(__dirname, '..', product.image);
-
         fs.unlink(imagePath, (err) => {
           if (err) {
             console.error(`Failed to delete image file: ${imagePath}`, err);
@@ -138,18 +202,18 @@ const deleteProduct = async (req, res) => {
  * @access  Private/Admin
  */
 const toggleFeatured = async (req, res) => {
-    try {
-        const product = await Product.findById(req.params.id);
-        if (product) {
-            product.isFeatured = !product.isFeatured;
-            await product.save();
-            res.json({ message: 'Featured status updated', product });
-        } else {
-            res.status(404).json({ message: 'Product not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+  try {
+    const product = await Product.findById(req.params.id);
+    if (product) {
+      product.isFeatured = !product.isFeatured;
+      await product.save();
+      res.json({ message: 'Featured status updated', product });
+    } else {
+      res.status(404).json({ message: 'Product not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 /**
@@ -219,19 +283,24 @@ const bulkDeleteProducts = async (req, res) => {
       return res.status(400).json({ message: 'Product IDs array is required.' });
     }
 
-    // Find products to get their image paths for deletion
+    // Find products to get their image IDs/paths for deletion
     const productsToDelete = await Product.find({ _id: { $in: productIds } });
 
-    // Delete associated images from the filesystem
-    const imageDeletionPromises = productsToDelete
-      .filter(p => p.image)
-      .map(p => {
+    // Delete associated images from Cloudinary or filesystem (legacy)
+    const imageDeletionPromises = productsToDelete.map(p => {
+      if (p.imagePublicId) {
+        return productCloudinary.uploader.destroy(p.imagePublicId).catch(err => {
+          console.warn('Could not delete Cloudinary image:', p.imagePublicId, err?.message || err);
+        });
+      }
+      if (p.image && typeof p.image === 'string' && p.image.startsWith('/uploads')) {
         const imagePath = path.join(__dirname, '..', p.image);
         return fs.promises.unlink(imagePath).catch(err => {
-          // Log error if file doesn't exist, but don't stop the process
-          console.warn(`Could not delete image (it may not exist): ${imagePath}`, err.code);
+          console.warn(`Could not delete image (it may not exist): ${imagePath}`, err?.code || err);
         });
-      });
+      }
+      return Promise.resolve();
+    });
 
     await Promise.all(imageDeletionPromises);
 
