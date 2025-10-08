@@ -52,7 +52,6 @@ const OAuthCallback = () => {
           throw new Error('Authentication data is missing');
         }
 
-        // Parse the user data robustly
         const parsed = parseUserParam(userData);
         if (!parsed) {
           throw new Error('Invalid user data received');
@@ -64,6 +63,12 @@ const OAuthCallback = () => {
         // Show success message once
         toast.success('Successfully logged in with Google!', { toastId: 'oauth-success' });
         
+        // Admins go straight to the admin dashboard
+        if (parsed?.role === 'admin') {
+          navigate('/admin', { replace: true });
+          return;
+        }
+
         // If signup preserved cart state exists, restore flow specific redirect
         const preserved = sessionStorage.getItem('oauth-cart-state') || sessionStorage.getItem('signup-cart-state');
         if (preserved) {
@@ -86,8 +91,7 @@ const OAuthCallback = () => {
             return; // prevent falling through to default redirect
           } catch { /* ignore preserved-state parse */ }
         }
-
-        // Default redirect
+        // Default redirect for non-admins when no preserved state
         navigate(redirect, { replace: true });
       } catch (err) {
         console.error('OAuth callback error:', err);

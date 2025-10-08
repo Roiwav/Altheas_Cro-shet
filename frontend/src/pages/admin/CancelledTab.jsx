@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Search, Eye } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Search, Eye, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser.js';
 
@@ -217,17 +217,19 @@ export default function CancelledTab({ isDarkMode }) {
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
                     <td className="px-4 py-3 space-x-2">
-                      <button
+                      <button 
                         onClick={() => { setSelectedOrder(c.order); setShowOrderModal(true); }}
-                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-pink-600 rounded-md hover:bg-pink-700"
+                        title="View Order Details"
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}
                       >
-                        <Eye className="w-4 h-4 mr-1" /> View Order
+                        <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => _openConfirm(c)}
-                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-pink-600 rounded-md hover:bg-pink-700"
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-pink-600 rounded-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 dark:focus:ring-offset-gray-800"
                       >
-                        Confirm Refund
+                        <CheckCircle className="w-4 h-4 mr-1.5" />
+                        <span>Confirm Refund</span>
                       </button>
                     </td>
                   </tr>

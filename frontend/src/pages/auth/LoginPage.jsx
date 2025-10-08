@@ -21,7 +21,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(true); // ✅ default true for persistence
 
-  const from = location.state?.from?.pathname || "/";
+  // Support both Location object and string for `state.from`
+  const rawFrom = location.state?.from;
+  const from = typeof rawFrom === 'string' ? rawFrom : rawFrom?.pathname || "/";
   const errorParam = searchParams.get("error");
   const errorMessage = searchParams.get("message");
 
@@ -47,8 +49,13 @@ export default function LoginPage() {
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
 
-        // Navigate to the original URL or home page
-        navigate(from, { replace: true });
+        // Redirect admins to the admin dashboard; others to intended page unless it's admin-only
+        if (parsedUser?.role === 'admin') {
+          navigate('/admin', { replace: true });
+        } else {
+          const dest = from && !from.startsWith('/admin') && !from.startsWith('/login') ? from : '/';
+          navigate(dest, { replace: true });
+        }
       } catch (error) {
         console.error("Error processing OAuth callback:", error);
         toast.error("Failed to process login. Please try again.", { toastId: "oauth-error" });
@@ -145,7 +152,13 @@ export default function LoginPage() {
       }
 
       toast.success("Login successful!");
-      navigate(from, { replace: true });
+      // Redirect admins to /admin; others to intended page unless it's admin-only
+      if (data?.user?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        const dest = from && !from.startsWith('/admin') && !from.startsWith('/login') ? from : '/';
+        navigate(dest, { replace: true });
+      }
     } catch (err) {
       console.error("Login error:", err);
       const errorMessage =
