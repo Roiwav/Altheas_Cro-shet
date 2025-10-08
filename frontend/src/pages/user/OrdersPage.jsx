@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser';
+import CancelItemModal from '../../components/orders/CancelItemModal';
 
 import { getMediaUrl } from '../../utils/product.js';
 import { 
@@ -214,6 +215,7 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [cancellationItem, setCancellationItem] = useState(null);
 
   // Fetch orders function
   const fetchOrders = useCallback(async () => {
@@ -244,10 +246,17 @@ const OrdersPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Cancel product
-  const handleCancelProduct = async (orderId, productId) => {
-    if (!window.confirm('Are you sure you want to remove this item from your order?')) return;
+  // Show cancellation modal
+  const showCancelConfirmation = (orderId, productId, productName) => {
+    setCancellationItem({ orderId, productId, productName });
+  };
 
+  // Handle cancellation confirmation
+  const handleCancelProduct = async (reason) => {
+    if (!cancellationItem) return;
+    
+    const { orderId, productId } = cancellationItem;
+    
     try {
       const res = await fetch(`http://localhost:5001/api/orders/${orderId}/product/${productId}`, {
         method: 'DELETE',
@@ -255,6 +264,7 @@ const OrdersPage = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        body: JSON.stringify({ cancellationReason: reason })
       });
 
       if (!res.ok) {
@@ -284,6 +294,9 @@ const OrdersPage = () => {
         setOrders(prev => prev.map(o => (o._id === orderId ? data.order : o)));
         toast.success('Item cancelled successfully.');
       }
+      
+      // Close the modal
+      setCancellationItem(null);
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Could not cancel the product.');
@@ -440,7 +453,7 @@ const OrdersPage = () => {
                             </Link>
                             <div className="mt-1 space-y-1">
                               <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Qty: {item.quantity} Ã— {currencyFormatter.format(item.price)}
+                                Qty: {item.quantity} &times; {currencyFormatter.format(item.price)}
                               </p>
                               {item.color && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Color: {item.color}</p>
@@ -451,7 +464,11 @@ const OrdersPage = () => {
                             </div>
                             {order.status === 'Pending' && (
                               <button 
-                                onClick={() => handleCancelProduct(order._id, item.productId || item._id)} 
+                                onClick={() => showCancelConfirmation(
+                                  order._id, 
+                                  item.productId || item._id,
+                                  item.name
+                                )} 
                                 className="mt-2 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:underline transition-colors"
                               >
                                 Cancel Item
@@ -531,6 +548,12 @@ const OrdersPage = () => {
       <PaymentProofModal 
         imageUrl={selectedImage} 
         onClose={() => setSelectedImage(null)} 
+      />
+      
+      <CancelItemModal
+        isOpen={!!cancellationItem}
+        onClose={() => setCancellationItem(null)}
+        onConfirm={handleCancelProduct}
       />
     </div>
   );

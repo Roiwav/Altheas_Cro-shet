@@ -16,6 +16,9 @@ const orderSchema = new mongoose.Schema({
       image: String,
       color: String,
       variation: String,
+      cancelled: { type: Boolean, default: false },
+      cancellationReason: String,
+      cancelledAt: Date,
     }
   ],
   shippingAddress: {
