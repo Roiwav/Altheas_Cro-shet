@@ -12,6 +12,7 @@ const {
   bulkDeleteProducts,
 } = require("../controllers/productController");
 
+
 const router = express.Router();
 
 // 🖼️ Multer setup for image upload (memory storage for Cloudinary)

@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaThLarge, FaList, FaShoppingCart, FaSearch, FaHeart } from "react-icons/fa";
+import { FaThLarge, FaList, FaShoppingCart, FaSearch, FaHeart, FaTruck, FaClock } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -20,26 +20,59 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 });
 
 const regions = {
-  "Metro Manila": ["Manila", "Quezon City"],
-  "South Luzon": ["Calamba City", "Batangas City"],
-  "North Luzon": ["Baguio", "Dagupan"],
-  Visayas: ["Cebu City", "Iloilo City"],
-  Mindanao: ["Davao City", "Cagayan de Oro"],
+  "Inside Calamba": ["Calamba"],
+  "Inside Laguna": [
+    "Los Baños",
+    "Cabuyao", 
+    "San Pablo",
+    "Biñan",
+    "Sta. Rosa",
+    "Calamba City"
+  ],
+  "Outside Laguna": [
+    "Cavite",
+    "Batangas", 
+    "Rizal"
+  ],
+  "Metro Manila": [
+    "Manila",
+    "Quezon City",
+    "Pasig",
+    "Makati",
+    "Taguig",
+    "Mandaluyong",
+    "Pasay"
+  ],
+  "Rest of Luzon": [
+    "Baguio",
+    "Dagupan",
+    "La Union",
+    "Tarlac",
+    "Pampanga",
+    "Bulacan",
+    "Nueva Ecija"
+  ],
+  "Visayas/Mindanao": [
+    "Cebu City",
+    "Iloilo City",
+    "Davao City",
+    "Cagayan de Oro",
+    "Zamboanga",
+    "Tacloban"
+  ]
 };
+
 const shippingFees = {
-  "Manila": 25,
-  "Quezon City": 20,
-  "Calamba City": 36,
-  "Batangas City": 30,
-  "Baguio": 35,
-  "Dagupan": 32,
-  "Cebu City": 28,
-  "Iloilo City": 30,
-  "Davao City": 34,
-  "Cagayan de Oro": 33,
+  "Inside Calamba":      { min: 60,   max: 80,   estimated: "2 – 3 days" },
+  "Inside Laguna":       { min: 80,   max: 120,  estimated: "2 – 4 days" },
+  "Outside Laguna":      { min: 150,  max: 200,  estimated: "3 – 6 days" },
+  "Metro Manila":        { min: 120,  max: 180,  estimated: "3 – 5 days" },
+  "Rest of Luzon":       { min: 180,  max: 250,  estimated: "4 – 7 days" },
+  "Visayas/Mindanao":    { min: 250,  max: 400,  estimated: "5 – 10 days" }
 };
-const defaultRegion = "South Luzon";
-const defaultCity = "Calamba City";
+
+const defaultRegion = "Inside Calamba";
+const defaultCity = "Calamba";
 
 // Placeholder image
 const placeholderImage =
@@ -79,12 +112,11 @@ export default function ShopPage() {
   // Local wishlist items
   const [wishlistItems, setWishlistItems] = useState([]);
 
-  // Initialize shipping info based on user
-  // NEW: State for backend products
+  // Backend products
   const [productsFromBackend, setProductsFromBackend] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // NEW: Fetch backend products only once on mount
+  // Fetch backend products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -104,7 +136,7 @@ export default function ShopPage() {
     fetchProducts();
   }, []);
 
-  // Merge products: show all hardcoded plus unique backend (by name).
+  // Merge products: show all hardcoded plus unique backend (by name)
   const combinedProducts = React.useMemo(() => {
     const namesInHardcoded = new Set(productList.map(p => p.name.trim().toLowerCase()));
     const uniqueBackend = productsFromBackend.filter(
@@ -113,7 +145,7 @@ export default function ShopPage() {
     return [...productList, ...uniqueBackend];
   }, [productsFromBackend]);
 
-  // Dynamically generate categories from all available products
+  // Categories
   const categories = React.useMemo(() => {
     const allCategories = new Set(
       combinedProducts.map(p => p.category).filter(Boolean)
@@ -121,13 +153,16 @@ export default function ShopPage() {
     return ["All", ...Array.from(allCategories).sort()];
   }, [combinedProducts]);
 
-
   useEffect(() => {
     if (isAuthenticated && user?.addresses?.length > 0) {
       const defaultAddress = user.addresses.find((a) => a.isDefault) || user.addresses[0];
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress.id);
-        setLocalRegion(defaultAddress.state);
+        // Find region based on city
+        const foundRegion = Object.keys(regions).find(region =>
+          regions[region].includes(defaultAddress.city)
+        ) || defaultRegion;
+        setLocalRegion(foundRegion);
         setLocalCity(defaultAddress.city);
       }
     } else {
@@ -147,7 +182,7 @@ export default function ShopPage() {
     setModalQuantity(1);
   }, [selectedProduct]);
 
-  // Handle navigation state: open modal or direct checkout
+  // Handle navigation state
   useEffect(() => {
     if (location.state?.openProductModal && location.state?.selectedProduct) {
       const { selectedProduct: productFromState } = location.state;
@@ -172,11 +207,11 @@ export default function ShopPage() {
       });
       window.history.replaceState(null, "");
     }
-  }, [location.state,combinedProducts]);
+  }, [location.state, combinedProducts]);
 
   useEffect(() => window.scrollTo(0, 0), []);
 
-  // Initialize wishlist for current username
+  // Initialize wishlist
   useEffect(() => {
     setWishlistItems(getWishlist(username));
   }, [username]);
@@ -188,13 +223,18 @@ export default function ShopPage() {
 
   // Sync shipping info to CartContext
   useEffect(() => {
-    const fee = shippingFees[localCity] || 0;
+    const foundRegion = Object.keys(regions).find(region =>
+      regions[region].includes(localCity)
+    ) || localRegion;
+    
+    const feeObj = shippingFees[foundRegion] || { min: 0, max: 0, estimated: "N/A" };
+    
     let addressToSet;
     if (isAuthenticated && selectedAddressId) {
       addressToSet = user.addresses.find((a) => a.id === selectedAddressId);
     } else {
       addressToSet = {
-        state: localRegion,
+        state: foundRegion,
         city: localCity,
         label: "Guest Address",
         line1: "N/A",
@@ -203,10 +243,9 @@ export default function ShopPage() {
       };
     }
     if (addressToSet) setShippingAddress(addressToSet);
-    setShippingFee(fee);
+    setShippingFee(feeObj.min);
   }, [localRegion, localCity, isAuthenticated, user, selectedAddressId, setShippingAddress, setShippingFee]);
 
-  // Replace all uses of productList in the rest of the shop page code with combinedProducts!
   const processedProducts = React.useMemo(() => {
     let products = [...combinedProducts];
 
@@ -263,7 +302,6 @@ export default function ShopPage() {
     const { added, items } = toggleWishlist(username, payload);
     setWishlistItems(items);
     toast[added ? "success" : "info"](added ? "Added to wishlist" : "Removed from wishlist");
-    // Sync global wishlist count
     syncWishlistCount(username);
   };
 
@@ -297,12 +335,23 @@ export default function ShopPage() {
       setSelectedProduct(null);
       return;
     }
-    const shippingFee = shippingFees[localCity] || 0;
+    
+    const foundRegion = Object.keys(regions).find(region =>
+      regions[region].includes(localCity)
+    ) || localRegion;
+    const feeObj = shippingFees[foundRegion] || { min: 0, max: 0, estimated: "N/A" };
+    
     let shippingAddress;
     if (isAuthenticated && selectedAddressId) {
       shippingAddress = user.addresses.find((a) => a.id === selectedAddressId);
     } else {
-      shippingAddress = { state: localRegion, city: localCity, line1: "N/A", postalCode: "N/A", country: "Philippines" };
+      shippingAddress = { 
+        state: foundRegion, 
+        city: localCity, 
+        line1: "N/A", 
+        postalCode: "N/A", 
+        country: "Philippines" 
+      };
     }
 
     const productForCheckout = {
@@ -313,8 +362,9 @@ export default function ShopPage() {
       image: getImageSrc(selectedProduct),
       variation: selectedVariation || "",
       quantity: modalQuantity,
-      shippingFee,
+      shippingFee: feeObj.min,
       shippingAddress,
+      estimatedDelivery: feeObj.estimated,
     };
     navigate("/checkout", { state: { product: productForCheckout } });
     setSelectedProduct(null);
@@ -331,23 +381,50 @@ export default function ShopPage() {
     );
   }
 
+  // Get current shipping info for display
+  const currentShippingInfo = shippingFees[localRegion] || { min: 0, max: 0, estimated: "N/A" };
+
   return (
     <>
       <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 ${isAuthenticated ? 'px-6 md:px-20 lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
+        
+        {/* Shipping Info Banner */}
+        <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <FaTruck className="text-blue-600 dark:text-blue-400" />
+              <div>
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  <strong>Delivery Area:</strong> {localRegion}
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Shipping Fee:</strong> ₱{currentShippingInfo.min} – ₱{currentShippingInfo.max}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <FaClock className="text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium">
+                <strong>Estimated Delivery:</strong> {currentShippingInfo.estimated}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Guest info banner */}
         {!isAuthenticated && totalQuantity > 0 && (
-          <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+          <div className="p-4 mb-6 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FaShoppingCart className="text-blue-600 dark:text-blue-400" />
+                <FaShoppingCart className="text-orange-600 dark:text-orange-400" />
                 <div>
-                  <p className="font-medium text-blue-900 dark:text-blue-100">You have {totalQuantity} item(s) in your cart</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">Sign up to checkout and save your cart to your account!</p>
+                  <p className="font-medium text-orange-900 dark:text-orange-100">You have {totalQuantity} item(s) in your cart</p>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">Sign up to checkout and save your cart to your account!</p>
                 </div>
               </div>
               <button
                 onClick={() => navigate("/signup", { state: { from: "shop-cart" } })}
-                className="px-4 py-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 font-medium text-white transition-colors bg-orange-600 rounded-lg hover:bg-orange-700"
               >
                 Sign Up
               </button>
@@ -492,6 +569,23 @@ export default function ShopPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 md:text-3xl dark:text-white">{selectedProduct.name}</h2>
                   <p className="mt-3 text-2xl font-bold text-red-600 dark:text-red-500">{currencyFormatter.format(selectedProduct.price)}</p>
+                  
+                  {/* Shipping info in modal */}
+                  <div className="p-3 mt-4 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FaTruck className="text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        Shipping to: {localRegion}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-blue-700 dark:text-blue-300">
+                      <span>Fee: ₱{currentShippingInfo.min} – ₱{currentShippingInfo.max}</span>
+                      <span className="flex items-center gap-1">
+                        <FaClock className="w-3 h-3" />
+                        {currentShippingInfo.estimated}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-4 space-y-4">
