@@ -7,6 +7,8 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     quantity: { type: Number, required: true },
     image: { type: String, required: true }, // store image URL or filename
+    category: { type: String, default: "Uncategorized" },
+    isFeatured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

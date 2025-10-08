@@ -22,6 +22,8 @@ import {
   User,
   AlertCircle
 } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { useMediaQuery } from 'react-responsive';
 
 const OrdersTab = ({ isDarkMode }) => {
   const [orders, setOrders] = useState([]);
@@ -40,6 +42,9 @@ const OrdersTab = ({ isDarkMode }) => {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionOrder, setRejectionOrder] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Check for mobile viewport
+  const isMobile = useMediaQuery({ query: '(max-width: 768px)' });
 
   // Helper to format currency
   const currencyFormatter = new Intl.NumberFormat("en-PH", {
@@ -146,6 +151,64 @@ const OrdersTab = ({ isDarkMode }) => {
       setRejectionOrder(null);
       setRejectionReason('');
     }
+  };
+
+  const exportToCsv = () => {
+    if (sortedAndFilteredOrders.length === 0) {
+      toast.warn("No orders to export.");
+      return;
+    }
+
+    const headers = [
+      "Order ID",
+      "Order Number",
+      "Customer Name",
+      "Order Date",
+      "Status",
+      "Total",
+      "Shipping Fee",
+      "Payment Method",
+      "Products",
+      "Shipping Address",
+      "Rejection Reason"
+    ];
+
+    const rows = sortedAndFilteredOrders.map(order => {
+      // Safely escape commas within fields by wrapping them in double quotes
+      const escapeCsvField = (field) => {
+        const str = String(field || '').replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const productDetails = order.products?.map(p => `${p.name} (Qty: ${p.quantity})`).join('; ') || 'N/A';
+      const shippingAddr = order.shippingAddress
+        ? `${order.shippingAddress.line1}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}`
+        : 'N/A';
+
+      return [
+        order._id,
+        order.orderNumber || 'N/A',
+        escapeCsvField(order.username),
+        new Date(order.createdAt).toISOString(),
+        order.status,
+        order.total || 0,
+        order.shippingFee || 0,
+        order.paymentMethod,
+        escapeCsvField(productDetails),
+        escapeCsvField(shippingAddr),
+        escapeCsvField(order.rejectionReason)
+      ].join(',');
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `orders-export-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Orders exported successfully!");
   };
 
   const searchedOrders = useMemo(() => {
@@ -314,7 +377,7 @@ const OrdersTab = ({ isDarkMode }) => {
                       onClick={() => handleRejectOrder(order)} 
                       className={`${active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-200' : 'text-gray-700')} group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
                     >
-                      <XCircle className="mr-3 h-4 w-4 text-red-500" />
+                      <XCircle className="w-4 h-4 mr-3 text-red-500" />
                       Reject Order
                       {order.status === 'rejected' && <Check className="w-4 h-4 ml-auto text-green-500" />}
                     </button>
@@ -371,7 +434,7 @@ const OrdersTab = ({ isDarkMode }) => {
         <div className="fixed inset-0 bg-black/25" />
         
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex items-center justify-center min-h-full p-4">
             <Dialog.Panel className={`mx-auto max-w-4xl w-full rounded-lg p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <div className="flex items-center justify-between mb-6">
                 <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -436,9 +499,9 @@ const OrdersTab = ({ isDarkMode }) => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {/* Customer & Order Info */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6 lg:col-span-2">
                   {/* Customer Info */}
                   <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -478,7 +541,7 @@ const OrdersTab = ({ isDarkMode }) => {
                           <img
                             src={product.image || '/images/placeholder-product.jpg'}
                             alt={product.name}
-                            className="w-12 h-12 rounded-lg object-cover border border-gray-300 dark:border-gray-600"
+                            className="object-cover w-12 h-12 border border-gray-300 rounded-lg dark:border-gray-600"
                             onError={(e) => {e.target.src='/images/placeholder-product.jpg'}}
                           />
                           <div className="flex-1 min-w-0">
@@ -578,14 +641,14 @@ const OrdersTab = ({ isDarkMode }) => {
                         <img
                           src={`http://localhost:5001${selectedOrder.paymentProofUrl}`}
                           alt="Payment Proof"
-                          className="w-full max-w-xs rounded-lg border border-gray-300 dark:border-gray-600 hover:shadow-md transition-shadow"
+                          className="w-full max-w-xs transition-shadow border border-gray-300 rounded-lg dark:border-gray-600 hover:shadow-md"
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = "/images/placeholder-receipt.jpg";
                           }}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black bg-opacity-50 rounded-lg transition-opacity">
-                          <Eye className="h-6 w-6 text-white" />
+                        <div className="absolute inset-0 flex items-center justify-center transition-opacity bg-black bg-opacity-50 rounded-lg opacity-0 hover:opacity-100">
+                          <Eye className="w-6 h-6 text-white" />
                         </div>
                       </div>
                     </div>
@@ -600,7 +663,7 @@ const OrdersTab = ({ isDarkMode }) => {
                       {selectedOrder.status !== 'processing' && (
                         <button
                           onClick={() => updateOrderStatus(selectedOrder._id, 'processing')}
-                          className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
                         >
                           Mark as Processing
                         </button>
@@ -608,7 +671,7 @@ const OrdersTab = ({ isDarkMode }) => {
                       {selectedOrder.status !== 'shipped' && (
                         <button
                           onClick={() => updateOrderStatus(selectedOrder._id, 'shipped')}
-                          className="w-full px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-purple-600 rounded-md hover:bg-purple-700"
                         >
                           Mark as Shipped
                         </button>
@@ -616,7 +679,7 @@ const OrdersTab = ({ isDarkMode }) => {
                       {selectedOrder.status !== 'delivered' && (
                         <button
                           onClick={() => updateOrderStatus(selectedOrder._id, 'delivered')}
-                          className="w-full px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-green-600 rounded-md hover:bg-green-700"
                         >
                           Mark as Delivered
                         </button>
@@ -624,7 +687,7 @@ const OrdersTab = ({ isDarkMode }) => {
                       {selectedOrder.status !== 'rejected' && (
                         <button
                           onClick={() => handleRejectOrder(selectedOrder)}
-                          className="w-full px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-red-600 rounded-md hover:bg-red-700"
                         >
                           Reject Order
                         </button>
@@ -649,18 +712,18 @@ const OrdersTab = ({ isDarkMode }) => {
         <div className="fixed inset-0 bg-black/75" />
         
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative max-w-4xl max-h-full">
               <button 
                 onClick={() => setSelectedPaymentProof(null)}
-                className="absolute -top-10 right-0 text-white hover:text-gray-300 z-10"
+                className="absolute right-0 z-10 text-white -top-10 hover:text-gray-300"
               >
-                <X className="h-8 w-8" />
+                <X className="w-8 h-8" />
               </button>
               <img
                 src={selectedPaymentProof}
                 alt="Payment Proof"
-                className="max-w-full max-h-full object-contain rounded-lg"
+                className="object-contain max-w-full max-h-full rounded-lg"
               />
             </div>
           </div>
@@ -678,7 +741,7 @@ const OrdersTab = ({ isDarkMode }) => {
         <div className="fixed inset-0 bg-black/25" />
         
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex items-center justify-center min-h-full p-4">
             <Dialog.Panel className={`mx-auto max-w-md w-full rounded-lg p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <div className="flex items-center justify-between mb-4">
                 <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -728,7 +791,7 @@ const OrdersTab = ({ isDarkMode }) => {
                 </button>
                 <button
                   onClick={confirmRejection}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                  className="flex-1 px-4 py-2 font-medium text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
                 >
                   Reject Order
                 </button>
@@ -753,7 +816,7 @@ const OrdersTab = ({ isDarkMode }) => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Orders Management</h2>
@@ -762,8 +825,8 @@ const OrdersTab = ({ isDarkMode }) => {
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div className="w-full sm:w-64">
+        <div className="flex flex-col w-full gap-3 md:flex-row md:w-auto">
+          <div className="w-full md:w-64">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Search className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -780,7 +843,7 @@ const OrdersTab = ({ isDarkMode }) => {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             className={`block w-full sm:w-40 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${
               isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
             }`}
@@ -793,6 +856,16 @@ const OrdersTab = ({ isDarkMode }) => {
             <option value="cancelled">Cancelled</option>
             <option value="rejected">Rejected</option>
           </select>
+
+          <button
+            onClick={exportToCsv}
+            className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+              isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -804,19 +877,19 @@ const OrdersTab = ({ isDarkMode }) => {
             </span>
             <button
               onClick={() => updateMultipleStatuses("processing")}
-              className="px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 text-sm transition-colors"
+              className="px-3 py-1 text-sm text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600"
             >
               Mark as Processing
             </button>
             <button
               onClick={() => updateMultipleStatuses("shipped")}
-              className="px-3 py-1 rounded-md bg-purple-500 text-white hover:bg-purple-600 text-sm transition-colors"
+              className="px-3 py-1 text-sm text-white transition-colors bg-purple-500 rounded-md hover:bg-purple-600"
             >
               Mark as Shipped
             </button>
             <button
               onClick={() => updateMultipleStatuses("delivered")}
-              className="px-3 py-1 rounded-md bg-green-500 text-white hover:bg-green-600 text-sm transition-colors"
+              className="px-3 py-1 text-sm text-white transition-colors bg-green-500 rounded-md hover:bg-green-600"
             >
               Mark as Delivered
             </button>
@@ -824,8 +897,31 @@ const OrdersTab = ({ isDarkMode }) => {
         </div>
       )}
 
-      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} overflow-hidden`}>
-        <div className="overflow-x-auto">
+      {/* Table for Desktop, Cards for Mobile */}
+      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        {isMobile ? (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {paginatedOrders.map(order => (
+              <div key={order._id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-mono text-xs text-gray-500 dark:text-gray-400">#{order.orderNumber || order._id?.substring(0, 8)}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{order.username}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900 dark:text-white">{currencyFormatter.format(order.total || 0)}</p>
+                    <StatusBadge status={order.status} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end mt-3">
+                  {renderActions(order)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
@@ -840,7 +936,7 @@ const OrdersTab = ({ isDarkMode }) => {
                         setSelectedOrders([]);
                       }
                     }}
-                    className="rounded border-gray-300 focus:ring-pink-500"
+                    className="border-gray-300 rounded focus:ring-pink-500"
                   />
                 </th>
 
@@ -870,7 +966,7 @@ const OrdersTab = ({ isDarkMode }) => {
                 <tr>
                   <td colSpan={columns.length} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     <div className="flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       Loading orders...
                     </div>
                   </td>
@@ -895,7 +991,7 @@ const OrdersTab = ({ isDarkMode }) => {
                             setSelectedOrders((prev) => prev.filter((id) => id !== order._id));
                           }
                         }}
-                        className="rounded border-gray-300 focus:ring-pink-500"
+                        className="border-gray-300 rounded focus:ring-pink-500"
                       />
                     </td>
                     
@@ -913,8 +1009,8 @@ const OrdersTab = ({ isDarkMode }) => {
                       <div className="space-y-1">
                         {order.products?.slice(0, 2).map((product, idx) => (
                           <div key={idx} className="text-xs">
-                            <span className="truncate max-w-40 inline-block">{product.name}</span>
-                            <span className="text-gray-500 ml-1">(×{product.quantity})</span>
+                            <span className="inline-block truncate max-w-40">{product.name}</span>
+                            <span className="ml-1 text-gray-500">(×{product.quantity})</span>
                           </div>
                         ))}
                         {order.products?.length > 2 && (
@@ -956,10 +1052,11 @@ const OrdersTab = ({ isDarkMode }) => {
             </tbody>
           </table>
         </div>
+        )}
         
         {paginatedOrders.length > 0 && (
-          <div className={`px-4 py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className={`px-4 py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col md:flex-row justify-between items-center gap-4`}>
+            <p className={`text-sm text-center md:text-left ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Showing {Math.min((currentPage - 1) * itemsPerPage + 1, sortedAndFilteredOrders.length)} to {Math.min(currentPage * itemsPerPage, sortedAndFilteredOrders.length)} of {sortedAndFilteredOrders.length} orders
             </p>
             

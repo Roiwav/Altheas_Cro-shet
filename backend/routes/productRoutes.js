@@ -2,7 +2,16 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const Product = require("../models/Product");
-
+const {
+  createProduct,
+  getAllProducts,
+  updateProduct,
+  deleteProduct,
+  toggleFeatured,
+  bulkUpdateCategory,
+  bulkDeleteProducts,
+} = require("../controllers/productController");
+ 
 const router = express.Router();
 
 // 🖼️ Multer setup for image upload
@@ -14,61 +23,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ✅ Create new product
-router.post("/", upload.single("image"), async (req, res) => {
-  try {
-    const { name, description, price, quantity } = req.body;
-    if (!req.file) return res.status(400).json({ message: "Image is required" });
+// ✅ Create new product - now uses controller
+router.post("/", upload.single("image"), createProduct);
 
-    const newProduct = new Product({
-      name,
-      description,
-      price,
-      quantity,
-      image: `/uploads/products/${req.file.filename}`,
-    });
+// ✅ Get all products - now uses controller
+router.get('/', getAllProducts);
 
-    await newProduct.save();
-    res.status(201).json({ message: "Product added successfully", product: newProduct });
-  } catch (error) {
-    console.error("Error adding product:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+// ✅ Update product - now uses controller
+router.put("/:id", upload.single("image"), updateProduct);
 
-// ✅ Get all products
-router.get("/", async (req, res) => {
-  try {
-    const products = await Product.find().sort({ createdAt: -1 });
-    res.json({ products });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch products" });
-  }
-});
+// ✅ Toggle featured status - now uses controller
+router.patch("/:id/toggle-featured", toggleFeatured);
 
-// ✅ Update product
-router.put("/:id", upload.single("image"), async (req, res) => {
-  try {
-    const { name, description, price, quantity } = req.body;
-    const updateData = { name, description, price, quantity };
-    if (req.file) updateData.image = `/uploads/products/${req.file.filename}`;
+// ✅ Update category name
+router.patch("/update-category-name", require("../controllers/productController").updateCategoryName);
 
-    const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    res.json({ message: "Product updated successfully", product: updated });
-  } catch (error) {
-    console.error("Error updating product:", error);
-    res.status(500).json({ message: "Failed to update product" });
-  }
-});
+// ✅ Bulk update product category
+router.patch("/bulk-update-category", bulkUpdateCategory);
 
-// ✅ Delete product
-router.delete("/:id", async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: "Product deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to delete product" });
-  }
-});
+// ✅ Bulk delete products
+router.delete("/bulk", bulkDeleteProducts);
+
+// ✅ Delete product - now uses controller
+router.delete("/:id", deleteProduct);
 
 module.exports = router;

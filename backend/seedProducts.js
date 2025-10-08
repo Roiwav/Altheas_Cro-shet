@@ -2,28 +2,28 @@
 const mongoose = require("mongoose");
 const Product = require("./models/Product");
 
-// Array of products to insert. Images should be in /uploads/products/
+// Array of products to insert. Images should be in /uploads/products/ (original paths were correct)
 const products = [
-  { name: "Pink Tulips", price: 250, description: "Bright sunflowers for joyful moments.", image: "/uploads/products/1.jpg" },
-  { name: "Purple Lily", price: 320, description: "Classic red roses for a romantic surprise.", image: "/uploads/products/2.jpg" },
-  { name: "Tulips Shining", price: 290, description: "Elegant white lilies for every occasion.", image: "/uploads/products/3.jpg" },
-  { name: "Rose Pink Charm", price: 270, description: "Sweet carnations to brighten someone’s day.", image: "/uploads/products/4.jpg" },
-  { name: "Lily Treasure", price: 310, description: "Vibrant tulips full of color and love.", image: "/uploads/products/5.jpg" },
-  { name: "Sundrop Harmony Passion", price: 380, description: "Soft and luxurious peonies for special moments.", image: "/uploads/products/6.jpg" },
-  { name: "Tulips Blue Daylight", price: 220, description: "Cheerful daisies perfect for a fresh start.", image: "/uploads/products/7.jpg" },
-  { name: "Tulips Red Passion", price: 420, description: "Exotic orchids to express elegance.", image: "/uploads/products/8.jpg" },
-  { name: "Rose Bloom", price: 330, description: "A blend of seasonal flowers for any mood.", image: "/uploads/products/9.jpg" },
-  { name: "Tulips Purple Charm", price: 295, description: "Soft pastel tones to calm and comfort.", image: "/uploads/products/10.jpg" },
-  { name: "Tulips Purple Bloom", price: 340, description: "A warm mix of oranges and reds.", image: "/uploads/products/11.jpg" },
-  { name: "Lily Harmony", price: 305, description: "Harmonious colors for peaceful vibes.", image: "/uploads/products/12.jpg" },
-  { name: "Winter Whisper Bouquet", price: 390, description: "Cool blues and whites for a frosty feel.", image: "/uploads/products/13.jpg" },
-  { name: "White Spring Fling", price: 260, description: "A lively burst of spring colors.", image: "/uploads/products/14.jpg" },
-  { name: "Blossom Breeze Tulips", price: 280, description: "Light and airy blooms for fresh energy.", image: "/uploads/products/15.jpg" },
-  { name: "Tulips Pinky White", price: 300, description: "Bold yellows and pinks to energize.", image: "/uploads/products/16.jpg" },
-  { name: "Cherry Blossom Tulips", price: 370, description: "Soft cherry blossoms to soothe the soul.", image: "/uploads/products/17.jpg" },
-  { name: "Carnation Love Bouquet", price: 340, description: "Lavender tones that relax and inspire.", image: "/uploads/products/18.jpg" },
-  { name: "Lily Daylight", price: 315, description: "Berry hues and textures for sweet smiles.", image: "/uploads/products/19.jpg" },
-  { name: "Tulips Fantasy", price: 399, description: "A dreamy mix of the rarest blooms.", image: "/uploads/products/20.jpg" },
+  { name: "Pink Tulips", price: 250, description: "Bright sunflowers for joyful moments.", image: "/uploads/products/1.jpg", category: "Single Stem" },
+  { name: "Purple Lily", price: 320, description: "Classic red roses for a romantic surprise.", image: "/uploads/products/2.jpg", category: "Single Stem" },
+  { name: "Tulips Shining", price: 290, description: "Elegant white lilies for every occasion.", image: "/uploads/products/3.jpg", category: "Single Stem" },
+  { name: "Rose Pink Charm", price: 270, description: "Sweet carnations to brighten someone’s day.", image: "/uploads/products/4.jpg", category: "Bouquet" },
+  { name: "Lily Treasure", price: 310, description: "Vibrant tulips full of color and love.", image: "/uploads/products/5.jpg", category: "Bouquet" },
+  { name: "Sundrop Harmony Passion", price: 380, description: "Soft and luxurious peonies for special moments.", image: "/uploads/products/6.jpg", category: "Arrangement" },
+  { name: "Tulips Blue Daylight", price: 220, description: "Cheerful daisies perfect for a fresh start.", image: "/uploads/products/7.jpg", category: "Single Stem" },
+  { name: "Tulips Red Passion", price: 420, description: "Exotic orchids to express elegance.", image: "/uploads/products/8.jpg", category: "Single Stem" },
+  { name: "Rose Bloom", price: 330, a: "A blend of seasonal flowers for any mood.", image: "/uploads/products/9.jpg", category: "Bouquet" },
+  { name: "Tulips Purple Charm", price: 295, description: "Soft pastel tones to calm and comfort.", image: "/uploads/products/10.jpg", category: "Single Stem" },
+  { name: "Tulips Purple Bloom", price: 340, description: "A warm mix of oranges and reds.", image: "/uploads/products/11.jpg", category: "Bouquet" },
+  { name: "Lily Harmony", price: 305, description: "Harmonious colors for peaceful vibes.", image: "/uploads/products/12.jpg", category: "Arrangement" },
+  { name: "Winter Whisper Bouquet", price: 390, description: "Cool blues and whites for a frosty feel.", image: "/uploads/products/13.jpg", category: "Bouquet" },
+  { name: "White Spring Fling", price: 260, description: "A lively burst of spring colors.", image: "/uploads/products/14.jpg", category: "Bouquet" },
+  { name: "Blossom Breeze Tulips", price: 280, description: "Light and airy blooms for fresh energy.", image: "/uploads/products/15.jpg", category: "Single Stem" },
+  { name: "Tulips Pinky White", price: 300, description: "Bold yellows and pinks to energize.", image: "/uploads/products/16.jpg", category: "Single Stem" },
+  { name: "Cherry Blossom Tulips", price: 370, description: "Soft cherry blossoms to soothe the soul.", image: "/uploads/products/17.jpg", category: "Single Stem" },
+  { name: "Carnation Love Bouquet", price: 340, description: "Lavender tones that relax and inspire.", image: "/uploads/products/18.jpg", category: "Bouquet" },
+  { name: "Lily Daylight", price: 315, description: "Berry hues and textures for sweet smiles.", image: "/uploads/products/19.jpg", category: "Arrangement" },
+  { name: "Tulips Fantasy", price: 399, description: "A dreamy mix of the rarest blooms.", image: "/uploads/products/20.jpg", category: "Custom" },
   { name: "Lover Blooms", price: 350, description: "Golden-hued florals for sunny hearts.", image: "/uploads/products/21.jpg" },
   { name: "Mini Tulips", price: 385, description: "Deep colors for elegant evenings.", image: "/uploads/products/22.jpg" },
   { name: "Blush Beauty Bouquet", price: 290, description: "Blush-toned flowers that radiate charm.", image: "/uploads/products/23.jpg" },
@@ -57,8 +57,8 @@ const products = [
 ];
 
 async function seed() {
-  // Replace with your actual MongoDB URI and db name
-  await mongoose.connect("mongodb+srv://althea_croshet:test123@cluster0.duaboo1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", { useNewUrlParser: true, useUnifiedTopology: true });
+  // Use the same connection string as your server
+  await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
   // Optional: Uncomment to clear out all existing products before seeding
   // await Product.deleteMany({});
