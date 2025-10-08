@@ -7,6 +7,7 @@ import SettingsProvider from "./context/SettingsContext.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
 import DarkModeProvider from "./context/DarkModeContext.jsx";
 import { useDarkMode } from "./context/useDarkMode.js";
+import { WishlistCountProvider } from "./context/WishlistCountContext.jsx";
 
 // Get initial user from localStorage
 const initialUser = JSON.parse(localStorage.getItem("user")) || null;
@@ -35,14 +36,16 @@ export default function Root() {
   return (
     <DarkModeProvider>
       <UserProvider initialUser={initialUser}>
-        <SettingsProvider>
-          <TestimonialsProvider>
-            <CartProvider>
-              <App />
-              <DynamicToastContainer />
-            </CartProvider>
-          </TestimonialsProvider>
-        </SettingsProvider>
+        <WishlistCountProvider>
+          <SettingsProvider>
+            <TestimonialsProvider>
+              <CartProvider>
+                <App />
+                <DynamicToastContainer />
+              </CartProvider>
+            </TestimonialsProvider>
+          </SettingsProvider>
+        </WishlistCountProvider>
       </UserProvider>
     </DarkModeProvider>
   );
