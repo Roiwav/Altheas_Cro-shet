@@ -38,14 +38,6 @@ const shippingFees = {
 const defaultRegion = "South Luzon";
 const defaultCity = "Calamba City";
 
-const categories = [
-  "All",
-  "Bouquet",
-  "Single Stem",
-  "Arrangement",
-  "Custom"
-];
-
 const placeholderImage =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
 
@@ -106,6 +98,15 @@ export default function ShopPage() {
     );
     return [...productList, ...uniqueBackend];
   }, [productsFromBackend]);
+
+  // Dynamically generate categories from all available products
+  const categories = React.useMemo(() => {
+    const allCategories = new Set(
+      combinedProducts.map(p => p.category).filter(Boolean)
+    );
+    return ["All", ...Array.from(allCategories).sort()];
+  }, [combinedProducts]);
+
 
   useEffect(() => {
     if (isAuthenticated && user?.addresses?.length > 0) {
@@ -290,9 +291,9 @@ export default function ShopPage() {
 
   if (loading) {
     return (
-      <main className="relative z-10 min-h-screen pt-16 pb-16 flex items-center justify-center">
+      <main className="relative z-10 flex items-center justify-center min-h-screen pt-16 pb-16">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-pink-200 rounded-full border-t-pink-600 animate-spin"></div>
           <p className="text-gray-600">Loading products...</p>
         </div>
       </main>
@@ -305,7 +306,7 @@ export default function ShopPage() {
       <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 ${isAuthenticated ? 'px-6 md:px-20 lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
         {/* ✅ NEW: Guest user info banner */}
         {!isAuthenticated && totalQuantity > 0 && (
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FaShoppingCart className="text-blue-600 dark:text-blue-400" />
@@ -320,7 +321,7 @@ export default function ShopPage() {
               </div>
               <button
                 onClick={() => navigate("/signup", { state: { from: "shop-cart" } })}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                className="px-4 py-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
               >
                 Sign Up
               </button>
@@ -385,7 +386,7 @@ export default function ShopPage() {
           <AnimatePresence>
             {paginatedProducts.map((product) => (
               <motion.div
-                key={product.id}
+                key={product._id || product.id}
                 layout
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -395,7 +396,7 @@ export default function ShopPage() {
               >
                 <div className={`flex-shrink-0 bg-gray-100 dark:bg-gray-700 ${view === 'grid' ? 'h-48 sm:h-64 w-full' : 'w-32 h-32 rounded-full mx-4'}`}>
                   <motion.img
-                    layoutId={`product-image-${product.id}`}
+                    layoutId={`product-image-${product._id || product.id}`}
                     src={getImageSrc(product)}
                     alt={product.name}
                     className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${view === 'grid' ? 'object-contain' : 'object-cover rounded-full'}`}
@@ -581,8 +582,8 @@ export default function ShopPage() {
 
                 {/* ✅ NEW: Guest user notice for Buy Now */}
                 {!isAuthenticated && (
-                  <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                    <p className="text-orange-700 dark:text-orange-300 text-sm text-center">
+                  <div className="p-3 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
+                    <p className="text-sm text-center text-orange-700 dark:text-orange-300">
                       Create an account to buy items directly or continue as guest to add to cart!
                     </p>
                   </div>

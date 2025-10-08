@@ -241,8 +241,8 @@ export default function SignUpPage() {
               
               {/* ✅ Show cart context to user */}
               {(fromCart || fromShop) && (
-                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">
+                <div className="p-3 mt-3 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+                  <p className="mb-1 text-sm font-medium text-blue-700 dark:text-blue-300">
                     🛒 Cart Items Ready
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400">
@@ -380,7 +380,7 @@ export default function SignUpPage() {
                     ...location.state, // Preserve original navigation state
                     email: formData.email // Pre-fill email if they've started typing
                   }}
-                  className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 underline"
+                  className="font-medium text-purple-600 underline hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
                 >
                   Sign in
                 </Link>

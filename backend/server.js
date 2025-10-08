@@ -8,37 +8,20 @@ const dotenv = require("dotenv");
 const path = require("path");
 
 // 🟢 Load environment variables
-dotenv.config(); 
+dotenv.config();
 const session = require('express-session');
 const passport = require('passport');
 
 // 🟢 Import routes
 const setupChangeStream = require("./testimonialChangeStream.js");
-const productRoutes = require("./routes/productRoutes.js");
 const cartRoutes = require("./routes/cartRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
 const orderRoutes = require("./routes/orderRoutes.js");
 const testimonialRoutes = require("./testimonialRoutes.js");
+const productRoutes = require("./routes/productRoutes.js");
 
 const app = express();
-
-// 🟢 Enable CORS for your frontend
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://altheas-crochet-project.vercel.app",
-    ],
-    credentials: true,
-  })
-);
-
-// 🟢 Middleware to parse JSON payloads
-app.use(express.json({ limit: "10mb" }));
-
-// 🟢 Serve uploaded images (proof of payment, etc.)
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 🟢 Create HTTP server
 const server = http.createServer(app);
@@ -51,18 +34,6 @@ const io = new Server(server, {
     credentials: true
   }
 });
-
-// Enable CORS for all routes
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://altheas-crochet-project.vercel.app"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
 
 // Session configuration
 app.use(session({
@@ -77,6 +48,9 @@ app.use(session({
   }
 }));
 
+// 🟢 Middleware to parse JSON payloads
+app.use(express.json({ limit: "10mb" }));
+
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
@@ -84,8 +58,16 @@ app.use(passport.session());
 // Import Passport config
 require('./config/passport');
 
-// Middleware
-app.use(express.json({ limit: "5mb" }));
+// 🟢 Enable CORS for all routes
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://altheas-crochet-project.vercel.app"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 // Google OAuth Routes
 app.get('/auth/google',
@@ -160,17 +142,26 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/cart", cartRoutes);
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/users", userRoutes);
-  app.use("/api/orders", orderRoutes); 
-app.use("/api/v1/products", productRoutes);
+  app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
 
+  // 🟢 Serve uploaded images (proof of payment, etc.)
+  app.use("/uploads/products", express.static(path.join(__dirname, "uploads", "products")));
+  app.use("/uploads/proofs", express.static(path.join(__dirname, "uploads", "proofs")));
 
+  app.use("/api/v1/products", productRoutes);
   // Testimonials routes (CommonJS)
   app.use("/api/v1/testimonials", testimonialRoutes);
 
 
+// 🟢 Check for MongoDB URI
+if (!process.env.MONGO_URI) {
+  console.error("❌ FATAL ERROR: MONGO_URI is not defined in .env file");
+  process.exit(1);
+}
+
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(process.env.MONGO_URI, { // This should be your Atlas connection string
     useUnifiedTopology: true,
   })
   .then(() => {

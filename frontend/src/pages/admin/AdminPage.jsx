@@ -8,7 +8,6 @@ import OrdersTab from "./OrdersTab.jsx";
 import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
 import FeedbackTab from "./FeedbackTab.jsx";
-import SubscribersTab from "./SubscribersTab.jsx";
 import { useDarkMode } from "../../context/useDarkMode.js";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight, Menu as MenuIcon } from "lucide-react";
 import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
@@ -44,7 +43,6 @@ export default function AdminPage() {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "products", label: "Products", icon: Box },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
-    { id: "subscribers", label: "Subscribers", icon: Mail },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -378,7 +376,6 @@ export default function AdminPage() {
               {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} />}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
               {activeTab === "feedback" && <FeedbackTab isDarkMode={isDarkMode} />}
-              {activeTab === "subscribers" && <SubscribersTab isDarkMode={isDarkMode} />}
               {activeTab === "settings" && <SettingsTab isDarkMode={isDarkMode} />}
             </div>
           </div>
