@@ -1,17 +1,31 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect, Fragment, useRef } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
-import { Plus, ImageIcon, UploadCloud, Search, Star, Loader2, X as XIcon, Settings, Trash2, AlertTriangle, Edit, Check, X, ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Loader2, Settings, Trash2, ArrowLeft, ArrowRight, ImageIcon } from 'lucide-react';
 import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
-// eslint-disable-next-line no-unused-vars
-import { formatPHP } from '../../utils/currency';
+import ProductsTable from '../../components/admin/products/ProductsTable';
+import NewProductForm from '../../components/admin/products/NewProductForm';
+import ProductsTableSkeleton from '../../components/admin/products/ProductsTableSkeleton';
+import DeleteConfirmModal from '../../components/admin/products/DeleteConfirmModal';
+import ManageCategoriesModal from '../../components/admin/products/ManageCategoriesModal';
+import BulkMoveCategoryModal from '../../components/admin/products/BulkMoveCategoryModal';
+import useAdminProductsList from '../../hooks/useAdminProductsList';
 
 const ProductsTab = ({ isDarkMode }) => {
-  const baseCategories = ["Bouquet", "Single Stem", "Arrangement", "Custom"];
+  const baseCategories = React.useMemo(() => ["Bouquet", "Single Stem", "Arrangement", "Custom"], []);
   const [categories, setCategories] = useState(baseCategories);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    products, setProducts, loading,
+    searchQuery, setSearchQuery,
+    sortBy, setSortBy, sortOrder, setSortOrder,
+    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages,
+    sortedProducts, paginatedProducts,
+    selectedProducts, selectAllRef, handleSelectAll, handleSelectOne,
+    isDeleteConfirmOpen, setIsDeleteConfirmOpen, itemToDelete, handleDeleteClick, handleBulkDelete, confirmDeletion,
+    handleToggleFeatured,
+    fetchProducts,
+  } = useAdminProductsList();
+
   const [showAddProductForm, setShowAddProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [addProductFormData, setAddProductFormData] = useState({});
@@ -19,7 +33,7 @@ const ProductsTab = ({ isDarkMode }) => {
   const [newImage, setNewImage] = useState(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [newImagePreview, setNewImagePreview] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
   // State for category editing
@@ -31,131 +45,30 @@ const ProductsTab = ({ isDarkMode }) => {
   const [productsToMove, setProductsToMove] = useState([]);
   const [newCategoryForMove, setNewCategoryForMove] = useState('');
 
-  // Delete confirmation state
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedProducts, setSelectedProducts] = useState([]);
-
-  // Sorting state
-  const [sortBy, setSortBy] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc"); 
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [filterFeatured, setFilterFeatured] = useState('all'); // all | featured | not
-
-  // Use shared util to resolve product image sources (supports Cloudinary URLs and local uploads)
-
+  // Categories derived from products
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    const fetchedCategories = new Set(products.map(p => p.category).filter(Boolean));
+    setCategories(Array.from(new Set([...baseCategories, ...fetchedCategories])).sort());
+  }, [products, baseCategories]);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
-      const data = await res.json();
-      if (Array.isArray(data.products)) {
-        setProducts(data.products);
-        // Dynamically update categories from fetched products
-        const fetchedCategories = new Set(data.products.map(p => p.category).filter(Boolean));
-        setCategories(prev => Array.from(new Set([...baseCategories, ...fetchedCategories])).sort());
-      }
-    } catch (err) {
-      toast.error('Failed to fetch products.');
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchProducts is provided by useAdminProductsList()
 
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, sortBy, sortOrder, filterCategory, filterFeatured]);
+  // Paging reset handled by hook
 
-  // Sorting logic
-  const sortedProducts = React.useMemo(() => {
-    let filtered = products.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  // Sorting handled by hook
 
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === filterCategory);
-    }
-    if (filterFeatured === 'featured') {
-      filtered = filtered.filter(p => p.isFeatured);
-    } else if (filterFeatured === 'not') {
-      filtered = filtered.filter(p => !p.isFeatured);
-    }
+  // Selection syncing handled by hook
 
-    let sorted = [...filtered];
+  // Pagination handled by hook
 
-    if (sortBy === "name") {
-      sorted.sort((a, b) =>
-        sortOrder === "asc"
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name)
-      );
-    } else if (sortBy === "price") {
-      sorted.sort((a, b) =>
-        sortOrder === "asc"
-          ? a.price - b.price
-          : b.price - a.price
-      );
-    } else if (sortBy === "date") {
-      sorted.sort((a, b) =>
-        sortOrder === "asc"
-          ? new Date(a.createdAt) - new Date(b.createdAt)
-          : new Date(b.createdAt) - new Date(a.createdAt)
-      );
-    }
-    return sorted;
-  }, [products, sortBy, sortOrder, searchQuery, filterCategory, filterFeatured]);
+  // Checkbox selectAllRef handled by hook
 
-  // When paginated products change, clear selection that is not on the current page
-  useEffect(() => {
-    const paginatedIds = new Set(paginatedProducts.map(p => p._id));
-    setSelectedProducts(prev => prev.filter(id => paginatedIds.has(id)));
-  }, [currentPage, itemsPerPage, sortedProducts]);
+  // Quick stats for header badges
+  const totalCount = products.length;
+  const featuredCount = products.filter(p => p.isFeatured).length;
+  const outOfStockCount = products.filter(p => !p.quantity || Number(p.quantity) <= 0).length;
 
-  // Pagination logic
-  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
-  const paginatedProducts = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedProducts.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedProducts, currentPage, itemsPerPage]);
-
-  // Checkbox logic
-  const selectAllRef = useRef(null);
-
-  useEffect(() => {
-    if (selectAllRef.current) {
-      const isAllSelected = paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length;
-      const isSomeSelected = selectedProducts.length > 0 && selectedProducts.length < paginatedProducts.length;
-      selectAllRef.current.checked = isAllSelected;
-      selectAllRef.current.indeterminate = isSomeSelected;
-    }
-  }, [selectedProducts, paginatedProducts]);
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const allProductIdsOnPage = paginatedProducts.map(p => p._id);
-      setSelectedProducts(allProductIdsOnPage);
-    } else {
-      setSelectedProducts([]);
-    }
-  };
-
-  const handleSelectOne = (e, productId) => {
-    if (e.target.checked) {
-      setSelectedProducts(prev => [...prev, productId]);
-    } else {
-      setSelectedProducts(prev => prev.filter(id => id !== productId));
-    }
-  };
+  // Selection handlers provided by hook
 
   const handleNewImageChange = (e) => {
     const file = e.target.files[0];
@@ -299,28 +212,7 @@ const ProductsTab = ({ isDarkMode }) => {
     setNewImagePreview(null);
   };
 
-  const handleDeleteClick = (productId, productName) => {
-    setItemToDelete({ type: 'single', id: productId, name: productName });
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleToggleFeatured = async (productId) => {
-    try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${productId}/toggle-featured`, {
-        method: 'PATCH',
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(`Product ${data.product.isFeatured ? 'is now featured' : 'is no longer featured'}.`);
-        setProducts(prev => prev.map(p => p._id === productId ? data.product : p));
-      } else {
-        toast.error(data.message || 'Failed to update status.');
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Server error while toggling featured status.');
-    }
-  };
+  // Delete click and toggle featured provided by hook
 
   const handleDeleteCategory = (categoryToDelete) => {
     // Check if any product is using this category
@@ -367,7 +259,7 @@ const ProductsTab = ({ isDarkMode }) => {
       } else {
         toast.error(data.message || 'Failed to move products.');
       }
-    } catch (err) {
+    } catch {
       toast.error('A server error occurred while moving products.');
     }
   };
@@ -402,7 +294,7 @@ const ProductsTab = ({ isDarkMode }) => {
       } else {
         toast.error(data.message || 'Failed to update category.');
       }
-    } catch (err) {
+    } catch {
       toast.error('A server error occurred while updating the category.');
     }
   };
@@ -414,55 +306,17 @@ const ProductsTab = ({ isDarkMode }) => {
     }
   };
 
-  const handleBulkDelete = () => {
-    setItemToDelete({ type: 'bulk', count: selectedProducts.length, ids: selectedProducts });
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const confirmDeletion = async () => {
-    if (!itemToDelete) return;
-
-    if (itemToDelete.type === 'single') {
-      try {
-        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${itemToDelete.id}`, { method: "DELETE" });
-        if (res.ok) {
-          toast.success(`Product "${itemToDelete.name}" deleted.`);
-          fetchProducts(); // Refetch to update list
-        } else {
-          const data = await res.json();
-          toast.error(data.message || "Failed to delete.");
-        }
-      } catch {
-        toast.error("Server error.");
-      }
-    } else if (itemToDelete.type === 'bulk') {
-      try {
-        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/bulk`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productIds: itemToDelete.ids }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          toast.success(data.message || `${itemToDelete.count} products deleted.`);
-        } else {
-          throw new Error(data.message || 'Bulk delete failed.');
-        }
-      } catch (err) {
-        toast.error(err.message || 'A server error occurred during bulk deletion.');
-      }
-      fetchProducts(); // Refetch products
-    }
-
-    setIsDeleteConfirmOpen(false);
-    setItemToDelete(null);
-    setSelectedProducts([]);
-  };
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Manage Products</h2>
+        <div>
+          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Manage Products</h2>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>Total: {totalCount}</span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`}>Featured: {featuredCount}</span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-800'}`}>Out of stock: {outOfStockCount}</span>
+          </div>
+        </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-grow">
             <Search className="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
@@ -490,113 +344,20 @@ const ProductsTab = ({ isDarkMode }) => {
       </div>
 
       {showAddProductForm && (
-        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-6 mb-8`}>
-          <h3 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add New Product</h3>
-          <form onSubmit={handleNewProductSubmit} className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Image Uploader */}
-            <div className="space-y-4 lg:col-span-1">
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Image</label>
-              <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-300'} border-dashed rounded-md`}>
-                <div className="space-y-1 text-center">
-                  {newImagePreview ? (
-                    <div>
-                      <img
-                        src={getProductImageSrc(newImagePreview || editingProduct?.image)}
-                        alt="Preview" className="object-contain w-auto h-48 mx-auto rounded-md" />
-                      <button type="button" onClick={handleNewRemoveImage} className="mt-2 text-sm text-red-600 hover:text-red-500">Remove Image</button>
-                    </div>
-                  ) : (
-                    <>
-                      <ImageIcon className={`mx-auto h-12 w-12 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                      <div className="flex text-sm text-gray-600">
-                        <label htmlFor="file-upload" className={`relative cursor-pointer rounded-md font-medium ${isDarkMode ? 'text-pink-400 hover:text-pink-300' : 'text-pink-600 hover:text-pink-500'} focus-within:outline-none`}>
-                          <span>Upload a file</span>
-                          <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleNewImageChange} />
-                        </label>
-                        <p className={`pl-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>or drag and drop</p>
-                      </div>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>PNG, JPG, GIF up to 10MB</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Product Details */}
-            <div className="space-y-6 lg:col-span-2">
-              <div>
-                <label htmlFor="productName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
-                <input type="text" id="productName" name="productName" value={addProductFormData.productName || ''} onChange={handleAddFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-              </div>
-              <div>
-                <label htmlFor="description" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
-                <textarea id="description" name="description" rows="4" value={addProductFormData.description || ''} onChange={handleAddFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}></textarea>
-              </div>
-              <div>
-                <label htmlFor="category" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Category</label>
-                {isAddingNewCategory ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="New category name"
-                      value={addProductFormData.category || ''}
-                      onChange={(e) => handleAddFormChange({ target: { name: 'category', value: e.target.value } })}
-                      className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
-                      autoFocus
-                    />
-                    <button type="button" onClick={() => setIsAddingNewCategory(false)} className={`p-2 rounded-md ${isDarkMode ? 'text-gray-400 hover:bg-gray-600' : 'text-gray-500 hover:bg-gray-200'}`}>
-                      <XIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                ) : (
-                  <select
-                    id="category"
-                    name="category"
-                    value={addProductFormData.category || ''}
-                    onChange={handleCategoryChange}
-                    required
-                    className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
-                  >
-                    <option value="" disabled>Select a category</option>
-                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    <option value="__add_new__" className="font-bold text-pink-600">＋ Add New Category</option>
-                  </select>
-                )}
-              </div>
-              <div>
-                <label htmlFor="isFeatured" className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="isFeatured"
-                    name="isFeatured"
-                    checked={addProductFormData.isFeatured || false}
-                    onChange={(e) => handleAddFormChange({ target: { name: 'isFeatured', value: e.target.checked }})}
-                    className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
-                  />
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Mark as Featured Product</span>
-                </label>
-              </div>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="price" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Price (₱)</label>
-                  <input type="number" id="price" name="price" value={addProductFormData.price || ''} onChange={handleAddFormChange} onKeyDown={blockInvalidNumberInput} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-                </div>
-                <div>
-                  <label htmlFor="quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quantity Available</label>
-                  <input type="number" id="quantity" name="quantity" value={addProductFormData.quantity || ''} onChange={handleAddFormChange} onKeyDown={blockInvalidNumberInput} required min="0" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-                </div>
-              </div>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex justify-end lg:col-span-3">
-              <button type="submit" className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
-                <UploadCloud className="w-5 h-5 mr-2" />
-                Add Product
-              </button>
-            </div>
-          </form>
-        </div>
+        <NewProductForm
+          isDarkMode={isDarkMode}
+          categories={categories}
+          addProductFormData={addProductFormData}
+          isAddingNewCategory={isAddingNewCategory}
+          onAddFormChange={handleAddFormChange}
+          onCategoryChange={handleCategoryChange}
+          onImageChange={handleNewImageChange}
+          onImageRemove={handleNewRemoveImage}
+          newImagePreview={newImagePreview}
+          blockInvalidNumberInput={blockInvalidNumberInput}
+          onSubmit={handleNewProductSubmit}
+          onToggleAddCategory={setIsAddingNewCategory}
+        />
       )}
 
       {/* Edit Modal */}
@@ -716,249 +477,65 @@ const ProductsTab = ({ isDarkMode }) => {
       </Transition>
 
       {/* Bulk Edit/Delete Category Modal */}
-      <Transition appear show={showBulkEditModal} as={Fragment}>
-        <Dialog as="div" className="relative z-30" onClose={() => setShowBulkEditModal(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-40" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-full p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className={`w-full max-w-lg transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <Dialog.Title as="h3" className={`text-lg font-medium leading-6 flex items-center ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>
-                    <AlertTriangle className="w-6 h-6 mr-2" />
-                    Category In Use
-                  </Dialog.Title>
-                  <div className="mt-4">
-                    <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                      The category "<strong>{categoryToDelete}</strong>" is currently assigned to <strong>{productsToMove.length}</strong> product(s).
-                      To delete it, please move these products to another category first.
-                    </p>
-                    <div className="mt-4">
-                      <label htmlFor="new-category-select" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Move products to:
-                      </label>
-                      <select
-                        id="new-category-select"
-                        value={newCategoryForMove}
-                        onChange={(e) => setNewCategoryForMove(e.target.value)}
-                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
-                      >
-                        <option value="" disabled>Select a new category</option>
-                        {categories.filter(c => c !== categoryToDelete).map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end mt-6 space-x-2">
-                    <button type="button" onClick={() => setShowBulkEditModal(false)} className={`px-4 py-2 text-sm font-medium rounded-md ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>
-                      Cancel
-                    </button>
-                    <button type="button" onClick={handleBulkMoveAndDelete} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50" disabled={!newCategoryForMove}>
-                      Move and Delete
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      <BulkMoveCategoryModal
+        isOpen={showBulkEditModal}
+        isDarkMode={isDarkMode}
+        categoryToDelete={categoryToDelete}
+        productsCount={productsToMove.length}
+        categories={categories.filter(c => c !== categoryToDelete)}
+        newCategoryForMove={newCategoryForMove}
+        onChangeNewCategoryForMove={setNewCategoryForMove}
+        onCancel={() => setShowBulkEditModal(false)}
+        onConfirm={handleBulkMoveAndDelete}
+      />
 
       {/* Manage Categories Modal */}
-      <Transition appear show={isManageCategoriesOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-20" onClose={() => setIsManageCategoriesOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-30" />
-          </Transition.Child>
+      <ManageCategoriesModal
+        isOpen={isManageCategoriesOpen}
+        isDarkMode={isDarkMode}
+        categories={categories}
+        baseCategories={baseCategories}
+        editingCategory={editingCategory}
+        newCategoryName={newCategoryName}
+        onStartEditCategory={handleEditCategory}
+        onChangeNewCategory={setNewCategoryName}
+        onDeleteCategory={handleDeleteCategory}
+        onSaveCategoryEdit={handleSaveCategoryEdit}
+        onCancelCategoryEdit={handleCancelCategoryEdit}
+        onClose={() => setIsManageCategoriesOpen(false)}
+      />
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-full p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <Dialog.Title as="h3" className={`text-lg font-medium leading-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Manage Categories
-                  </Dialog.Title>
-                  <div className="mt-4 space-y-2">
-                    {categories.map(cat => (
-                      <div key={cat} className="flex items-center justify-between p-2 rounded-md group hover:bg-gray-100 dark:hover:bg-gray-700">
-                        {editingCategory === cat ? (
-                          <input
-                            type="text"
-                            value={newCategoryName}
-                            onChange={(e) => setNewCategoryName(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSaveCategoryEdit()}
-                            className={`flex-grow text-sm rounded-md ${isDarkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
-                            autoFocus
-                          />
-                        ) : (
-                          <span className={isDarkMode ? 'text-gray-300' : 'text-gray-800'}>{cat}</span>
-                        )}
-                        {!baseCategories.includes(cat) && !editingCategory && (
-                          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
-                            <button onClick={() => handleEditCategory(cat)} title={`Edit "${cat}"`} className="text-blue-500 hover:text-blue-700"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => handleDeleteCategory(cat)} title={`Delete "${cat}"`} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                        )}
-                        {editingCategory === cat && (
-                          <div className="flex items-center space-x-2">
-                            <button onClick={handleSaveCategoryEdit} className="text-green-500 hover:text-green-700"><Check className="w-5 h-5" /></button>
-                            <button onClick={handleCancelCategoryEdit} className="text-gray-500 hover:text-gray-700"><X className="w-5 h-5" /></button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-6">
-                    <button type="button" onClick={() => setIsManageCategoriesOpen(false)} className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500 focus-visible:ring-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-blue-500'}`}>
-                      Close
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
-
-      {/* Manage Categories Modal */}
-      <Transition appear show={isManageCategoriesOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-20" onClose={() => setIsManageCategoriesOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-30" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-full p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <Dialog.Title as="h3" className={`text-lg font-medium leading-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Manage Categories
-                  </Dialog.Title>
-                  <div className="mt-4 space-y-2">
-                    {categories.map(cat => (
-                      <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span className={isDarkMode ? 'text-gray-300' : 'text-gray-800'}>{cat}</span>
-                        {!baseCategories.includes(cat) && (
-                          <button onClick={() => handleDeleteCategory(cat)} title={`Delete "${cat}"`} className="text-red-500 hover:text-red-700">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-6">
-                    <button type="button" onClick={() => setIsManageCategoriesOpen(false)} className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500 focus-visible:ring-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-blue-500'}`}>
-                      Close
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      
 
       {/* Delete Confirmation Modal */}
-      <Transition appear show={isDeleteConfirmOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-30" onClose={() => setIsDeleteConfirmOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-40" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-full p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <Dialog.Title as="h3" className={`text-lg font-medium leading-6 flex items-center ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                    <AlertTriangle className="w-6 h-6 mr-2" />
-                    Confirm Deletion
-                  </Dialog.Title>
-                  <div className="mt-4">
-                    <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                      Are you sure you want to delete {itemToDelete?.type === 'bulk' ? `${itemToDelete.count} products` : `"${itemToDelete?.name}"`}? This action cannot be undone.
-                    </p>
-                  </div>
-                  <div className="flex justify-end mt-6 space-x-2">
-                    <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} className={`px-4 py-2 text-sm font-medium rounded-md ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>Cancel</button>
-                    <button type="button" onClick={confirmDeletion} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Delete</button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      <DeleteConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        isDarkMode={isDarkMode}
+        itemToDelete={itemToDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={confirmDeletion}
+      />
 
       {loading ? (
-        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading products...</p>
+        <ProductsTableSkeleton isDarkMode={isDarkMode} />
+      ) : sortedProducts.length === 0 ? (
+        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-10 text-center`}>
+          <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-3`}>No products found.</p>
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <button
+              onClick={() => setSearchQuery('')}
+              className={`px-3 py-1.5 rounded-md border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            >
+              Clear search
+            </button>
+            <button
+              onClick={() => setShowAddProductForm(true)}
+              className="px-3 py-1.5 rounded-md bg-pink-600 text-white hover:bg-pink-700"
+            >
+              Add a product
+            </button>
+          </div>
+        </div>
       ) : (
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow`}>
           {/* Bulk Actions Bar */}
@@ -979,103 +556,21 @@ const ProductsTab = ({ isDarkMode }) => {
             </div>
           )}
           <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <tr>
-                <th className="px-6 py-3">
-                  <input type="checkbox" ref={selectAllRef} onChange={handleSelectAll} className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600" />
-                </th>
-                <th
-                  className={`px-6 py-3 text-left text-xs font-medium cursor-pointer select-none ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                  onClick={() => {
-                    if (sortBy === "name") setSortOrder(o => o === "asc" ? "desc" : "asc");
-                    else { setSortBy("name"); setSortOrder("asc"); }
-                  }}
-                  title="Sort by Product Name"
-                >
-                  Name{sortBy === "name" && (sortOrder === "asc" ? " ↑" : " ↓")}
-                </th>
-                <th
-                  className={`px-6 py-3 text-left text-xs font-medium cursor-pointer select-none ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                  onClick={() => {
-                    if (sortBy === "price") {
-                      setSortOrder(o => o === "asc" ? "desc" : "asc");
-                    } else { setSortBy("price"); setSortOrder("asc"); }
-                  }}
-                  title="Sort by Price"
-                >
-                  Price{sortBy === "price" && (sortOrder === "asc" ? " ↑" : " ↓")}
-                </th>
-                <th
-                  className={`px-6 py-3 text-left text-xs font-medium cursor-pointer select-none ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                  onClick={() => {
-                    if (sortBy === "date") setSortOrder(o => o === "asc" ? "desc" : "asc");
-                    else { setSortBy("date"); setSortOrder("desc"); }
-                  }}
-                  title="Sort by Date Added"
-                >
-                  Date Added{sortBy === "date" && (sortOrder === "asc" ? " ↑" : " ↓")}
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                  Category
-                </th>
-                <th className={`px-6 py-3 text-center text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                  Featured
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`${isDarkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
-              {paginatedProducts.map(product => (
-                <tr key={product._id} className={`${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'} ${selectedProducts.includes(product._id) ? (isDarkMode ? 'bg-pink-900/20' : 'bg-pink-50') : ''}`}>
-                  <td className="px-6 py-4">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedProducts.includes(product._id)}
-                      onChange={(e) => handleSelectOne(e, product._id)}
-                      className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600" />
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                    {product.name}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                    ₱{parseFloat(product.price).toLocaleString()}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {new Date(product.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {product.category}
-                  </td>
-                  <td className="px-6 py-4 text-center whitespace-nowrap">
-                    <button onClick={() => handleToggleFeatured(product._id)} title="Toggle Featured">
-                      <Star 
-                        className={`w-5 h-5 transition-colors ${
-                          product.isFeatured ? 'text-yellow-400 fill-current' : 'text-gray-400 hover:text-yellow-300'
-                        }`} 
-                      />
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                    <button
-                      onClick={() => handleEditClick(product)}
-                      className="mr-2 text-pink-600 hover:text-pink-800"
-                      title="Edit Product"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(product._id, product.name)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete Product"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <ProductsTable
+              isDarkMode={isDarkMode}
+              paginatedProducts={paginatedProducts}
+              selectedProducts={selectedProducts}
+              selectAllRef={selectAllRef}
+              handleSelectAll={handleSelectAll}
+              handleSelectOne={handleSelectOne}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              setSortBy={setSortBy}
+              setSortOrder={setSortOrder}
+              handleEditClick={handleEditClick}
+              handleDeleteClick={handleDeleteClick}
+              handleToggleFeatured={handleToggleFeatured}
+            />
           </div>
         </div>
       )}
