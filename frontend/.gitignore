@@ -5,6 +5,9 @@
 /dist
 /build
 
+# TypeScript
+*.tsbuildinfo
+
 # Environment Variables
 # This file contains sensitive information like API keys and database credentials.
 # It should not be committed to version control.

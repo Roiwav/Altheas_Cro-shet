@@ -15,17 +15,19 @@ const {
   cancelOrderProduct, // ✅ Add this import
 } = require("../controllers/orderController");
 
-// Multer setup for proof uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+// Multer setup for proof uploads (memory storage for Cloudinary)
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
   },
 });
-
-const upload = multer({ storage });
 
 // Routes
 router.post("/", upload.single("paymentProof"), createOrder);

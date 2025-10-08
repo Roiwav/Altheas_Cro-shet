@@ -145,6 +145,7 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
 
   // 🟢 Serve uploaded images (proof of payment, etc.)
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
   app.use("/uploads/products", express.static(path.join(__dirname, "uploads", "products")));
   app.use("/uploads/proofs", express.static(path.join(__dirname, "uploads", "proofs")));
 
