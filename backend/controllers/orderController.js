@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
+const cloudinary = require('../config/cloudinary');
 
 // ✅ Create new order
 const createOrder = async (req, res) => {
@@ -21,7 +22,33 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Missing order data." });
     }
 
-    const paymentProofUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    // Upload payment proof to Cloudinary
+    let paymentProofUrl = null;
+
+    if (req.file && req.file.buffer) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream(
+              {
+                folder: 'payment_proofs',
+                resource_type: 'image',
+              },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            )
+            .end(req.file.buffer);
+        });
+        paymentProofUrl = uploadResult.secure_url;
+      } catch (err) {
+        console.error('❌ Cloudinary upload error:', err);
+        return res.status(500).json({ message: 'Failed to upload payment proof' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Payment proof image is required' });
+    }
 
     const newOrder = new Order({
       userId,

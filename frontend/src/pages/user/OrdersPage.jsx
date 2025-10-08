@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser';
+
+import { getMediaUrl } from '../../utils/product.js';
 import { 
   ShoppingBag, 
   Clock, 
@@ -108,7 +110,7 @@ const OrderTracker = ({ status }) => {
   );
 };
 
-// ✅ NEW: Refund Status Component
+// âœ… NEW: Refund Status Component
 const RefundStatus = ({ order }) => {
   if (!order.refundStatus || order.refundStatus === 'Not Required') return null;
 
@@ -359,7 +361,7 @@ const OrdersPage = () => {
                 </div>
               </div>
 
-              {/* ✅ NEW: Status Message */}
+              {/* âœ… NEW: Status Message */}
               {order.statusMessage && (
                 <div className={`px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${
                   order.status === 'rejected' || order.status === 'cancelled' 
@@ -408,7 +410,7 @@ const OrdersPage = () => {
                     </div>
                   </div>
 
-                  {/* ✅ NEW: Refund Status */}
+                  {/* âœ… NEW: Refund Status */}
                   <RefundStatus order={order} />
                 </div>
               )}
@@ -437,7 +439,7 @@ const OrdersPage = () => {
                             </Link>
                             <div className="mt-1 space-y-1">
                               <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Qty: {item.quantity} × {currencyFormatter.format(item.price)}
+                                Qty: {item.quantity} Ã— {currencyFormatter.format(item.price)}
                               </p>
                               {item.color && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Color: {item.color}</p>
@@ -473,10 +475,10 @@ const OrdersPage = () => {
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Payment Proof</h4>
                   <div className="relative inline-block">
                     <img
-                      src={`http://localhost:5001${order.paymentProofUrl}`}
+                      src={getMediaUrl(order.paymentProofUrl)}
                       alt="Payment Proof"
                       className="h-24 w-auto rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => setSelectedImage(`http://localhost:5001${order.paymentProofUrl}`)}
+                      onClick={() => setSelectedImage(getMediaUrl(order.paymentProofUrl))}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = "/images/placeholder-receipt.jpg";
@@ -534,3 +536,4 @@ const OrdersPage = () => {
 };
 
 export default OrdersPage;
+

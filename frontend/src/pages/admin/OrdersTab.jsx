@@ -1,1065 +1,219 @@
-import React, { useState, useEffect, useMemo, Fragment } from 'react';
-import { toast } from 'react-toastify';
-import { Menu, Transition, Dialog } from '@headlessui/react';
-import { 
-  Search, 
-  ArrowUp, 
-  ArrowDown, 
-  ChevronDown, 
-  Clock, 
-  RefreshCw, 
-  Truck, 
-  CheckCircle, 
-  XCircle, 
-  X, 
-  Check, 
-  ArrowLeft, 
-  ArrowRight,
-  Eye,
-  Package,
-  CreditCard,
-  MapPin,
-  User,
-  AlertCircle
-} from 'lucide-react';
-import { Download } from 'lucide-react';
-import { useMediaQuery } from 'react-responsive';
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useMediaQuery } from "react-responsive";
+
+import useOrders from "../../hooks/useOrders.js";
+import OrdersToolbar from "../../components/admin/orders/OrdersToolbar.jsx";
+import OrdersTable from "../../components/admin/orders/OrdersTable.jsx";
+import OrdersCardsMobile from "../../components/admin/orders/OrdersCardsMobile.jsx";
+import PaymentProofModal from "../../components/admin/orders/PaymentProofModal.jsx";
+import OrderDetailsModal from "../../components/admin/orders/OrderDetailsModal.jsx";
+import RejectionModal from "../../components/admin/orders/RejectionModal.jsx";
 
 const OrdersTab = ({ isDarkMode }) => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'descending' });
-  const [statusFilter, setStatusFilter] = useState("");
-  const [selectedOrders, setSelectedOrders] = useState([]);
+  // ======= HOOK: useOrders (handles pagination, filtering, etc.) =======
+  const {
+    orders,
+    loading,
+    searchQuery,
+    setSearchQuery,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    sortConfig,
+    requestSort,
+    statusFilter,
+    setStatusFilter,
+    selectedOrders,
+    setSelectedOrders,
+    paginatedOrders,
+    sortedAndFilteredOrders,
+    totalPages,
+    updateOrderStatus,
+    updateMultipleStatuses,
+    exportToCsv,
+  } = useOrders();
+
+  // ======= LOCAL STATES =======
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedPaymentProof, setSelectedPaymentProof] = useState(null);
-  
-  // ✅ NEW: Rejection modal states
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionOrder, setRejectionOrder] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionReason, setRejectionReason] = useState("");
 
-  // Check for mobile viewport
-  const isMobile = useMediaQuery({ query: '(max-width: 768px)' });
+  // ======= RESPONSIVE CHECK =======
+  const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
 
-  // Helper to format currency
+  // ======= HELPERS =======
   const currencyFormatter = new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
   });
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatDate = (date) =>
+    new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-  };
 
+  // ======= KEEP SELECTED ORDER UPDATED AFTER CHANGES =======
   useEffect(() => {
-    setLoading(true);
-    fetch("http://localhost:5001/api/orders", {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setOrders(Array.isArray(data) ? data : data.orders || []);
-      })
-      .catch((err) => {
-        console.error("Error fetching orders:", err);
-        toast.error("Failed to fetch orders.");
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  // ✅ UPDATED: Enhanced updateOrderStatus function
-  const updateOrderStatus = async (orderId, newStatus, rejectionReason = '') => {
-    const token = localStorage.getItem('token');
-    
-    try {
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
-        method: "PUT",
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          status: newStatus, 
-          rejectionReason,
-          adminName: 'Admin' // You can get this from user context
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to update order status");
-      }
-
-      toast.success(`Order status updated to ${newStatus}`);
-      
-      // Update the orders state
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order._id === orderId ? { ...order, ...data.order } : order
-        )
-      );
-      
-      // Update selected order if modal is open
-      if (selectedOrder && selectedOrder._id === orderId) {
-        setSelectedOrder({ ...selectedOrder, ...data.order });
-      }
-
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error(error.message || "Failed to update order status");
+    if (selectedOrder) {
+      const updated = orders.find((o) => o._id === selectedOrder._id);
+      if (updated) setSelectedOrder(updated);
     }
-  };
+  }, [orders, selectedOrder]);
 
-  const updateMultipleStatuses = (newStatus) => {
-    if (selectedOrders.length === 0) {
-      toast.error("No orders selected.");
-      return;
-    }
-    
-    selectedOrders.forEach(orderId => updateOrderStatus(orderId, newStatus));
-    setSelectedOrders([]);
-  };
-
-  // ✅ NEW: Handle rejection with reason
+  // ======= HANDLE REJECTION =======
   const handleRejectOrder = (order) => {
     setRejectionOrder(order);
-    setRejectionReason('');
+    setRejectionReason("");
     setShowRejectionModal(true);
   };
 
   const confirmRejection = () => {
     if (rejectionOrder) {
-      updateOrderStatus(rejectionOrder._id, 'rejected', rejectionReason);
+      updateOrderStatus(rejectionOrder._id, "rejected", rejectionReason);
       setShowRejectionModal(false);
       setRejectionOrder(null);
-      setRejectionReason('');
+      setRejectionReason("");
     }
   };
 
-  const exportToCsv = () => {
-    if (sortedAndFilteredOrders.length === 0) {
-      toast.warn("No orders to export.");
-      return;
-    }
-
-    const headers = [
-      "Order ID",
-      "Order Number",
-      "Customer Name",
-      "Order Date",
-      "Status",
-      "Total",
-      "Shipping Fee",
-      "Payment Method",
-      "Products",
-      "Shipping Address",
-      "Rejection Reason"
-    ];
-
-    const rows = sortedAndFilteredOrders.map(order => {
-      // Safely escape commas within fields by wrapping them in double quotes
-      const escapeCsvField = (field) => {
-        const str = String(field || '').replace(/"/g, '""');
-        return `"${str}"`;
-      };
-
-      const productDetails = order.products?.map(p => `${p.name} (Qty: ${p.quantity})`).join('; ') || 'N/A';
-      const shippingAddr = order.shippingAddress
-        ? `${order.shippingAddress.line1}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}`
-        : 'N/A';
-
-      return [
-        order._id,
-        order.orderNumber || 'N/A',
-        escapeCsvField(order.username),
-        new Date(order.createdAt).toISOString(),
-        order.status,
-        order.total || 0,
-        order.shippingFee || 0,
-        order.paymentMethod,
-        escapeCsvField(productDetails),
-        escapeCsvField(shippingAddr),
-        escapeCsvField(order.rejectionReason)
-      ].join(',');
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `orders-export-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Orders exported successfully!");
-  };
-
-  const searchedOrders = useMemo(() => {
-    if (!orders) return [];
-    const trimmedQuery = searchQuery.trim();
-    if (!trimmedQuery) return orders;
-    const query = trimmedQuery.toLowerCase();
-    
-    return orders.filter(order => {
-      if (!order) return false;
-      
-      // Search in order number/ID
-      if (order.orderNumber?.toLowerCase().includes(query)) return true;
-      if (order._id?.toLowerCase().includes(query)) return true;
-      
-      // Search in customer info
-      if (order.username?.toLowerCase().includes(query)) return true;
-      if (order.userId?.email?.toLowerCase().includes(query)) return true;
-      
-      // Search in status
-      if (order.status?.toLowerCase().includes(query)) return true;
-      
-      // Search in products
-      if (order.products?.some(p => p.name?.toLowerCase().includes(query))) return true;
-      
-      // Search in address
-      if (order.shippingAddress) {
-        const { line1, city, state, postalCode, country } = order.shippingAddress;
-        if ([line1, city, state, postalCode, country].some(field => 
-          field && field.toLowerCase().includes(query)
-        )) return true;
-      }
-      
-      // Search in payment method
-      if (order.paymentMethod?.toLowerCase().includes(query)) return true;
-      
-      // Search in total
-      if (order.total?.toString().includes(query)) return true;
-      
-      return false;
-    });
-  }, [orders, searchQuery]);
-
-  const filteredOrders = useMemo(() => {
-    if (!statusFilter) return searchedOrders;
-    return searchedOrders.filter(order => order.status?.toLowerCase() === statusFilter.toLowerCase());
-  }, [searchedOrders, statusFilter]);
-
-  const sortedAndFilteredOrders = useMemo(() => {
-    if (!sortConfig.key) return filteredOrders;
-    return [...filteredOrders].sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
-      
-      if (sortConfig.key === 'createdAt') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      } else if (['total', 'shippingFee'].includes(sortConfig.key)) {
-        aValue = parseFloat(aValue) || 0;
-        bValue = parseFloat(bValue) || 0;
-      } else {
-        aValue = String(aValue || '').toLowerCase();
-        bValue = String(bValue || '').toLowerCase();
-      }
-      
-      if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-      return 0;
-    });
-  }, [filteredOrders, sortConfig]);
-
-  const paginatedOrders = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedAndFilteredOrders.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedAndFilteredOrders, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(sortedAndFilteredOrders.length / itemsPerPage);
-
-  const requestSort = (key) => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-    setCurrentPage(1);
-  };
-
-  const StatusBadge = ({ status }) => {
-    const statusLower = (status || 'pending').toLowerCase();
-    const statusClasses = {
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-      processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-      shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-      delivered: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-      rejected: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-      cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    };
-    
-    return (
-      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[statusLower] || statusClasses.pending}`}>
-        {status || 'Pending'}
-      </span>
-    );
-  };
-
-  // ✅ UPDATED: Enhanced renderActions with separate reject option
-  const renderActions = (order) => {
-    const statusOptions = [
-      { value: 'pending', label: 'Mark as Pending', icon: Clock, color: 'text-yellow-500' },
-      { value: 'processing', label: 'Mark as Processing', icon: RefreshCw, color: 'text-blue-500' },
-      { value: 'shipped', label: 'Mark as Shipped', icon: Truck, color: 'text-purple-500' },
-      { value: 'delivered', label: 'Mark as Delivered', icon: CheckCircle, color: 'text-green-500' },
-      { value: 'cancelled', label: 'Cancel Order', icon: X, color: 'text-gray-500' },
-    ];
-    
-    return (
-      <div className="flex items-center space-x-2">
-        {/* View Details Button */}
-        <button
-          onClick={() => {
-            setSelectedOrder(order);
-            setShowOrderModal(true);
-          }}
-          className={`p-2 rounded-lg transition-colors ${
-            isDarkMode 
-              ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          }`}
-          title="View order details"
-        >
-          <Eye className="w-4 h-4" />
-        </button>
-
-        {/* Status Actions Menu */}
-        <Menu as="div" className="relative inline-block text-left">
-          <Menu.Button className={`inline-flex items-center justify-center rounded-md border shadow-sm px-3 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-            Actions
-            <ChevronDown className="w-4 h-4 ml-1" />
-          </Menu.Button>
-          
-          <Transition as={Fragment}>
-            <Menu.Items className={`absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-              <div className="px-1 py-1">
-                {statusOptions.map((status) => {
-                  const Icon = status.icon;
-                  return (
-                    <Menu.Item key={status.value}>
-                      {({ active }) => (
-                        <button 
-                          onClick={() => updateOrderStatus(order._id, status.value)} 
-                          className={`${active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-200' : 'text-gray-700')} group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                        >
-                          <Icon className={`mr-3 h-4 w-4 ${status.color}`} />
-                          {status.label}
-                          {order.status === status.value && <Check className="w-4 h-4 ml-auto text-green-500" />}
-                        </button>
-                      )}
-                    </Menu.Item>
-                  );
-                })}
-                
-                {/* ✅ Separate Reject option with reason */}
-                <Menu.Item>
-                  {({ active }) => (
-                    <button 
-                      onClick={() => handleRejectOrder(order)} 
-                      className={`${active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-200' : 'text-gray-700')} group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                    >
-                      <XCircle className="w-4 h-4 mr-3 text-red-500" />
-                      Reject Order
-                      {order.status === 'rejected' && <Check className="w-4 h-4 ml-auto text-green-500" />}
-                    </button>
-                  )}
-                </Menu.Item>
-              </div>
-            </Menu.Items>
-          </Transition>
-        </Menu>
-      </div>
-    );
-  };
-
+  // ======= PAGINATION UI =======
   const renderPagination = () => (
     <div className="flex items-center space-x-2">
-      <button 
-        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-        disabled={currentPage === 1} 
-        className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-          isDarkMode 
-            ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 disabled:opacity-50' 
-            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+      <button
+        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+        disabled={currentPage === 1}
+        className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:ring-2 focus:ring-pink-500 ${
+          isDarkMode
+            ? "bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 disabled:opacity-50"
+            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         }`}
       >
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        Previous
+        <ArrowLeft className="w-4 h-4 mr-1" /> Previous
       </button>
-      
-      <span className={`text-sm px-3 py-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+
+      <span
+        className={`text-sm px-3 py-1.5 ${
+          isDarkMode ? "text-gray-300" : "text-gray-700"
+        }`}
+      >
         {currentPage} of {totalPages}
       </span>
-      
-      <button 
-        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-        disabled={currentPage === totalPages || totalPages === 0} 
-        className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-          isDarkMode 
-            ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 disabled:opacity-50' 
-            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+
+      <button
+        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+        disabled={currentPage === totalPages || totalPages === 0}
+        className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:ring-2 focus:ring-pink-500 ${
+          isDarkMode
+            ? "bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 disabled:opacity-50"
+            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         }`}
       >
-        Next
-        <ArrowRight className="w-4 h-4 ml-1" />
+        Next <ArrowRight className="w-4 h-4 ml-1" />
       </button>
     </div>
   );
 
-  // ✅ UPDATED: Order Details Modal with status messages and refund info
-  const OrderModal = () => {
-    if (!selectedOrder) return null;
-
-    return (
-      <Dialog open={showOrderModal} onClose={() => setShowOrderModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/25" />
-        
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full p-4">
-            <Dialog.Panel className={`mx-auto max-w-4xl w-full rounded-lg p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center justify-between mb-6">
-                <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Order Details - #{selectedOrder.orderNumber || selectedOrder._id?.substring(0, 8)}
-                </Dialog.Title>
-                <button
-                  onClick={() => setShowOrderModal(false)}
-                  className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* ✅ NEW: Status Message Display */}
-              {selectedOrder.statusMessage && (
-                <div className={`mb-6 p-4 rounded-lg border ${
-                  selectedOrder.status === 'rejected' || selectedOrder.status === 'cancelled' 
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
-                    : selectedOrder.status === 'delivered' 
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                }`}>
-                  <div className="flex items-start space-x-3">
-                    <div className={`p-1 rounded-full ${
-                      selectedOrder.status === 'rejected' || selectedOrder.status === 'cancelled' 
-                        ? 'bg-red-100 dark:bg-red-900/30' 
-                        : selectedOrder.status === 'delivered' 
-                        ? 'bg-green-100 dark:bg-green-900/30'
-                        : 'bg-blue-100 dark:bg-blue-900/30'
-                    }`}>
-                      {selectedOrder.status === 'rejected' || selectedOrder.status === 'cancelled' ? (
-                        <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                      ) : selectedOrder.status === 'delivered' ? (
-                        <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${
-                        selectedOrder.status === 'rejected' || selectedOrder.status === 'cancelled' 
-                          ? 'text-red-800 dark:text-red-200' 
-                          : selectedOrder.status === 'delivered' 
-                          ? 'text-green-800 dark:text-green-200'
-                          : 'text-blue-800 dark:text-blue-200'
-                      }`}>
-                        {selectedOrder.statusMessage}
-                      </p>
-                      {selectedOrder.statusUpdatedAt && (
-                        <p className={`text-xs mt-1 ${
-                          selectedOrder.status === 'rejected' || selectedOrder.status === 'cancelled' 
-                            ? 'text-red-600 dark:text-red-400' 
-                            : selectedOrder.status === 'delivered' 
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-blue-600 dark:text-blue-400'
-                        }`}>
-                          Updated {formatDate(selectedOrder.statusUpdatedAt)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                {/* Customer & Order Info */}
-                <div className="space-y-6 lg:col-span-2">
-                  {/* Customer Info */}
-                  <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      <User className="w-4 h-4 mr-2" />
-                      Customer Information
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                        <strong>Name:</strong> {selectedOrder.username}
-                      </p>
-                      <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                        <strong>Order Date:</strong> {formatDate(selectedOrder.createdAt)}
-                      </p>
-                      <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                        <strong>Payment Method:</strong> {selectedOrder.paymentMethod}
-                      </p>
-                      <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                        <strong>Status:</strong> <StatusBadge status={selectedOrder.status} />
-                      </p>
-                      {selectedOrder.rejectionReason && (
-                        <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                          <strong>Rejection Reason:</strong> {selectedOrder.rejectionReason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Products */}
-                  <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      <Package className="w-4 h-4 mr-2" />
-                      Products ({selectedOrder.products?.length || 0})
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedOrder.products?.map((product, idx) => (
-                        <div key={idx} className="flex items-start space-x-3">
-                          <img
-                            src={product.image || '/images/placeholder-product.jpg'}
-                            alt={product.name}
-                            className="object-cover w-12 h-12 border border-gray-300 rounded-lg dark:border-gray-600"
-                            onError={(e) => {e.target.src='/images/placeholder-product.jpg'}}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {product.name}
-                            </p>
-                            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              <p>Qty: {product.quantity} × {currencyFormatter.format(product.price)}</p>
-                              {product.color && <p>Color: {product.color}</p>}
-                              {product.variation && <p>Variation: {product.variation}</p>}
-                            </div>
-                          </div>
-                          <div className={`text-right font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {currencyFormatter.format(product.price * product.quantity)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Shipping Address */}
-                  {selectedOrder.shippingAddress && (
-                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                      <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        <MapPin className="w-4 h-4 mr-2" />
-                        Shipping Address
-                      </h3>
-                      <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        <p>{selectedOrder.shippingAddress.line1}</p>
-                        {selectedOrder.shippingAddress.line2 && <p>{selectedOrder.shippingAddress.line2}</p>}
-                        <p>
-                          {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
-                        </p>
-                        <p>{selectedOrder.shippingAddress.country}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Payment & Actions */}
-                <div className="space-y-6">
-                  {/* Order Summary */}
-                  <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Order Summary
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className={`flex justify-between ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        <span>Subtotal:</span>
-                        <span>{currencyFormatter.format((selectedOrder.total || 0) - (selectedOrder.shippingFee || 0))}</span>
-                      </div>
-                      <div className={`flex justify-between ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        <span>Shipping:</span>
-                        <span>{currencyFormatter.format(selectedOrder.shippingFee || 0)}</span>
-                      </div>
-                      <div className={`flex justify-between font-semibold text-base pt-2 border-t ${isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'}`}>
-                        <span>Total:</span>
-                        <span>{currencyFormatter.format(selectedOrder.total || 0)}</span>
-                      </div>
-                      
-                      {/* ✅ NEW: Refund Information */}
-                      {selectedOrder.refundStatus && selectedOrder.refundStatus !== 'Not Required' && (
-                        <div className={`mt-3 p-3 rounded-lg border ${
-                          selectedOrder.refundStatus === 'Completed' 
-                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                        }`}>
-                          <p className={`text-sm font-medium ${
-                            selectedOrder.refundStatus === 'Completed' 
-                              ? 'text-green-800 dark:text-green-200' 
-                              : 'text-blue-800 dark:text-blue-200'
-                          }`}>
-                            Refund Status: {selectedOrder.refundStatus}
-                          </p>
-                          {selectedOrder.refundAmount && (
-                            <p className={`text-xs mt-1 ${
-                              selectedOrder.refundStatus === 'Completed' 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-blue-600 dark:text-blue-400'
-                            }`}>
-                              Amount: {currencyFormatter.format(selectedOrder.refundAmount)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Payment Proof */}
-                  {selectedOrder.paymentProofUrl && (
-                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                      <h3 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Payment Proof
-                      </h3>
-                      <div className="relative inline-block cursor-pointer" onClick={() => setSelectedPaymentProof(`http://localhost:5001${selectedOrder.paymentProofUrl}`)}>
-                        <img
-                          src={`http://localhost:5001${selectedOrder.paymentProofUrl}`}
-                          alt="Payment Proof"
-                          className="w-full max-w-xs transition-shadow border border-gray-300 rounded-lg dark:border-gray-600 hover:shadow-md"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/images/placeholder-receipt.jpg";
-                          }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center transition-opacity bg-black bg-opacity-50 rounded-lg opacity-0 hover:opacity-100">
-                          <Eye className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Quick Actions */}
-                  <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <h3 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Quick Actions
-                    </h3>
-                    <div className="space-y-2">
-                      {selectedOrder.status !== 'processing' && (
-                        <button
-                          onClick={() => updateOrderStatus(selectedOrder._id, 'processing')}
-                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
-                        >
-                          Mark as Processing
-                        </button>
-                      )}
-                      {selectedOrder.status !== 'shipped' && (
-                        <button
-                          onClick={() => updateOrderStatus(selectedOrder._id, 'shipped')}
-                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-purple-600 rounded-md hover:bg-purple-700"
-                        >
-                          Mark as Shipped
-                        </button>
-                      )}
-                      {selectedOrder.status !== 'delivered' && (
-                        <button
-                          onClick={() => updateOrderStatus(selectedOrder._id, 'delivered')}
-                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-green-600 rounded-md hover:bg-green-700"
-                        >
-                          Mark as Delivered
-                        </button>
-                      )}
-                      {selectedOrder.status !== 'rejected' && (
-                        <button
-                          onClick={() => handleRejectOrder(selectedOrder)}
-                          className="w-full px-3 py-2 text-sm text-white transition-colors bg-red-600 rounded-md hover:bg-red-700"
-                        >
-                          Reject Order
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Dialog.Panel>
-          </div>
-        </div>
-      </Dialog>
-    );
-  };
-
-  // Payment Proof Modal
-  const PaymentProofModal = () => {
-    if (!selectedPaymentProof) return null;
-
-    return (
-      <Dialog open={!!selectedPaymentProof} onClose={() => setSelectedPaymentProof(null)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/75" />
-        
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full p-4">
-            <div className="relative max-w-4xl max-h-full">
-              <button 
-                onClick={() => setSelectedPaymentProof(null)}
-                className="absolute right-0 z-10 text-white -top-10 hover:text-gray-300"
-              >
-                <X className="w-8 h-8" />
-              </button>
-              <img
-                src={selectedPaymentProof}
-                alt="Payment Proof"
-                className="object-contain max-w-full max-h-full rounded-lg"
-              />
-            </div>
-          </div>
-        </div>
-      </Dialog>
-    );
-  };
-
-  // ✅ NEW: Rejection Modal
-  const RejectionModal = () => {
-    if (!rejectionOrder) return null;
-
-    return (
-      <Dialog open={showRejectionModal} onClose={() => setShowRejectionModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/25" />
-        
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full p-4">
-            <Dialog.Panel className={`mx-auto max-w-md w-full rounded-lg p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Reject Order #{rejectionOrder.orderNumber || rejectionOrder._id?.substring(0, 8)}
-                </Dialog.Title>
-                <button
-                  onClick={() => setShowRejectionModal(false)}
-                  className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Rejection Reason (Optional)
-                </label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="e.g., Product out of stock, Payment issue, Invalid shipping address..."
-                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                  }`}
-                  rows={3}
-                />
-              </div>
-
-              <div className={`p-3 rounded-lg mb-4 ${isDarkMode ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
-                  <strong>Note:</strong> Rejecting this order will automatically process a full refund of {currencyFormatter.format(rejectionOrder.total || 0)} within 5-7 business days.
-                </p>
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowRejectionModal(false)}
-                  className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
-                    isDarkMode 
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmRejection}
-                  className="flex-1 px-4 py-2 font-medium text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
-                >
-                  Reject Order
-                </button>
-              </div>
-            </Dialog.Panel>
-          </div>
-        </div>
-      </Dialog>
-    );
-  };
-
+  // ======= TABLE COLUMNS =======
   const columns = [
-    { key: 'select', label: '', width: 'w-6' },
-    { key: 'orderNumber', label: 'Order ID', width: 'w-24' },
-    { key: 'username', label: 'Customer', width: 'w-32' },
-    { key: 'products', label: 'Products', width: 'w-48' },
-    { key: 'shippingAddress', label: 'Location', width: 'w-32' },
-    { key: 'total', label: 'Total', width: 'w-24' },
-    { key: 'createdAt', label: 'Date', width: 'w-32' },
-    { key: 'status', label: 'Status', width: 'w-28' },
-    { key: null, label: 'Actions', width: 'w-32' },
+    { key: "select", label: "", width: "w-6" },
+    { key: "orderNumber", label: "Order ID", width: "w-24" },
+    { key: "username", label: "Customer", width: "w-32" },
+    { key: "products", label: "Products", width: "w-48" },
+    { key: "shippingAddress", label: "Location", width: "w-32" },
+    { key: "total", label: "Total", width: "w-24" },
+    { key: "createdAt", label: "Date", width: "w-32" },
+    { key: "status", label: "Status", width: "w-28" },
+    { key: null, label: "Actions", width: "w-32" },
   ];
 
+  // ======= RENDER =======
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Orders Management</h2>
-          <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            Manage and track customer orders ({sortedAndFilteredOrders.length} total)
-          </p>
-        </div>
-        
-        <div className="flex flex-col w-full gap-3 md:flex-row md:w-auto">
-          <div className="w-full md:w-64">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-              </div>
-              <input
-                type="text"
-                placeholder="Search orders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-              />
-            </div>
-          </div>
+      {/* Toolbar (Search, Filters, Export, Bulk Update) */}
+      <OrdersToolbar
+        isDarkMode={isDarkMode}
+        totalCount={sortedAndFilteredOrders.length}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        setCurrentPage={setCurrentPage}
+        exportToCsv={exportToCsv}
+        selectedOrders={selectedOrders}
+        updateMultipleStatuses={updateMultipleStatuses}
+      />
 
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className={`block w-full sm:w-40 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${
-              isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="rejected">Rejected</option>
-          </select>
-
-          <button
-            onClick={exportToCsv}
-            className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-              isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </button>
-        </div>
-      </div>
-
-      {selectedOrders.length > 0 && (
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-blue-50 border-blue-200'}`}>
-          <div className="flex flex-wrap gap-2">
-            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              {selectedOrders.length} order(s) selected:
-            </span>
-            <button
-              onClick={() => updateMultipleStatuses("processing")}
-              className="px-3 py-1 text-sm text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600"
-            >
-              Mark as Processing
-            </button>
-            <button
-              onClick={() => updateMultipleStatuses("shipped")}
-              className="px-3 py-1 text-sm text-white transition-colors bg-purple-500 rounded-md hover:bg-purple-600"
-            >
-              Mark as Shipped
-            </button>
-            <button
-              onClick={() => updateMultipleStatuses("delivered")}
-              className="px-3 py-1 text-sm text-white transition-colors bg-green-500 rounded-md hover:bg-green-600"
-            >
-              Mark as Delivered
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Table for Desktop, Cards for Mobile */}
-      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      {/* Table for Desktop / Cards for Mobile */}
+      <div
+        className={`${
+          isDarkMode ? "bg-gray-800" : "bg-white"
+        } rounded-xl shadow-sm border ${
+          isDarkMode ? "border-gray-700" : "border-gray-200"
+        }`}
+      >
         {isMobile ? (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {paginatedOrders.map(order => (
-              <div key={order._id} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-mono text-xs text-gray-500 dark:text-gray-400">#{order.orderNumber || order._id?.substring(0, 8)}</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{order.username}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900 dark:text-white">{currencyFormatter.format(order.total || 0)}</p>
-                    <StatusBadge status={order.status} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-end mt-3">
-                  {renderActions(order)}
-                </div>
-              </div>
-            ))}
-          </div>
+          <OrdersCardsMobile
+            isDarkMode={isDarkMode}
+            paginatedOrders={paginatedOrders}
+            currencyFormatter={currencyFormatter}
+            setSelectedOrder={setSelectedOrder}
+            setShowOrderModal={setShowOrderModal}
+            updateOrderStatus={updateOrderStatus}
+            handleRejectOrder={handleRejectOrder}
+          />
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                <th className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrders(paginatedOrders.map((o) => o._id));
-                      } else {
-                        setSelectedOrders([]);
-                      }
-                    }}
-                    className="border-gray-300 rounded focus:ring-pink-500"
-                  />
-                </th>
-
-                {columns.slice(1).map(col => (
-                  <th key={col.key || 'actions'} className={`px-4 py-3 text-left text-xs font-medium ${col.width} ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {col.key ? (
-                      <button 
-                        onClick={() => requestSort(col.key)} 
-                        className="flex items-center w-full space-x-1 text-left transition-colors hover:text-pink-500"
-                      >
-                        <span className="truncate">{col.label}</span>
-                        {sortConfig.key === col.key && (
-                          sortConfig.direction === 'ascending' 
-                            ? <ArrowUp className="flex-shrink-0 w-3 h-3" /> 
-                            : <ArrowDown className="flex-shrink-0 w-3 h-3" />
-                        )}
-                      </button>
-                    ) : (
-                      <span className="truncate">{col.label}</span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-              {loading ? (
-                <tr>
-                  <td colSpan={columns.length} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <div className="flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Loading orders...
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {searchQuery || statusFilter ? 'No orders match your filters.' : 'No orders found.'}
-                  </td>
-                </tr>
-              ) : (
-                paginatedOrders.map((order) => (
-                  <tr key={order._id} className={`transition-colors ${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrders.includes(order._id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedOrders((prev) => [...prev, order._id]);
-                          } else {
-                            setSelectedOrders((prev) => prev.filter((id) => id !== order._id));
-                          }
-                        }}
-                        className="border-gray-300 rounded focus:ring-pink-500"
-                      />
-                    </td>
-                    
-                    <td className={`px-4 py-3 font-mono text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`} title={order.orderNumber || order._id}>
-                      #{order.orderNumber || order._id?.substring(0, 8)}
-                    </td>
-                    
-                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      <div className="truncate max-w-32" title={order.username}>
-                        {order.username}
-                      </div>
-                    </td>
-                    
-                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                      <div className="space-y-1">
-                        {order.products?.slice(0, 2).map((product, idx) => (
-                          <div key={idx} className="text-xs">
-                            <span className="inline-block truncate max-w-40">{product.name}</span>
-                            <span className="ml-1 text-gray-500">(×{product.quantity})</span>
-                          </div>
-                        ))}
-                        {order.products?.length > 2 && (
-                          <div className="text-xs text-gray-500">
-                            +{order.products.length - 2} more items
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    
-                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      <div className="truncate max-w-32" title={`${order.shippingAddress?.city}, ${order.shippingAddress?.state}`}>
-                        {order.shippingAddress?.city}, {order.shippingAddress?.state}
-                      </div>
-                    </td>
-                    
-                    <td className={`px-4 py-3 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {currencyFormatter.format(order.total || 0)}
-                    </td>
-                    
-                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(order.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: '2-digit'
-                      })}
-                    </td>
-                    
-                    <td className="px-4 py-3">
-                      <StatusBadge status={order.status} />
-                    </td>
-                    
-                    <td className="px-4 py-3">
-                      {renderActions(order)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+          <OrdersTable
+            isDarkMode={isDarkMode}
+            loading={loading}
+            columns={columns}
+            paginatedOrders={paginatedOrders}
+            selectedOrders={selectedOrders}
+            setSelectedOrders={setSelectedOrders}
+            sortConfig={sortConfig}
+            requestSort={requestSort}
+            currencyFormatter={currencyFormatter}
+            setSelectedOrder={setSelectedOrder}
+            setShowOrderModal={setShowOrderModal}
+            updateOrderStatus={updateOrderStatus}
+            handleRejectOrder={handleRejectOrder}
+          />
         )}
-        
+
+        {/* Pagination */}
         {paginatedOrders.length > 0 && (
-          <div className={`px-4 py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col md:flex-row justify-between items-center gap-4`}>
-            <p className={`text-sm text-center md:text-left ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, sortedAndFilteredOrders.length)} to {Math.min(currentPage * itemsPerPage, sortedAndFilteredOrders.length)} of {sortedAndFilteredOrders.length} orders
+          <div
+            className={`px-4 py-3 border-t ${
+              isDarkMode ? "border-gray-700" : "border-gray-200"
+            } flex flex-col md:flex-row justify-between items-center gap-4`}
+          >
+            <p
+              className={`text-sm ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Showing{" "}
+              {Math.min(
+                (currentPage - 1) * itemsPerPage + 1,
+                sortedAndFilteredOrders.length
+              )}{" "}
+              to{" "}
+              {Math.min(
+                currentPage * itemsPerPage,
+                sortedAndFilteredOrders.length
+              )}{" "}
+              of {sortedAndFilteredOrders.length} orders
             </p>
-            
+
             <div className="flex items-center space-x-2">
               <select
                 value={itemsPerPage}
@@ -1067,7 +221,11 @@ const OrdersTab = ({ isDarkMode }) => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className={`text-sm rounded-md border px-2 py-1 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'} focus:ring-pink-500 focus:border-pink-500`}
+                className={`text-sm rounded-md border px-2 py-1 ${
+                  isDarkMode
+                    ? "bg-gray-700 border-gray-600 text-white"
+                    : "bg-white border-gray-300 text-gray-700"
+                } focus:ring-pink-500 focus:border-pink-500`}
               >
                 <option value={5}>5 per page</option>
                 <option value={10}>10 per page</option>
@@ -1080,10 +238,26 @@ const OrdersTab = ({ isDarkMode }) => {
         )}
       </div>
 
-      {/* Modals */}
-      <OrderModal />
-      <PaymentProofModal />
-      <RejectionModal />
+      {/* ======= MODALS ======= */}
+      <OrderDetailsModal
+        open={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        order={selectedOrder}
+        isDarkMode={isDarkMode}
+      />
+      <PaymentProofModal
+        imageUrl={selectedPaymentProof}
+        onClose={() => setSelectedPaymentProof(null)}
+      />
+      <RejectionModal
+        open={showRejectionModal}
+        onClose={() => setShowRejectionModal(false)}
+        order={rejectionOrder}
+        isDarkMode={isDarkMode}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        onConfirm={confirmRejection}
+      />
     </div>
   );
 };
