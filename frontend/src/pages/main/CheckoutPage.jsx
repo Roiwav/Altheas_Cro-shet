@@ -1,4 +1,3 @@
-// src/pages/main/CheckoutPage.jsx (CLEANED - same logic)
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
@@ -16,12 +15,33 @@ import OrderSummaryCard from "../../components/checkout/OrderSummaryCard.jsx";
 import PaymentMethodCard from "../../components/checkout/PaymentMethodCard.jsx";
 import PlaceOrderButton from "../../components/checkout/PlaceOrderButton.jsx";
 
+// Shipping fee/region logic
+const regions = {
+  "Inside Calamba": ["Calamba", "Calamba City"],
+  "Inside Laguna": ["Los Baños", "Cabuyao", "San Pablo", "Biñan", "Sta. Rosa"],
+  "Outside Laguna": ["Cavite", "Batangas", "Rizal"],
+  "Metro Manila": ["Manila", "Quezon City", "Pasig", "Makati", "Taguig", "Mandaluyong", "Pasay"],
+  "Rest of Luzon": ["Baguio", "Dagupan", "La Union", "Tarlac", "Pampanga", "Bulacan", "Nueva Ecija"],
+  "Visayas/Mindanao": ["Cebu City", "Iloilo City", "Davao City", "Cagayan de Oro", "Zamboanga", "Tacloban"]
+};
+const shippingFees = {
+  "Inside Calamba":      { min: 60,   max: 80,   estimated: "2 – 3 days" },
+  "Inside Laguna":       { min: 80,   max: 120,  estimated: "2 – 4 days" },
+  "Outside Laguna":      { min: 150,  max: 200,  estimated: "3 – 6 days" },
+  "Metro Manila":        { min: 120,  max: 180,  estimated: "3 – 5 days" },
+  "Rest of Luzon":       { min: 180,  max: 250,  estimated: "4 – 7 days" },
+  "Visayas/Mindanao":    { min: 250,  max: 400,  estimated: "5 – 10 days" }
+};
+const defaultRegion = "Inside Calamba";
+function getRegionByCity(city) {
+  return Object.keys(regions).find(region => regions[region].includes(city)) || defaultRegion;
+}
+
 export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { removeFromCart, getId } = useCart();
   const { user, isAuthenticated, token } = useUser();
-
 
   const singleProduct = location.state?.product;
   const cartItems = location.state?.cartItems || [];
@@ -36,6 +56,24 @@ export default function CheckoutPage() {
 
   const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
+  // Dynamically derive shipping fee and estimated delivery
+  const [derivedShippingFee, setDerivedShippingFee] = useState(0);
+  const [derivedDeliveryEstimate, setDerivedDeliveryEstimate] = useState("");
+
+  // Watch the (possibly changed) address for shipping calculation
+  useEffect(() => {
+    let addressObj = singleProduct?.shippingAddress || passedShippingAddress;
+    if (addressObj && addressObj.city) {
+      const region = getRegionByCity(addressObj.city);
+      const feeObj = shippingFees[region] || { min: 0, estimated: "N/A" };
+      setDerivedShippingFee(feeObj.min);
+      setDerivedDeliveryEstimate(feeObj.estimated);
+    } else {
+      setDerivedShippingFee(passedShippingFee || 0);
+      setDerivedDeliveryEstimate("N/A");
+    }
+  }, [singleProduct, passedShippingAddress, passedShippingFee]);
+
   useEffect(() => {
     if (checkoutItems.length === 0) {
       toast.error("No items to checkout");
@@ -48,9 +86,8 @@ export default function CheckoutPage() {
     0
   );
 
-  const shippingFee = singleProduct
-    ? singleProduct.shippingFee
-    : passedShippingFee;
+  // Always use the dynamically derived shipping fee
+  const shippingFee = derivedShippingFee;
 
   const totalCost = subtotal + shippingFee;
   const currentAddress = singleProduct
@@ -58,7 +95,7 @@ export default function CheckoutPage() {
     : passedShippingAddress;
 
   const handleChangeAddress = () => {
-    navigate("/", {
+    navigate("/settings", {
       state: {
         activeTab: "addresses",
         returnTo: location.pathname,
@@ -144,12 +181,11 @@ export default function CheckoutPage() {
             variation: item.variation,
           };
         }),
-        shippingAddress: singleProduct
-          ? singleProduct.shippingAddress
-          : passedShippingAddress,
+        shippingAddress: currentAddress,
         shippingFee: shippingFee,
         total: totalCost,
         paymentMethod: paymentMethod,
+        estimatedDelivery: derivedDeliveryEstimate,
       };
 
       formData.append("orderData", JSON.stringify(orderData));
@@ -229,6 +265,7 @@ export default function CheckoutPage() {
             <DeliveryAddressCard
               address={currentAddress}
               shippingFee={shippingFee}
+              estimatedDelivery={derivedDeliveryEstimate}
               onChangeAddress={handleChangeAddress}
             />
 
@@ -255,6 +292,7 @@ export default function CheckoutPage() {
                 shippingFee={shippingFee}
                 totalCost={totalCost}
                 currencyFormatter={currencyFormatter}
+                estimatedDelivery={derivedDeliveryEstimate}
               />
 
               <PaymentMethodCard

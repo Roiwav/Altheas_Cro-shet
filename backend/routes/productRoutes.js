@@ -11,12 +11,12 @@ const {
   bulkUpdateCategory,
   bulkDeleteProducts,
 } = require("../controllers/productController");
- 
+
 const router = express.Router();
 
-// 🖼️ Multer setup for image upload
+// 🖼️ Multer setup for image upload — USE ABSOLUTE PATH
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "/uploads/products"),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, "..", "uploads", "products")),
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}${path.extname(file.originalname)}`);
   },
