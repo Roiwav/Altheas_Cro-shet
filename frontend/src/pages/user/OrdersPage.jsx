@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser';
@@ -216,7 +216,7 @@ const OrdersPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
 
   // Fetch orders function
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user || !token) {
       setLoading(false);
       return;
@@ -238,11 +238,11 @@ const OrdersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token]);
 
   useEffect(() => {
     fetchOrders();
-  }, [user, token]);
+  }, [fetchOrders]);
 
   // Cancel product
   const handleCancelProduct = async (orderId, productId) => {
@@ -264,6 +264,7 @@ const OrdersPage = () => {
           const errorData = await res.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
+          console.error('Failed to parse error response:', e);
           if (res.status === 404) {
             errorMessage = 'This feature is not available yet';
           } else {

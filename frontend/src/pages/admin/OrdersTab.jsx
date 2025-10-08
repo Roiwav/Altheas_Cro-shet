@@ -244,6 +244,7 @@ const OrdersTab = ({ isDarkMode }) => {
         onClose={() => setShowOrderModal(false)}
         order={selectedOrder}
         isDarkMode={isDarkMode}
+        onOpenProof={(url) => setSelectedPaymentProof(url)}
       />
       <PaymentProofModal
         imageUrl={selectedPaymentProof}
