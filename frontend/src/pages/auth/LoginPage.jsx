@@ -19,7 +19,6 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [rememberMe, setRememberMe] = useState(true); // ✅ default true for persistence
 
   // Support both Location object and string for `state.from`
   const rawFrom = location.state?.from;
@@ -39,8 +38,9 @@ export default function LoginPage() {
         // Parse the user data from the URL
         const parsedUser = JSON.parse(decodeURIComponent(user));
 
-        // Store token in localStorage
-        localStorage.setItem("token", token);
+        // ✅ Use sessionStorage to isolate the OAuth login to the current tab
+        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("user", JSON.stringify(parsedUser));
 
         // Call the login function from UserContext with isOAuth flag
         await login(parsedUser, token, { isOAuth: true });
@@ -142,14 +142,10 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.message || "Login failed");
 
       // Save in context + storage
-      login(data.user, data.token);
-      if (rememberMe) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-      } else {
-        sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("user", JSON.stringify(data.user));
-      }
+      // ✅ Use sessionStorage to isolate login state to the current tab
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
+      login(data.user, data.token); // Update context
 
       toast.success("Login successful!");
       // Redirect admins to /admin; others to intended page unless it's admin-only
@@ -233,29 +229,6 @@ export default function LoginPage() {
                 show={showPassword}
                 setShow={setShowPassword}
               />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 transition-colors duration-200 border-gray-300 rounded focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700/50"
-                  />
-                  <label
-                    htmlFor="remember-me"
-                    className="block ml-2 text-sm text-gray-700 dark:text-gray-300"
-                  >
-                    Remember me
-                  </label>
-                </div>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
-                >
-                  Forgot password?
-                </Link>
-              </div>
               <button
                 type="submit"
                 disabled={isLoading}
@@ -270,6 +243,14 @@ export default function LoginPage() {
                   </div>
                 )}
               </button>
+              <div className="text-sm text-center">
+                  <Link
+                    to="/forgot-password"
+                    className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+                  >
+                    Forgot password?
+                  </Link>
+              </div>
             </form>
 
             <div className="mt-6">

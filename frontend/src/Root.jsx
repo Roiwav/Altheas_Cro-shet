@@ -9,8 +9,8 @@ import DarkModeProvider from "./context/DarkModeContext.jsx";
 import { useDarkMode } from "./context/useDarkMode.js";
 import { WishlistCountProvider } from "./context/WishlistCountContext.jsx";
 
-// Get initial user from localStorage
-const initialUser = JSON.parse(localStorage.getItem("user")) || null;
+// ✅ Get initial user from sessionStorage to support multi-tab sessions
+const initialUser = JSON.parse(sessionStorage.getItem("user")) || null;
 
 // Toast Container with dynamic theme
 function DynamicToastContainer() {

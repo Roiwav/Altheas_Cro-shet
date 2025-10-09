@@ -1,6 +1,7 @@
 // src/App.jsx - FIXED
 import { Routes, Route } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import Loader from './components/layout/Loader';
 import AdminRoute from './components/auth/AdminRoute';
@@ -81,10 +82,12 @@ function App() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           
           {/* User-specific Pages */}
-          <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<UserDashboard />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+
           {/* Cart and Checkout */}
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

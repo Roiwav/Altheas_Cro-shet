@@ -57,6 +57,11 @@ const OAuthCallback = () => {
           throw new Error('Invalid user data received');
         }
 
+        // ✅ CRITICAL FIX: Persist the session data for this tab.
+        // This isolates the OAuth session and prevents it from being overwritten by other tabs.
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(parsed));
+
         // Update the auth context
         await login(parsed, token, { isOAuth: true });
         

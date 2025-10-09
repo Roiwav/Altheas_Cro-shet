@@ -19,7 +19,7 @@ import { SERVER_BASE_URL } from '../../utils/product.js';
 export default function AdminPage() {
   const { darkMode: isDarkMode } = useDarkMode();
   const { user } = useUser();
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token"); // ✅ Read from sessionStorage
   const [metrics, setMetrics] = useState({
     revenue: 0,
     incomingOrders: 0,
@@ -61,7 +61,7 @@ export default function AdminPage() {
     credentials: "include", // include cookies if backend uses them
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`, // if JWT
+      Authorization: `Bearer ${sessionStorage.getItem("token")}`, // ✅ Use sessionStorage
     },
   })
     .then((res) => res.json())
