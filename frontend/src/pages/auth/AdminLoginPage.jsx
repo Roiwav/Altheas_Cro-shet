@@ -139,7 +139,7 @@ export default function AdminLoginPage() {
 
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(data.user));
-      login(data.user, data.token);
+      await login(data.user, data.token, { remember: false });
       
       localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
       localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);

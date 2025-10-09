@@ -219,84 +219,79 @@ export const UserProvider = ({ children }) => {
   }, [token, logout]);
 
   // login function (supports JWT and dummy tokens)
-  const login = useCallback((userObj, authToken, options = { remember: true, isOAuth: false }) => {
-    const { remember = true, isOAuth = false } = options;
-    try {
-      if (!authToken) throw new Error('No authentication token provided');
-      if (!userObj) throw new Error('No user data provided');
+  const login = useCallback((userObj, authToken, options = { remember: false, isOAuth: false }) => {
+    return new Promise((resolve, reject) => {
+      const { remember = false, isOAuth = false } = options;
+      try {
+        if (!authToken) throw new Error('No authentication token provided');
+        if (!userObj) throw new Error('No user data provided');
 
-      let tokenValidationPassed = false;
-      if (authToken === 'dummy-admin-token' || authToken.startsWith('dummy-')) {
-        tokenValidationPassed = true;
-      } else if (typeof authToken === 'string' && authToken.includes('.')) {
-        const isExpired = isTokenExpired(authToken, true);
-        tokenValidationPassed = true; // Allow expired tokens for debugging
-      } else {
-        tokenValidationPassed = true;
-      }
+        let tokenValidationPassed = false;
+        if (authToken === 'dummy-admin-token' || authToken.startsWith('dummy-')) {
+          tokenValidationPassed = true;
+        } else if (typeof authToken === 'string' && authToken.includes('.')) {
+          const isExpired = isTokenExpired(authToken, true);
+          tokenValidationPassed = true; // Allow expired tokens for debugging
+        } else {
+          tokenValidationPassed = true;
+        }
 
-      let processedUser = userObj;
+        let processedUser = userObj;
 
-      if (isOAuth) {
-        processedUser = {
-          ...userObj,
-          role: userObj.role || 'user',
-          isOAuth: true
-        };
-      } else if (userObj.addresses) {
-        processedUser = {
-          ...userObj,
-          addresses: userObj.addresses.map(addr => ({
-            ...addr,
-            id: addr._id || addr.id || crypto.randomUUID()
-          }))
-        };
-      }
-      if (typeof processedUser?.preferences?.darkMode === 'boolean') {
-        applyDarkMode(processedUser.preferences.darkMode);
-      }
-      if (authToken !== 'dummy-admin-token' && !authToken.startsWith('dummy-')) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-      }
-      setUser(processedUser);
-      setToken(authToken);
-      setIsAuthenticated(true);
+        if (isOAuth) {
+          processedUser = {
+            ...userObj,
+            role: userObj.role || 'user',
+            isOAuth: true
+          };
+        } else if (userObj.addresses) {
+          processedUser = {
+            ...userObj,
+            addresses: userObj.addresses.map(addr => ({
+              ...addr,
+              id: addr._id || addr.id || crypto.randomUUID()
+            }))
+          };
+        }
+        if (typeof processedUser?.preferences?.darkMode === 'boolean') {
+          applyDarkMode(processedUser.preferences.darkMode);
+        }
+        if (authToken !== 'dummy-admin-token' && !authToken.startsWith('dummy-')) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+        }
+        setUser(processedUser);
+        setToken(authToken);
+        setIsAuthenticated(true);
 
-      const userDataString = JSON.stringify(processedUser);
-      if (remember) {
-        localStorage.setItem("user", userDataString);
-        localStorage.setItem("token", authToken);
-        sessionStorage.removeItem("user");
-        sessionStorage.removeItem("token");
-      } else {
-        sessionStorage.setItem("user", userDataString);
-        sessionStorage.setItem("token", authToken);
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-      }
-      localStorage.removeItem("userAddresses");
+        const userDataString = JSON.stringify(processedUser);
+        if (remember) {
+          localStorage.setItem("user", userDataString);
+          localStorage.setItem("token", authToken);
+          sessionStorage.removeItem("user");
+          sessionStorage.removeItem("token");
+        } else {
+          sessionStorage.setItem("user", userDataString);
+          sessionStorage.setItem("token", authToken);
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
+        }
+        localStorage.removeItem("userAddresses");
 
-      // Only show toast for admin or OAuth login
-      if (
-        authToken === 'dummy-admin-token' ||
-        (options && options.isOAuth)
-      ) {
-        toast.success("Login successful!");
+        resolve(processedUser);
+      } catch (error) {
+        clearAuthData();
+        let errorMessage = "Login failed. Please try again.";
+        if (error.message.includes('No authentication token')) {
+          errorMessage = "Authentication failed - no token received from server.";
+        } else if (error.message.includes('No user data')) {
+          errorMessage = "Authentication failed - no user data received from server.";
+        } else if (error.message.includes('expired')) {
+          errorMessage = "Authentication token has expired. Please try logging in again.";
+        }
+        toast.error(errorMessage);
+        reject(error);
       }
-      return processedUser;
-    } catch (error) {
-      clearAuthData();
-      let errorMessage = "Login failed. Please try again.";
-      if (error.message.includes('No authentication token')) {
-        errorMessage = "Authentication failed - no token received from server.";
-      } else if (error.message.includes('No user data')) {
-        errorMessage = "Authentication failed - no user data received from server.";
-      } else if (error.message.includes('expired')) {
-        errorMessage = "Authentication token has expired. Please try logging in again.";
-      }
-      toast.error(errorMessage);
-      throw error;
-    }
+    });
   }, [isTokenExpired, clearAuthData]);
 
   const updateUser = useCallback((updatedFields) => {
