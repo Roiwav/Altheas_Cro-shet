@@ -1,8 +1,8 @@
 import React, { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion as Motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../../hooks/useUser';
-import { ArrowLeft, Smartphone, QrCode, X, Maximize2, Minimize2, ShoppingCart, Check, Plus, Minus, Info, Loader2 } from 'lucide-react';
+import { QrCode, X, ShoppingCart, Check, Plus, Minus, Info, Loader2 } from 'lucide-react';
 import { useCart } from '../../context/cart-context.js';
 import { toast } from 'react-toastify';
 
@@ -62,7 +62,9 @@ const FlowerViewerPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false); // To prevent race conditions on screenshot
 
-  const arViewerRef = useRef(null);
+  // Separate refs for desktop and mobile to avoid conflicts
+  const desktopArViewerRef = useRef(null);
+  const mobileArViewerRef = useRef(null);
 
   // State to force remounting the Canvas on WebGL context loss.
   const [canvasKey, setCanvasKey] = useState(Date.now());
@@ -72,13 +74,23 @@ const FlowerViewerPage = () => {
     setShowQR(true);
   }, []);
 
-  // ---- SNIPPET: ACTUAL PRODUCT OBJECT (variation: arrangement) ----
+  // Helper to get the correct AR viewer ref based on screen size
+  const getActiveArViewerRef = useCallback(() => {
+    // Check if we're on mobile view (window width < 1024px for lg breakpoint)
+    const isMobile = window.innerWidth < 1024;
+    return isMobile ? mobileArViewerRef : desktopArViewerRef;
+  }, []);
+
+  // ---- DEBUG-ENHANCED SNIPPET: ACTUAL PRODUCT OBJECT (variation: arrangement) ----
   const createProductObject = useCallback(async () => {
+    const activeRef = getActiveArViewerRef();
+    console.log('Creating product object - activeRef.current:', activeRef.current);
+    
     const pricePerItem = FLOWER_PRICES[flowerType]?.[arrangement] || 0;
     const colorName = COLOR_NAMES[color.toLowerCase()] || 'Custom';
-    const image = arViewerRef.current ? await arViewerRef.current.captureScreenshot() : '/images/placeholder-flower.png';
+    const image = activeRef.current ? await activeRef.current.captureScreenshot() : '/images/placeholder-flower.png';
 
-    return {
+    const productObj = {
       productId: `custom-${flowerType}-${arrangement}-${color.replace('#', '')}`,
       name: `${flowerType.charAt(0).toUpperCase() + flowerType.slice(1)} (${arrangement})`,
       price: pricePerItem,
@@ -87,7 +99,9 @@ const FlowerViewerPage = () => {
       image: image,
       variation: arrangement, // 'single' or 'bouquet'
     };
-  }, [flowerType, arrangement, color, quantity]);
+    console.log('[DEBUG custom product object]', productObj);
+    return productObj;
+  }, [flowerType, arrangement, color, quantity, getActiveArViewerRef]);
   // ---------------------------------------------------------------
 
   // Handle place order
@@ -106,14 +120,19 @@ const FlowerViewerPage = () => {
 
   // Handle adding the customized item to the cart
   const handleAddToCart = useCallback(async () => {
+    const activeRef = getActiveArViewerRef();
+    console.log('handleAddToCart called - activeRef.current:', activeRef.current);
+    
     const productToAdd = await createProductObject();
+    console.log('[DEBUG handleAddToCart productToAdd]', productToAdd);
     try {
       await addToCart(productToAdd);
+      toast.success("Added to cart!");
     } catch (error) {
       toast.error("Failed to add item to cart.");
       console.error("Add to cart error:", error);
     }
-  }, [createProductObject, addToCart]);
+  }, [createProductObject, addToCart, getActiveArViewerRef]);
 
   // Effect to scroll to the top of the page when the component mounts.
   useEffect(() => {
@@ -182,8 +201,8 @@ const FlowerViewerPage = () => {
                 </div>
               }>
                 <ARViewer
-                  key={canvasKey}
-                  ref={arViewerRef}
+                  key={`desktop-${canvasKey}`}
+                  ref={desktopArViewerRef}
                   flowerType={flowerType}
                   color={color}
                   arrangement={arrangement}
@@ -337,7 +356,13 @@ const FlowerViewerPage = () => {
               </div>
             </div>
           }>
-            <ARViewer key={canvasKey} ref={arViewerRef} flowerType={flowerType} color={color} arrangement={arrangement} />
+            <ARViewer 
+              key={`mobile-${canvasKey}`} 
+              ref={mobileArViewerRef} 
+              flowerType={flowerType} 
+              color={color} 
+              arrangement={arrangement} 
+            />
           </Suspense>
           <div className="absolute bottom-0 left-0 right-0 p-2 text-center bg-black/40 backdrop-blur-sm">
             <p className="text-xs text-white/90">
