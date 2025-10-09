@@ -8,10 +8,10 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import productList from "../../data/productList";
-import productImages from "../../assets/images/productImages.cloudinary.js";
 import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 import { getWishlist, toggleWishlist } from "../../utils/wishlist";
+import { SERVER_BASE_URL, getProductImageSrc as getUploadedImage } from "../../utils/product.js";
 import { useWishlistCount } from "../../context/useWishlistCount.js";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
@@ -120,7 +120,7 @@ export default function ShopPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("http://localhost:5001/api/v1/products?isActive=true");
+        const response = await fetch(`${SERVER_BASE_URL}/api/v1/products?isActive=true`);
         const data = await response.json();
         if (response.ok && Array.isArray(data.products)) {
           setProductsFromBackend(data.products);
@@ -283,17 +283,35 @@ export default function ShopPage() {
 
   // Safely resolve image
   const getImageSrc = (product) => {
-    if (productImages?.[product.id]) return productImages[product.id];
-    if (productImages?.[String(product.id)]) return productImages[String(product.id)];
-    if (product.image && typeof product.image === "string") {
-      if (product.image.startsWith('http') || product.image.startsWith('/uploads'))
-        return product.image.startsWith("/uploads")
-          ? `http://localhost:5001${product.image}`
-          : product.image;
-      return product.image;
-    }
-    return placeholderImage;
+    const base = product?.imagePublicId
+      ? getUploadedImage(product.imagePublicId)
+      : product?.image
+        ? getUploadedImage(product.image)
+        : '';
+    return base || placeholderImage;
   };
+
+  // Add Cloudinary transforms with default fallback to prevent broken images
+  const toCloudinaryOptimized = React.useCallback((u) => {
+    if (typeof u !== 'string' || !u) return u;
+    try {
+      const url = new URL(u);
+      if (!url.hostname.includes('res.cloudinary.com')) return u;
+      const parts = url.pathname.split('/');
+      const uploadIdx = parts.findIndex((p) => p === 'upload');
+      if (uploadIdx === -1) return u;
+      const transform = 'f_auto,q_auto,w_800,d_10_z2bdkx';
+      if (parts[uploadIdx + 1] && parts[uploadIdx + 1].includes(',')) {
+        parts[uploadIdx + 1] = `${transform},${parts[uploadIdx + 1]}`;
+      } else {
+        parts.splice(uploadIdx + 1, 0, transform);
+      }
+      url.pathname = parts.join('/');
+      return url.toString();
+    } catch {
+      return u;
+    }
+  }, []);
 
   // Wishlist helpers
   const inWishlist = (id) => wishlistItems.some((it) => String(it.id) === String(id));
@@ -470,9 +488,15 @@ export default function ShopPage() {
                 <div className={`flex-shrink-0 bg-gray-100 dark:bg-gray-700 ${view === 'grid' ? 'h-48 sm:h-64 w-full' : 'w-32 h-32 rounded-full mx-4'}`}>
                   <motion.img
                     layoutId={`product-image-${product._id || product.id}`}
-                    src={getImageSrc(product)}
+                    src={toCloudinaryOptimized(getImageSrc(product))}
                     alt={product.name}
                     className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${view === 'grid' ? 'object-contain' : 'object-cover rounded-full'}`}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = placeholderImage;
+                    }}
                   />
                 </div>
 
@@ -543,7 +567,17 @@ export default function ShopPage() {
               </button>
 
               <div className="flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-700 md:w-1/2">
-                <img src={getImageSrc(selectedProduct)} alt={selectedProduct.name} className="object-contain h-64 md:h-[400px]" />
+                <img
+                  src={toCloudinaryOptimized(getImageSrc(selectedProduct))}
+                  alt={selectedProduct.name}
+                  className="object-contain h-64 md:h-[400px]"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = placeholderImage;
+                  }}
+                />
               </div>
 
               <div className="flex flex-col justify-between p-6 space-y-6 bg-white md:w-1/2 dark:bg-gray-800">

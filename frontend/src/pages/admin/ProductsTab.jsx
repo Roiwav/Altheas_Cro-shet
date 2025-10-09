@@ -3,7 +3,6 @@ import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { Plus, Search, Loader2, Trash2, ArrowLeft, ArrowRight, ImageIcon } from 'lucide-react';
 import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
-import productList from '../../data/productList';
 import ProductsTable from '../../components/admin/products/ProductsTable';
 import NewProductForm from '../../components/admin/products/NewProductForm';
 import ProductsTableSkeleton from '../../components/admin/products/ProductsTableSkeleton';
@@ -95,31 +94,18 @@ const ProductsTab = ({ isDarkMode }) => {
 
   // Selection handlers provided by hook
 
-  // Map static shop products by name for fallback (Option A)
-  const nameToStaticImage = React.useMemo(() => {
-    const map = new Map();
-    try {
-      (productList || []).forEach((p) => {
-        if (p?.name && typeof p.image === 'string' && (p.image.startsWith('http://') || p.image.startsWith('https://'))) {
-          map.set(p.name.trim().toLowerCase(), p.image);
-        }
-      });
-    } catch { /* ignore */ }
-    return map;
-  }, []);
-
   const resolveImageForProduct = (product) => {
     const PLACEHOLDER_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
     if (!product) return PLACEHOLDER_SVG;
-    const isValidUrl = (u) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('blob:'));
+    // Prefer Cloudinary public_id when present
+    if (typeof product.imagePublicId === 'string' && product.imagePublicId.trim()) {
+      return getProductImageSrc(product.imagePublicId);
+    }
     const candidate = product.image;
-    const hasHttp = typeof candidate === 'string' && (candidate.startsWith('http://') || candidate.startsWith('https://'));
-    const isUploads = typeof candidate === 'string' && candidate.startsWith('/uploads');
-    if (hasHttp || isUploads) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      // Route any string through the shared resolver. It handles http(s), data/blob, /uploads, and Cloudinary public_id.
       return getProductImageSrc(candidate);
     }
-    const byName = nameToStaticImage.get((product.name || '').trim().toLowerCase());
-    if (isValidUrl(byName)) return byName;
     return PLACEHOLDER_SVG;
   };
 
@@ -506,11 +492,17 @@ const ProductsTab = ({ isDarkMode }) => {
                           )}
                           {newImagePreview && (
                             <img
-                              src={getProductImageSrc(newImagePreview || editingProduct?.image)}
+                              src={getProductImageSrc(newImagePreview || editingProduct?.imagePublicId || editingProduct?.image)}
                               alt="Preview" 
                               className={`object-contain w-auto h-32 rounded-md transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                              loading="lazy"
+                              decoding="async"
                               onLoad={() => setIsImageLoading(false)}
-                              onError={() => setIsImageLoading(false)} // Also stop loading on error
+                              onError={(e) => {
+                                setIsImageLoading(false);
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+                              }}
                             />
                           )}
                           {!isImageLoading && !newImagePreview && <ImageIcon className={`w-8 h-8 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />}

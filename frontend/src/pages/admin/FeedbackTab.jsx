@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Trash2, CheckCircle, XCircle, Star, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { SERVER_BASE_URL } from '../../utils/product.js';
 
 const FeedbackTab = ({ isDarkMode }) => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -10,7 +11,7 @@ const FeedbackTab = ({ isDarkMode }) => {
     try {
       setLoading(true);
       // Fetch all feedbacks, including unapproved ones
-      const response = await fetch('http://localhost:5001/api/v1/testimonials/all');
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/testimonials/all`);
       if (!response.ok) {
         throw new Error('Failed to fetch feedback');
       }
@@ -30,7 +31,7 @@ const FeedbackTab = ({ isDarkMode }) => {
   const handleApprovalToggle = async (feedbackId, currentStatus) => {
     const newStatus = !currentStatus;
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/testimonials/${feedbackId}/approve`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/testimonials/${feedbackId}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isApproved: newStatus }),
@@ -55,7 +56,7 @@ const FeedbackTab = ({ isDarkMode }) => {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/testimonials/${feedbackId}`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/testimonials/${feedbackId}`, {
         method: 'DELETE',
       });
 

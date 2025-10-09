@@ -4,7 +4,7 @@ import { Dialog } from '@headlessui/react';
 import { X, AlertCircle, CheckCircle, Clock, Package, MapPin, CreditCard, User } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import PaymentProofPreview from './PaymentProofPreview.jsx';
-import { getMediaUrl } from '../../../utils/product.js';
+import { getMediaUrl, getProductImageSrc } from '../../../utils/product.js';
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -121,10 +121,15 @@ export default function OrderDetailsModal({ open, onClose, order, isDarkMode = f
                     {order.products?.map((product, idx) => (
                       <div key={idx} className="flex items-start space-x-3">
                         <img
-                          src={product.image || '/images/placeholder-product.jpg'}
+                          src={getProductImageSrc(product.image)}
                           alt={product.name}
                           className="object-cover w-12 h-12 border border-gray-300 rounded-lg dark:border-gray-600"
-                          onError={(e) => { e.target.src = '/images/placeholder-product.jpg'; }}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+                          }}
                         />
                         <div className="flex-1 min-w-0">
                           <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</p>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, Package, Heart, Home, User, ShoppingBag, XCircle } from 'lucide-react';
 import { useUser } from '../../context/useUser';
 import { useWishlistCount } from '../../context/useWishlistCount.js';
+import { SERVER_BASE_URL } from '../../utils/product.js';
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -32,7 +33,7 @@ function UserDashboard() {
         return;
       }
       try {
-        const response = await fetch('http://localhost:5001/api/orders/myorders', {
+        const response = await fetch(`${SERVER_BASE_URL}/api/orders/myorders`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -41,7 +42,6 @@ function UserDashboard() {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
           throw new Error(`Failed to fetch orders: ${response.status} ${response.statusText}`);
         }
 

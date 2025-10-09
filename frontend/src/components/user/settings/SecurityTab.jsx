@@ -4,6 +4,7 @@ import { Lock, Key, AlertCircle } from "lucide-react";
 
 import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
+import { SERVER_BASE_URL } from "../../../utils/product.js";
 
 export default function SecurityTab() {
   const { user, token, updateUser } = useUser();
@@ -64,8 +65,8 @@ export default function SecurityTab() {
 
     try {
       const endpoint = hasPassword 
-        ? "http://localhost:5001/api/v1/auth/change-password"
-        : "http://localhost:5001/api/v1/auth/set-password";
+        ? `${SERVER_BASE_URL}/api/v1/auth/change-password`
+        : `${SERVER_BASE_URL}/api/v1/auth/set-password`;
       
       const body = hasPassword
         ? { currentPassword: security.currentPassword, newPassword: security.newPassword }

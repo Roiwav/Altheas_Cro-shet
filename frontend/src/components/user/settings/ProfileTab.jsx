@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { Image as ImageIcon, Mail, Save, User, Lock, Edit2, Check, X } from "lucide-react";
 import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
+import { SERVER_BASE_URL } from "../../../utils/product.js";
 
 export default function ProfileTab() {
   const { user, token, updateUser } = useUser();
@@ -65,7 +66,7 @@ export default function ProfileTab() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${user.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

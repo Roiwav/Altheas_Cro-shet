@@ -1,12 +1,12 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import io from 'socket.io-client';
+import { SERVER_BASE_URL } from '../utils/product';
 
 const TestimonialsContext = createContext();
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useTestimonials = () => useContext(TestimonialsContext);
-
 
 export const TestimonialsProvider = ({ children }) => {
   const [testimonials, setTestimonials] = useState([]);
@@ -16,7 +16,7 @@ export const TestimonialsProvider = ({ children }) => {
   const fetchTestimonials = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5001/api/v1/testimonials');
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/testimonials`);
       if (res.ok) {
         const data = await res.json();
         const approved = Array.isArray(data) ? data.filter(t => t?.isApproved) : [];
@@ -41,7 +41,7 @@ export const TestimonialsProvider = ({ children }) => {
 
   // Set up WebSocket connection
   useEffect(() => {
-    const socket = io('http://localhost:5001'); // Your backend URL
+    const socket = io(SERVER_BASE_URL);
 
     socket.on('connect', () => {});
     // Swallow socket errors to avoid console noise when backend is unavailable
@@ -97,7 +97,7 @@ export const TestimonialsProvider = ({ children }) => {
     try {
       // The POST request will trigger the change stream, which updates the UI.
       // We no longer need to manually refetch here.
-      const res = await fetch('http://localhost:5001/api/v1/testimonials', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/testimonials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackData),

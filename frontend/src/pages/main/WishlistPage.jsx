@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { useUser } from "../../context/useUser";
 import { getWishlist, toggleWishlist } from "../../utils/wishlist";
 import { useWishlistCount } from "../../context/useWishlistCount.js";
+import { getProductImageSrc } from "../../utils/product.js";
 
 export default function WishlistPage() {
   const { user } = useUser();
@@ -58,7 +59,7 @@ export default function WishlistPage() {
             <div key={it.id} className="relative border rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm p-4 flex flex-col">
               <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden rounded-lg">
                 {it.image ? (
-                  <img src={it.image} alt={it.name} className="object-contain w-full h-full" />
+                  <img src={getProductImageSrc(it.image)} alt={it.name} className="object-contain w-full h-full" />
                 ) : (
                   <div className="text-gray-400">No image</div>
                 )}

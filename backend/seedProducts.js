@@ -62,8 +62,13 @@ async function seed() {
 
   // Optional: Uncomment to clear out all existing products before seeding
   // await Product.deleteMany({});
+  // Replace legacy local image paths with inline placeholder to avoid 404s
+  const PLACEHOLDER = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
   products.forEach(p => {
-    if (typeof p.quantity !== "number") p.quantity = 1; 
+    if (typeof p.quantity !== "number") p.quantity = 1;
+    if (typeof p.image === 'string' && p.image.startsWith('/uploads/')) {
+      p.image = PLACEHOLDER;
+    }
   });
   await Product.insertMany(products);
   console.log('Seeded 50 products!');

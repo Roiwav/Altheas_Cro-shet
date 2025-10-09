@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
+import { SERVER_BASE_URL } from "../../../utils/product.js";
 
 // Shipping cities/regions list
 const regions = {
@@ -151,7 +152,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5001/api/v1/users/${user.id}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${user.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

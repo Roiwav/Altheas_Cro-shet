@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { toast } from 'react-toastify';
 import { useUser } from '../context/useUser';
+import { SERVER_BASE_URL } from '../utils/product';
 
 export default function useNotifications() {
   const { isAuthenticated } = useUser();
@@ -13,7 +14,7 @@ export default function useNotifications() {
     if (!isAuthenticated) return;
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5001/api/notifications/my', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/my`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -37,7 +38,7 @@ export default function useNotifications() {
   // Real-time: connect to Socket.IO and listen for new notifications
   useEffect(() => {
     if (!isAuthenticated) return;
-    const socket = io('http://localhost:5001');
+    const socket = io(SERVER_BASE_URL);
 
     socket.on('connect', () => {
       const token = localStorage.getItem('token');
@@ -63,7 +64,7 @@ export default function useNotifications() {
 
   const markAsRead = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/notifications/${id}/read`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export default function useNotifications() {
 
   const markAllAsRead = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/notifications/read-all', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/read-all`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

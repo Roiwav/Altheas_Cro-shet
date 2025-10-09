@@ -25,6 +25,12 @@ export default function OrderItemsCard({ items, getProductImageSrc, currencyForm
                   src={getProductImageSrc(item.image)}
                   alt={item.name}
                   className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+                  }}
                 />
                 <div className="absolute flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full -top-2 -right-2">
                   {item.quantity || 1}
