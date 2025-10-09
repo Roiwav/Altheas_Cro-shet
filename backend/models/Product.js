@@ -10,6 +10,13 @@ const productSchema = new mongoose.Schema(
     imagePublicId: { type: String }, // optional: Cloudinary public ID for product image
     category: { type: String, default: "Uncategorized" },
     isFeatured: { type: Boolean, default: false },
+    // Admin-controlled badges for highlighting products on the frontend
+    // Allowed values: 'bestSeller', 'bestChoice', 'new'
+    badges: {
+      type: [String],
+      enum: ["bestSeller", "bestChoice", "new"],
+      default: [],
+    },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }

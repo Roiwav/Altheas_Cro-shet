@@ -10,6 +10,7 @@ import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 import productImages from '../../assets/images/productImages.cloudinary.js';
 
 import { useCart } from '../../context/cart-context.js';
+import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -195,17 +196,72 @@ const FeaturedProductsSection = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+  const getOptimizedImageSrc = (product) => {
+    const PLACEHOLDER =
+      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+
+    const base = getProductImageSrc(product?.image);
+    if (!base) return productImages[product?.id] || PLACEHOLDER;
+
+    try {
+      const url = new URL(base);
+      if (url.hostname.includes('res.cloudinary.com')) {
+        const parts = url.pathname.split('/');
+        const idx = parts.findIndex(p => p === 'upload');
+        if (idx !== -1) {
+          const transform = 'f_auto,q_auto,w_900';
+          if (parts[idx + 1] && parts[idx + 1].includes(',')) {
+            parts[idx + 1] = transform + ',' + parts[idx + 1];
+          } else {
+            parts.splice(idx + 1, 0, transform);
+          }
+          url.pathname = parts.join('/');
+          return url.toString();
+        }
+      }
+    // eslint-disable-next-line no-unused-vars
+    } catch (e) {
+      // ignore
+    }
+
+    return base || productImages[product?.id] || PLACEHOLDER;
+  };
 
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/v1/products?isFeatured=true');
+        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/featured`);
         const data = await res.json();
-        if (res.ok) {
-          setFeaturedProducts(data.products);
+        if (res.ok && Array.isArray(data.products)) {
+          if (data.products.length > 0) {
+            setFeaturedProducts(data.products);
+          } else {
+            // Fallback: load latest products if no featured are set
+            const resAll = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
+            const dataAll = await resAll.json();
+            if (resAll.ok && Array.isArray(dataAll.products)) {
+              setFeaturedProducts(dataAll.products.slice(0, 3));
+            } else {
+              setFeaturedProducts([]);
+            }
+          }
+        } else {
+          setFeaturedProducts([]);
         }
       } catch (err) {
         console.error("Failed to fetch featured products:", err);
+        // Fallback on error: try to load latest products
+        try {
+          const resAll = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
+          const dataAll = await resAll.json();
+          if (resAll.ok && Array.isArray(dataAll.products)) {
+            setFeaturedProducts(dataAll.products.slice(0, 3));
+          } else {
+            setFeaturedProducts([]);
+          }
+        } catch {
+          setFeaturedProducts([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -213,15 +269,9 @@ const FeaturedProductsSection = () => {
     fetchFeatured();
   }, []);
 
-  const getImageSrc = (product) => {
-    if (product.image?.startsWith('/uploads')) {
-      return `http://localhost:5001${product.image}`;
-    }
-    return product.image || productImages[product.id] || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
-  };
+  
 
   if (loading) return null; // Or a loading skeleton
-  if (featuredProducts.length === 0) return null; // Don't show the section if there are no featured products
 
   return (
     <section className="py-20 bg-white dark:bg-gray-900">
@@ -234,37 +284,88 @@ const FeaturedProductsSection = () => {
           </p>
         </div>
         
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredProducts.slice(0, 3).map((product) => (
-            <div key={product._id} className="overflow-hidden transition-all duration-300 transform bg-white shadow-lg group dark:bg-gray-800 rounded-2xl hover:shadow-xl hover:-translate-y-2">
-              <div className="relative h-64 overflow-hidden bg-gray-100 dark:bg-gray-700">
-                <img 
-                  src={getImageSrc(product)} 
-                  alt={product.name}
-                  className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-110"
-                />
-                <div className="absolute px-3 py-1 text-xs font-bold text-white bg-pink-500 rounded-full top-4 right-4">
-                  Featured
+        {featuredProducts.length > 0 ? (
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredProducts.slice(0, 3).map((product) => (
+              <div key={product._id} className="overflow-hidden transition-all duration-300 transform bg-white shadow-lg group dark:bg-gray-800 rounded-2xl hover:shadow-xl hover:-translate-y-2">
+                <div className="relative h-64 overflow-hidden bg-gray-100 dark:bg-gray-700">
+                  <img 
+                    src={getOptimizedImageSrc(product)} 
+                    alt={product.name}
+                    className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 pointer-events-none">
+                    {/* Featured gradient ribbon (top-right) */}
+                    {product.isFeatured && (
+                      <div className="absolute top-3 right-0">
+                        <div className="relative">
+                          <div className="px-3 py-1 text-[11px] font-extrabold text-white bg-gradient-to-r from-pink-600 to-purple-600 rounded-l-full shadow-md">
+                            Featured
+                          </div>
+                          <div className="absolute right-0 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-purple-600 border-b-8 border-b-transparent"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Confetti-style badges (top-left cluster) */}
+                    {Array.isArray(product.badges) && (
+                      <>
+                        {/* NEW: rotated sticker */}
+                        {product.badges.includes('new') && (
+                          <div className="absolute top-3 left-3 -rotate-12">
+                            <div className="px-2.5 py-1 text-[10px] font-bold text-white bg-green-500 rounded-md shadow-sm">
+                              New
+                            </div>
+                          </div>
+                        )}
+
+                        {/* BEST SELLER: star burst */}
+                        {product.badges.includes('bestSeller') && (
+                          <div className="absolute top-12 left-2">
+                            <div className="relative">
+                              <div className="flex items-center justify-center w-8 h-8 text-yellow-900 bg-yellow-300 rounded-full shadow">
+                                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 17.27 18.18 21 16.54 13.97 22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                              </div>
+                              <div className="absolute -z-10 -inset-1 rounded-full bg-yellow-200/60 blur-sm"></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* BEST CHOICE: ribbon pill */}
+                        {product.badges.includes('bestChoice') && (
+                          <div className="absolute top-3 left-16 rotate-6">
+                            <div className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-white bg-blue-500 rounded-full shadow">
+                              <span>Best Choice</span>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="pr-2 text-xl font-bold text-gray-900 truncate dark:text-white">{product.name}</h3>
+                    <span className="text-lg font-bold text-pink-500">{currencyFormatter.format(product.price)}</span>
+                  </div>
+                  <p className="h-12 mb-4 overflow-hidden text-gray-600 dark:text-gray-300">
+                    {product.description.substring(0, 70)}{product.description.length > 70 && '...'}
+                  </p>
+                  <button 
+                    onClick={() => addToCart(product, 1)}
+                    className="w-full px-4 py-2 font-medium text-white transition-colors bg-pink-500 rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add to Cart
+                  </button>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="pr-2 text-xl font-bold text-gray-900 truncate dark:text-white">{product.name}</h3>
-                  <span className="text-lg font-bold text-pink-500">{currencyFormatter.format(product.price)}</span>
-                </div>
-                <p className="h-12 mb-4 overflow-hidden text-gray-600 dark:text-gray-300">
-                  {product.description.substring(0, 70)}{product.description.length > 70 && '...'}
-                </p>
-                <button 
-                  onClick={() => addToCart(product, 1)}
-                  className="w-full px-4 py-2 font-medium text-white transition-colors bg-pink-500 rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-10 text-center text-gray-500 dark:text-gray-400">
+            No products yet. Check back soon!
+          </div>
+        )}
         
         <div className="mt-12 text-center">
           <Link 
@@ -339,3 +440,14 @@ function Testimonials() {
 }
 
 export default HomePage;
+
+
+
+
+
+
+
+
+
+
+
