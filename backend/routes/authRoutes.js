@@ -73,7 +73,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
 
     let role = "customer";
-    if (username === "admin" && email === "admin@gmail.com" && password === "admin123")
+    if (username === "admin" && email === "altheascroshet@gmail.com" && password === "admin123")
       role = "admin";
 
     const user = await User.create({ fullName, username, email, password, role });

@@ -10,6 +10,7 @@ function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  const fromAdmin = searchParams.get('from') === 'admin';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,10 +44,11 @@ function ResetPassword() {
       const { data } = await axios.post(`${API_URL}/reset-password`, { token, password });
 
       if (data.success) {
+        const redirectUrl = fromAdmin ? '/admin/login' : '/login';
         setMessage(data.message || 'Password reset successfully! Redirecting to login...');
         setPassword('');
         setConfirmPassword('');
-        setTimeout(() => navigate('/login'), 2000);
+        setTimeout(() => navigate(redirectUrl), 2000);
       } else {
         throw new Error(data.message || 'Something went wrong.');
       }

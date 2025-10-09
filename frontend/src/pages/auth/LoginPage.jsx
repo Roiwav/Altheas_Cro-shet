@@ -1,13 +1,19 @@
 // src/pages/auth/LoginPage.jsx
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight, X } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight, X, Clock } from "lucide-react";
 import { useUser } from "../../context/useUser";
 import { toast } from "react-toastify";
 import useBubbles from "../../hooks/useBubbles";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+
+// Constants for login attempt limiting
+const LOGIN_ATTEMPTS_KEY = 'userLoginAttempts';
+const LOGIN_BLOCK_UNTIL_KEY = 'userLoginBlockUntil';
+const MAX_ATTEMPTS = 5;
+const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 export default function LoginPage() {
   const { login } = useUser();
@@ -19,6 +25,8 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockTime, setBlockTime] = useState(0);
 
   // Support both Location object and string for `state.from`
   const rawFrom = location.state?.from;
@@ -93,6 +101,27 @@ export default function LoginPage() {
     handleOAuthRedirect();
   }, [errorParam, errorMessage, handleOAuthRedirect]);
 
+  // Check for login block on component mount
+  useEffect(() => {
+    const blockUntil = parseInt(localStorage.getItem(LOGIN_BLOCK_UNTIL_KEY), 10);
+    if (blockUntil && blockUntil > Date.now()) {
+      setIsBlocked(true);
+      setBlockTime(blockUntil);
+
+      const timer = setTimeout(() => {
+        setIsBlocked(false);
+        localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);
+        localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+      }, blockUntil - Date.now());
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const getRemainingBlockTime = () => {
+    return Math.ceil((blockTime - Date.now()) / 60000);
+  };
+
 
   // ✅ Controlled input handler
   const handleChange = (e) => {
@@ -147,6 +176,10 @@ export default function LoginPage() {
       sessionStorage.setItem("user", JSON.stringify(data.user));
       login(data.user, data.token); // Update context
 
+      // On successful login, clear any attempts/blocks
+      localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+      localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);
+
       toast.success("Login successful!");
       // Redirect admins to /admin; others to intended page unless it's admin-only
       if (data?.user?.role === 'admin') {
@@ -162,6 +195,20 @@ export default function LoginPage() {
         "Login failed. Please check your credentials and try again.";
       setError(errorMessage);
       toast.error(errorMessage);
+
+      // Handle failed login attempt
+      let attempts = parseInt(localStorage.getItem(LOGIN_ATTEMPTS_KEY), 10) || 0;
+      attempts++;
+
+      if (attempts >= MAX_ATTEMPTS) {
+        const newBlockUntil = Date.now() + BLOCK_DURATION_MS;
+        localStorage.setItem(LOGIN_BLOCK_UNTIL_KEY, newBlockUntil);
+        localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+        setIsBlocked(true);
+        setBlockTime(newBlockUntil);
+      } else {
+        localStorage.setItem(LOGIN_ATTEMPTS_KEY, attempts);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -209,6 +256,17 @@ export default function LoginPage() {
                 <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
+            
+            {isBlocked && (
+              <div className="p-4 mb-6 text-center border-l-4 border-yellow-500 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-300" />
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Too many failed attempts. Please try again in {getRemainingBlockTime()} minute(s).
+                  </p>
+                </div>
+              </div>
+            )}
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               <InputField
@@ -219,6 +277,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 placeholder="Enter your email or username"
                 icon={<Mail className="w-5 h-5 text-gray-400" />}
+                disabled={isBlocked}
                 autoComplete="username"
               />
               <PasswordField
@@ -228,10 +287,11 @@ export default function LoginPage() {
                 onChange={handleChange}
                 show={showPassword}
                 setShow={setShowPassword}
+                disabled={isBlocked}
               />
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isBlocked}
                 className="flex justify-center w-full px-4 py-3 text-sm font-medium text-white transition-colors duration-200 bg-purple-600 border border-transparent shadow-sm rounded-xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
@@ -277,7 +337,7 @@ export default function LoginPage() {
 }
 
 // ================== Reusable components ==================
-function InputField({ label, name, value, onChange, placeholder, icon, type = "text", autoComplete }) {
+function InputField({ label, name, value, onChange, placeholder, icon, type = "text", autoComplete, disabled }) {
   return (
     <div>
       <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -295,14 +355,15 @@ function InputField({ label, name, value, onChange, placeholder, icon, type = "t
           required
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className="block w-full py-3 pl-10 pr-3 text-gray-900 placeholder-gray-500 transition-all duration-200 border border-gray-200 dark:border-gray-700 rounded-xl bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:text-white dark:placeholder-gray-400"
+          disabled={disabled}
+          className="block w-full py-3 pl-10 pr-3 text-gray-900 placeholder-gray-500 transition-all duration-200 border border-gray-200 dark:border-gray-700 rounded-xl bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:text-white dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
         />
       </div>
     </div>
   );
 }
 
-function PasswordField({ label, name, value, onChange, show, setShow }) {
+function PasswordField({ label, name, value, onChange, show, setShow, disabled }) {
   return (
     <div>
       <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -320,7 +381,8 @@ function PasswordField({ label, name, value, onChange, show, setShow }) {
           required
           placeholder="Enter your password"
           autoComplete="current-password"
-          className="block w-full py-3 pl-10 pr-10 text-gray-900 placeholder-gray-500 transition-all duration-200 border border-gray-200 dark:border-gray-700 rounded-xl bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:text-white dark:placeholder-gray-400"
+          disabled={disabled}
+          className="block w-full py-3 pl-10 pr-10 text-gray-900 placeholder-gray-500 transition-all duration-200 border border-gray-200 dark:border-gray-700 rounded-xl bg-white/50 dark:bg-gray-700/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:text-white dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <button
           type="button"

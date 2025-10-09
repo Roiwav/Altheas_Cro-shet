@@ -17,6 +17,7 @@ import FAQPage from './pages/main/FAQPage';
 import BlogPage from './pages/main/BlogPage';
 import FeedbackPage from './pages/main/FeedbackPage';
 import LoginPage from './pages/auth/LoginPage';
+import AdminLoginPage from './pages/auth/AdminLoginPage'; // Import the new admin login page
 import SignupPage from './pages/auth/SignupPage';
 import OAuthCallback from './pages/auth/OAuthCallback';
 import CheckoutPage from './pages/main/CheckoutPage';
@@ -56,6 +57,7 @@ function App() {
 
         {/* Auth Pages without Layout */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} /> {/* Add route for admin login */}
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/auth/success" element={<OAuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
