@@ -65,6 +65,7 @@ const createProduct = async (req, res) => {
     res.status(500).json({ message: "Failed to create product due to a server error." });
   }
 };
+
 /**
  * @desc    Get all products
  * @route   GET /api/v1/products
@@ -72,7 +73,7 @@ const createProduct = async (req, res) => {
  */
 const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({}).sort({ createdAt: -1 });
+    const products = await Product.find({ deletedAt: null }).sort({ createdAt: -1 });
     res.json({ products });
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -161,7 +162,7 @@ const updateProduct = async (req, res) => {
 };
 
 /**
- * @desc    Delete a product
+ * @desc    Delete a product (hard delete)
  * @route   DELETE /api/v1/products/:id
  * @access  Private/Admin
  */
@@ -193,26 +194,6 @@ const deleteProduct = async (req, res) => {
   } catch (error) {
     console.error("Error deleting product:", error);
     res.status(500).json({ message: "Server error while deleting product." });
-  }
-};
-
-/**
- * @desc    Toggle a product's featured status
- * @route   PATCH /api/v1/products/:id/toggle-featured
- * @access  Private/Admin
- */
-const toggleFeatured = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (product) {
-      product.isFeatured = !product.isFeatured;
-      await product.save();
-      res.json({ message: 'Featured status updated', product });
-    } else {
-      res.status(404).json({ message: 'Product not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -271,7 +252,7 @@ const bulkUpdateCategory = async (req, res) => {
 };
 
 /**
- * @desc    Bulk delete products
+ * @desc    Bulk delete products (hard delete)
  * @route   DELETE /api/v1/products/bulk
  * @access  Private/Admin
  */
@@ -314,6 +295,149 @@ const bulkDeleteProducts = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Toggle a product's featured status
+ * @route   PATCH /api/v1/products/:id/toggle-featured
+ * @access  Private/Admin
+ */
+const toggleFeatured = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (product) {
+      product.isFeatured = !product.isFeatured;
+      await product.save();
+      res.json({ message: "Product featured status updated", product });
+    } else {
+      res.status(404).json({ message: "Product not found" });
+    }
+  } catch (error) {
+    console.error("Error toggling product featured status:", error);
+    res.status(500).json({ message: "Server error while toggling product featured status." });
+  }
+};
+
+/**
+ * @desc    Soft delete a product (move to trash)
+ * @route   PATCH /api/v1/products/:id/soft-delete
+ * @access  Private/Admin
+ */
+const softDeleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    if (!product.deletedAt) {
+      product.deletedAt = new Date();
+      await product.save();
+    }
+    res.json({ message: 'Product moved to trash', product });
+  } catch (error) {
+    console.error('Error soft deleting product:', error);
+    res.status(500).json({ message: 'Server error while soft deleting product.' });
+  }
+};
+
+/**
+ * @desc    Bulk soft delete products (move to trash)
+ * @route   POST /api/v1/products/bulk-soft-delete
+ * @access  Private/Admin
+ */
+const bulkSoftDelete = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: 'Product IDs array is required.' });
+    }
+    const result = await Product.updateMany(
+      { _id: { $in: productIds } },
+      { $set: { deletedAt: new Date() } }
+    );
+    res.json({ message: `${result.modifiedCount} products moved to trash.`, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error bulk soft deleting products:', error);
+    res.status(500).json({ message: 'Server error during bulk soft delete.' });
+  }
+};
+
+/**
+ * @desc    Get soft-deleted products (trash)
+ * @route   GET /api/v1/products/deleted
+ * @access  Private/Admin
+ */
+const getDeletedProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ deletedAt: { $ne: null } }).sort({ deletedAt: -1 });
+    res.json({ products });
+  } catch (error) {
+    console.error('Error fetching deleted products:', error);
+    res.status(500).json({ message: 'Server error while fetching deleted products.' });
+  }
+};
+
+/**
+ * @desc    Bulk restore soft-deleted products
+ * @route   POST /api/v1/products/bulk-restore
+ * @access  Private/Admin
+ */
+const bulkRestoreProducts = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: 'Product IDs array is required.' });
+    }
+    const result = await Product.updateMany(
+      { _id: { $in: productIds } },
+      { $set: { deletedAt: null } }
+    );
+    res.json({ message: `${result.modifiedCount} products restored.`, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error bulk restoring products:', error);
+    res.status(500).json({ message: 'Server error during bulk restore.' });
+  }
+};
+
+/**
+ * @desc    Bulk permanent delete products (from trash)
+ * @route   POST /api/v1/products/bulk-permanent-delete
+ * @access  Private/Admin
+ */
+const bulkPermanentDelete = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: 'Product IDs array is required.' });
+    }
+
+    // Find products to get their image IDs/paths for deletion
+    const productsToDelete = await Product.find({ _id: { $in: productIds } });
+
+    // Delete associated images from Cloudinary or filesystem (legacy)
+    const imageDeletionPromises = productsToDelete.map(p => {
+      if (p.imagePublicId) {
+        return productCloudinary.uploader.destroy(p.imagePublicId).catch(err => {
+          console.warn('Could not delete Cloudinary image:', p.imagePublicId, err?.message || err);
+        });
+      }
+      if (p.image && typeof p.image === 'string' && p.image.startsWith('/uploads')) {
+        const imagePath = path.join(__dirname, '..', p.image);
+        return fs.promises.unlink(imagePath).catch(err => {
+          console.warn(`Could not delete image (it may not exist): ${imagePath}`, err?.code || err);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(imageDeletionPromises);
+
+    // Delete products from the database
+    const result = await Product.deleteMany({ _id: { $in: productIds } });
+
+    res.json({ message: `${result.deletedCount} products permanently deleted.` });
+  } catch (error) {
+    console.error('Error bulk permanently deleting products:', error);
+    res.status(500).json({ message: 'Server error during bulk permanent deletion.' });
+  }
+};
+
 module.exports = {
   createProduct,
   getAllProducts,
@@ -324,4 +448,10 @@ module.exports = {
   bulkUpdateCategory,
   updateCategoryName,
   bulkDeleteProducts,
+  // soft delete / trash
+  softDeleteProduct,
+  bulkSoftDelete,
+  getDeletedProducts,
+  bulkRestoreProducts,
+  bulkPermanentDelete,
 };

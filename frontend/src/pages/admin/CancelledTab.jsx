@@ -45,6 +45,7 @@ export default function CancelledTab({ isDarkMode }) {
             orderNumber: order.orderNumber,
             username: order.username,
             status: order.status,
+            refundStatus: p.refundStatus,
             productName: p.name,
             quantity: p.quantity,
             price: p.price,
@@ -70,9 +71,13 @@ export default function CancelledTab({ isDarkMode }) {
     );
   }, [cancellations, searchQuery]);
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  // Split into unresolved and resolved groups
+  const unresolved = useMemo(() => filtered.filter(c => (c.refundStatus || 'Pending') !== 'Completed'), [filtered]);
+  const resolved = useMemo(() => filtered.filter(c => c.refundStatus === 'Completed'), [filtered]);
+
+  const totalPages = Math.ceil(unresolved.length / itemsPerPage) || 1;
   const pageStart = (currentPage - 1) * itemsPerPage;
-  const pageItems = filtered.slice(pageStart, pageStart + itemsPerPage);
+  const pageItems = unresolved.slice(pageStart, pageStart + itemsPerPage);
 
   // Confirm modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -93,6 +98,46 @@ export default function CancelledTab({ isDarkMode }) {
     setAmount(String(defaultAmount));
     setMessage(`Your refund for ${row.productName} is being processed and will be returned within 24 hour(s).`);
     setConfirmOpen(true);
+  };
+
+  const markDone = async (row) => {
+    try {
+      if (user && user.role && user.role !== 'admin') {
+        throw new Error('Forbidden: Admins only');
+      }
+      const rawToken =
+        authToken ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        '';
+      const cleanToken = String(rawToken)
+        .trim()
+        .replace(/^Bearer\s+/i, '')
+        .replace(/^"|"$/g, '');
+      if (!cleanToken) throw new Error('Not authenticated. Please log in again.');
+
+      const res = await fetch(
+        `http://localhost:5001/api/orders/${row.orderId}/product/${row.productId}/mark-done`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${cleanToken}`,
+          },
+          credentials: 'include',
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403) throw new Error('Forbidden: Admins only');
+      if (res.status === 401) throw new Error(data.message || 'Not authorized, token failed');
+      if (!res.ok) throw new Error(data.message || 'Failed to mark as done');
+      toast.success('Marked as done');
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to mark as done');
+    }
   };
 
   const submitConfirm = async () => {
@@ -177,7 +222,7 @@ export default function CancelledTab({ isDarkMode }) {
         </div>
       </div>
 
-      {/* Table */}
+      {/* To Resolve Table */}
       <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -187,6 +232,7 @@ export default function CancelledTab({ isDarkMode }) {
                 <th className="px-4 py-3 text-left text-xs font-medium">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium">Product</th>
                 <th className="px-4 py-3 text-left text-xs font-medium">Qty</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Refund</th>
                 <th className="px-4 py-3 text-left text-xs font-medium">Reason</th>
                 <th className="px-4 py-3 text-left text-xs font-medium">Cancelled At</th>
                 <th className="px-4 py-3 text-left text-xs font-medium">Order Status</th>
@@ -203,7 +249,7 @@ export default function CancelledTab({ isDarkMode }) {
               ) : pageItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No cancelled items found.
+                    No cancelled items to resolve.
                   </td>
                 </tr>
               ) : (
@@ -213,6 +259,7 @@ export default function CancelledTab({ isDarkMode }) {
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.username}</td>
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.productName}</td>
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.quantity}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.refundStatus || 'Pending'}</td>
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.reason}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
@@ -231,6 +278,13 @@ export default function CancelledTab({ isDarkMode }) {
                         <CheckCircle className="w-4 h-4 mr-1.5" />
                         <span>Confirm Refund</span>
                       </button>
+                      <button
+                        onClick={() => markDone(c)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1.5" />
+                        <span>Mark as Done</span>
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -240,10 +294,10 @@ export default function CancelledTab({ isDarkMode }) {
         </div>
 
         {/* Pagination */}
-        {filtered.length > 0 && (
+        {unresolved.length > 0 && (
           <div className={`px-4 py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col md:flex-row justify-between items-center gap-4`}>
             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Showing {Math.min(pageStart + 1, filtered.length)} to {Math.min(pageStart + itemsPerPage, filtered.length)} of {filtered.length} cancellations
+              Showing {Math.min(pageStart + 1, unresolved.length)} to {Math.min(pageStart + itemsPerPage, unresolved.length)} of {unresolved.length} cancellations
             </p>
             <div className="flex items-center space-x-2">
               <select
@@ -282,6 +336,58 @@ export default function CancelledTab({ isDarkMode }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Resolved Table */}
+      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="px-4 pt-4">
+          <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Resolved (Done)</h3>
+          <p className={`text-xs mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Cancelled items that were completed</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium">Order ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Product</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Qty</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Refund</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Reason</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Cancelled At</th>
+                <th className="px-4 py-3 text-left text-xs font-medium">Order Status</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Loading...
+                  </td>
+                </tr>
+              ) : resolved.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    No resolved cancellations.
+                  </td>
+                </tr>
+              ) : (
+                resolved.map((c) => (
+                  <tr key={c.id} className={`transition-colors ${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
+                    <td className={`px-4 py-3 font-mono text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>#{c.orderNumber || (c.orderId || '').substring(0, 8)}</td>
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.username}</td>
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.productName}</td>
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.quantity}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>{c.refundStatus}</td>
+                    <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.reason}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modals */}

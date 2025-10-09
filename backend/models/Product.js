@@ -10,6 +10,7 @@ const productSchema = new mongoose.Schema(
     imagePublicId: { type: String }, // optional: Cloudinary public ID for product image
     category: { type: String, default: "Uncategorized" },
     isFeatured: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

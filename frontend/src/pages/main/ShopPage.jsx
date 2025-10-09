@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import productList from "../../data/productList";
-import productImages from "../../assets/images/productImages.js";
+import productImages from "../../assets/images/productImages.cloudinary.js";
 import { useCart } from "../../hooks/useCart";
 import { useUser } from "../../context/useUser.js";
 import { getWishlist, toggleWishlist } from "../../utils/wishlist";
@@ -391,29 +391,6 @@ export default function ShopPage() {
   return (
     <>
       <main className={`relative z-10 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen pt-16 pb-16 ${isAuthenticated ? 'px-6 md:px-20 lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
-        
-        {/* Shipping Info Banner */}
-        <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <FaTruck className="text-blue-600 dark:text-blue-400" />
-              <div>
-                <p className="font-medium text-blue-900 dark:text-blue-100">
-                  <strong>Delivery Area:</strong> {localRegion}
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Shipping Fee:</strong> ₱{currentShippingInfo.min} – ₱{currentShippingInfo.max}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-              <FaClock className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium">
-                <strong>Estimated Delivery:</strong> {currentShippingInfo.estimated}
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Guest info banner */}
         {!isAuthenticated && totalQuantity > 0 && (
@@ -573,23 +550,6 @@ export default function ShopPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 md:text-3xl dark:text-white">{selectedProduct.name}</h2>
                   <p className="mt-3 text-2xl font-bold text-red-600 dark:text-red-500">{currencyFormatter.format(selectedProduct.price)}</p>
-                  
-                  {/* Shipping info in modal */}
-                  <div className="p-3 mt-4 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FaTruck className="text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        Shipping to: {localRegion}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-blue-700 dark:text-blue-300">
-                      <span>Fee: ₱{currentShippingInfo.min} – ₱{currentShippingInfo.max}</span>
-                      <span className="flex items-center gap-1">
-                        <FaClock className="w-3 h-3" />
-                        {currentShippingInfo.estimated}
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="pt-4 space-y-4">

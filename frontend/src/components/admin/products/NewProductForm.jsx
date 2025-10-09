@@ -3,6 +3,8 @@ import { ImageIcon, UploadCloud, X as XIcon } from 'lucide-react';
 import { getProductImageSrc } from '../../../utils/product';
 
 export default function NewProductForm({
+  isOpen,
+  onClose,
   isDarkMode,
   categories,
   addProductFormData,
@@ -16,9 +18,23 @@ export default function NewProductForm({
   onSubmit,
   onToggleAddCategory,
 }) {
+  // If parent passes isOpen, respect it; otherwise render by default
+  if (typeof isOpen !== 'undefined' && !isOpen) return null;
   return (
     <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-6 mb-8`}>
-      <h3 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add New Product</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add New Product</h3>
+        {typeof onClose === 'function' && (
+          <button
+            type="button"
+            onClick={onClose}
+            className={`p-2 rounded-md transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+            title="Close"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        )}
+      </div>
       <form onSubmit={onSubmit} className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Image Uploader */}
         <div className="space-y-4 lg:col-span-1">
@@ -36,9 +52,10 @@ export default function NewProductForm({
                 <>
                   <ImageIcon className={`mx-auto h-12 w-12 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                   <div className="flex text-sm text-gray-600">
-                    <label htmlFor="file-upload" className={`relative cursor-pointer rounded-md font-medium ${isDarkMode ? 'text-pink-400 hover:text-pink-300' : 'text-pink-600 hover:text-pink-500'} focus-within:outline-none`}>
+                    <label htmlFor="image" className={`relative cursor-pointer rounded-md font-medium ${isDarkMode ? 'text-pink-400 hover:text-pink-300' : 'text-pink-600 hover:text-pink-500'} focus-within:outline-none`}>
                       <span>Upload a file</span>
-                      <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={onImageChange} />
+                      {/* Name must be 'image' to match backend multer.single("image") if form posts directly */}
+                      <input id="image" name="image" type="file" className="sr-only" accept="image/*" onChange={onImageChange} />
                     </label>
                     <p className={`pl-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>or drag and drop</p>
                   </div>
@@ -52,8 +69,8 @@ export default function NewProductForm({
         {/* Product Details */}
         <div className="space-y-6 lg:col-span-2">
           <div>
-            <label htmlFor="productName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
-            <input type="text" id="productName" name="productName" value={addProductFormData.productName || ''} onChange={onAddFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
+            <label htmlFor="name" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
+            <input type="text" id="name" name="name" value={addProductFormData.name || ''} onChange={onAddFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
           </div>
           <div>
             <label htmlFor="description" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
@@ -103,21 +120,20 @@ export default function NewProductForm({
               <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Mark as Featured Product</span>
             </label>
           </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6">
             <div>
               <label htmlFor="price" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Price (₱)</label>
               <input type="number" id="price" name="price" value={addProductFormData.price || ''} onChange={onAddFormChange} onKeyDown={blockInvalidNumberInput} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-            </div>
-            <div>
-              <label htmlFor="quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quantity Available</label>
-              <input type="number" id="quantity" name="quantity" value={addProductFormData.quantity || ''} onChange={onAddFormChange} onKeyDown={blockInvalidNumberInput} required min="0" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
             </div>
           </div>
         </div>
 
         {/* Form Actions */}
-        <div className="flex justify-end lg:col-span-3">
-          <button type="submit" className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+          >
             <UploadCloud className="w-5 h-5 mr-2" />
             Add Product
           </button>

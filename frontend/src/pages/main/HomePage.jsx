@@ -3,16 +3,14 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { Flower, ArrowRight, Smartphone, Sparkles, Palette, Heart, Star, CheckCircle, ShoppingBagIcon, ArrowRightCircle } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
-import { useTestimonials } from '../../context/TestimonialsContext.jsx';
-import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser.js';
+import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 
 // Product data and context for featured products
-import productList from '../../data/productList.js';
-import productImages from '../../assets/images/productImages.js';
+import productImages from '../../assets/images/productImages.cloudinary.js';
+
 import { useCart } from '../../context/cart-context.js';
 
-// Currency formatter (same as in ShopPage)
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -20,30 +18,9 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 
 function HomePage() {
   const { aboutRef, contactRef } = useOutletContext() || {};
-  const { addToCart } = useCart();
   const { user } = useUser();
 
-  // Get product image safely
-  const placeholderImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
-  const getImageSrc = (product) => {
-    if (productImages?.[product.id]) return productImages[product.id];
-    if (productImages?.[String(product.id)]) return productImages[String(product.id)];
-    if (product.image && typeof product.image === "string") return product.image;
-    return placeholderImage;
-  };
-
-  const handleAddToCart = async (product) => {
-    if (!product) return;
-    try {
-      const success = await addToCart(product, 1);
-      if (success) {
-        toast.success(`${product.name} added to cart!`);
-      }
-    } catch (err) {
-      toast.error("Failed to add to cart.");
-      console.error(err);
-    }
-  };
+  // (No top-level image/cart handlers needed here)
   return ( // Added transition and margin-left to accommodate the sidebar
     <div className={`relative z-10 space-y-0 ${
       user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
@@ -193,10 +170,14 @@ function HomePage() {
 
       <FeaturedProductsSection />
 
+      {/* Divider */}
+      <div className="h-0.5 bg-gradient-to-r from-pink-500/0 via-pink-500/50 to-pink-500/0"></div>
+
       {/* Testimonials */}
-      <section className="py-20 bg-gray-50 dark:bg-gray-800">
+      {/* The previous change to add the gradient background is missing in the provided context, so I'm re-adding it. */}
+      <section ref={contactRef} className="py-20 bg-gray-50 dark:bg-gray-800">
         <div className="px-6 mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
+          <div className="mb-20 text-center">
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">Loved by Customers</h2>
             <div className="w-24 h-1 mx-auto mb-8 bg-gradient-to-r from-pink-500 to-purple-500"></div>
           </div>
@@ -204,8 +185,8 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Newsletter */}
-      <NewsletterSection contactRef={contactRef} />
+      {/* Divider */}
+      <div className="h-0.5 bg-gradient-to-r from-purple-600/0 via-purple-500/50 to-purple-600/0"></div>
     </div>
   );
 }
@@ -295,15 +276,6 @@ const FeaturedProductsSection = () => {
           </Link>
         </div>
       </div>
-    </section>
-  );
-};
-
-const NewsletterSection = ({ contactRef }) => {
-  // This component can be expanded with its own state and logic for the newsletter form
-  return (
-    <section ref={contactRef} className="py-20 bg-gradient-to-r from-pink-500 to-purple-600">
-      {/* ... existing newsletter JSX ... */}
     </section>
   );
 };

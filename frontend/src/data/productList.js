@@ -1,4 +1,4 @@
-import productImages from '../assets/images/productImages';
+import productImages from '../assets/images/productImages.cloudinary';
 
 const productList = [
   { id: 1, name: "Pink Tulips", price: 250, description: "Bright sunflowers for joyful moments.", image: productImages[1] },

@@ -10,6 +10,12 @@ const {
   toggleFeatured,
   bulkUpdateCategory,
   bulkDeleteProducts,
+  // soft delete / trash
+  softDeleteProduct,
+  bulkSoftDelete,
+  getDeletedProducts,
+  bulkRestoreProducts,
+  bulkPermanentDelete,
 } = require("../controllers/productController");
 
 
@@ -39,6 +45,15 @@ router.patch("/bulk-update-category", bulkUpdateCategory);
 
 // ✅ Bulk delete products
 router.delete("/bulk", bulkDeleteProducts);
+
+// ✅ Soft delete (move to trash)
+router.patch("/:id/soft-delete", softDeleteProduct);
+router.post("/bulk-soft-delete", bulkSoftDelete);
+
+// ✅ Trash management
+router.get("/deleted", getDeletedProducts);
+router.post("/bulk-restore", bulkRestoreProducts);
+router.post("/bulk-permanent-delete", bulkPermanentDelete);
 
 // ✅ Delete product - now uses controller
 router.delete("/:id", deleteProduct);
