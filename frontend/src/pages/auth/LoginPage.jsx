@@ -174,7 +174,7 @@ export default function LoginPage() {
       // ✅ Use sessionStorage to isolate login state to the current tab
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(data.user));
-      login(data.user, data.token); // Update context
+      await login(data.user, data.token, { remember: false }); // Update context, explicitly using session storage
 
       // On successful login, clear any attempts/blocks
       localStorage.removeItem(LOGIN_ATTEMPTS_KEY);

@@ -1,8 +1,8 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useUser } from '../../context/useUser';
 import { toast } from 'react-toastify';
 
-export const ProtectedRoute = ({ children, requiredRole = null }) => {
+export const ProtectedRoute = ({ requiredRole = null }) => {
   const { user, isAuthenticated, isLoading } = useUser();
   const location = useLocation();
 
@@ -25,7 +25,7 @@ export const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <Outlet />;
 };
 
 export const AdminRoute = ({ children }) => (

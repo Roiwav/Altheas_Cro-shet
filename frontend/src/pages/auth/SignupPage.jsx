@@ -155,58 +155,11 @@ export default function SignUpPage() {
     window.location.href = `${API_BASE_URL}/auth/${provider}`;
   };
 
-  const handleOAuthRedirect = useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const userId = params.get("userId");
-    const error = params.get("error");
-
-    if (error) {
-      toast.error(`OAuth error: ${error}`);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-
-    if (token && userId) {
-      login(token);
-      
-      // ✅ Check for preserved cart state from OAuth
-      const preservedState = sessionStorage.getItem('oauth-cart-state');
-      if (preservedState) {
-        try {
-          const parsed = JSON.parse(preservedState);
-          sessionStorage.removeItem('oauth-cart-state');
-          
-          toast.success(`Welcome! Your ${parsed.cartItems?.length || 1} cart items are being restored...`);
-          
-          setTimeout(() => {
-            if (parsed.from?.includes('cart') && parsed.cartItems?.length > 0) {
-              navigate("/cart", { replace: true });
-            } else if (parsed.from?.includes('shop') && parsed.product) {
-              navigate("/checkout", { 
-                state: { product: parsed.product },
-                replace: true 
-              });
-            } else {
-              navigate("/shop", { replace: true });
-            }
-          }, 1500);
-        } catch (e) {
-          console.error("Failed to parse OAuth cart state:", e);
-        }
-      } else {
-        toast.success("Successfully logged in!");
-        const redirectUrl = params.get("redirect") || "/";
-        navigate(redirectUrl, { replace: true });
-      }
-      
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [login, navigate]);
-
   useEffect(() => {
-    handleOAuthRedirect();
-  }, [handleOAuthRedirect]);
+    // This useEffect was for a redundant OAuth handler. 
+    // It is now removed to allow the dedicated OAuthCallback component to handle all OAuth redirects,
+    // ensuring session data is correctly persisted to sessionStorage.
+  }, []);
 
   // Bubbles background effect
   useBubbles("signup-container", {
