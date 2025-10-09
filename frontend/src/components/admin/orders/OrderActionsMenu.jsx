@@ -5,7 +5,6 @@ import { ChevronDown, Clock, RefreshCw, Truck, CheckCircle, X, XCircle, Check, E
 
 export default function OrderActionsMenu({ order, isDarkMode = false, onViewDetails, updateOrderStatus, handleRejectOrder }) {
   const statusOptions = [
-    { value: 'pending', label: 'Mark as Pending', icon: Clock, color: 'text-yellow-500' },
     { value: 'processing', label: 'Mark as Processing', icon: RefreshCw, color: 'text-blue-500' },
     { value: 'shipped', label: 'Mark as Shipped', icon: Truck, color: 'text-purple-500' },
     { value: 'delivered', label: 'Mark as Delivered', icon: CheckCircle, color: 'text-green-500' },

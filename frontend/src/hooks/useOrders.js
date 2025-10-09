@@ -1,6 +1,7 @@
 // src/hooks/useOrders.js
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { SERVER_BASE_URL } from '../utils/product';
 
 export default function useOrders() {
   const [orders, setOrders] = useState([]);
@@ -15,7 +16,7 @@ export default function useOrders() {
   const refetch = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5001/api/orders', {
+      const res = await fetch(`${SERVER_BASE_URL}/api/orders`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -108,7 +109,7 @@ export default function useOrders() {
   const updateOrderStatus = async (orderId, newStatus, rejectionReason = '') => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

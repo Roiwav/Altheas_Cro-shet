@@ -14,6 +14,7 @@ import { useDarkMode } from "../../context/useDarkMode.js";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight, Menu as MenuIcon } from "lucide-react";
 import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
 import { toast } from 'react-toastify';
+import { SERVER_BASE_URL } from '../../utils/product.js';
 
 export default function AdminPage() {
   const { darkMode: isDarkMode } = useDarkMode();
@@ -55,7 +56,7 @@ export default function AdminPage() {
 }, [orders]);
 
   useEffect(() => {
-  fetch("http://localhost:5001/api/orders", {
+  fetch(`${SERVER_BASE_URL}/api/orders`, {
     method: "GET",
     credentials: "include", // include cookies if backend uses them
     headers: {

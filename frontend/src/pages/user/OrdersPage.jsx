@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser';
 import CancelItemModal from '../../components/orders/CancelItemModal';
 
-import { getMediaUrl } from '../../utils/product.js';
+import { getMediaUrl, getProductImageSrc, SERVER_BASE_URL } from '../../utils/product.js';
 import { 
   ShoppingBag, 
   Clock, 
@@ -23,10 +23,9 @@ import {
   User
 } from 'lucide-react';
 
-const getProductImageSrc = (image) =>
-  image && image.startsWith('/uploads')
-    ? `http://localhost:5001${image}`
-    : image || '/images/placeholder-product.jpg';
+// Inline fallback for receipts
+const PLACEHOLDER_RECEIPT =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Receipt not available</text></svg>";
 
 
 // Helper functions
@@ -60,7 +59,7 @@ const StatusBadge = ({ status }) => {
 const OrderTracker = ({ status }) => {
   const steps = [
     { key: 'pending', label: 'Pending', icon: <Clock className="h-4 w-4" /> },
-    { key: 'processing', label: 'Making', icon: <Package className="h-4 w-4" /> },
+    { key: 'processing', label: 'Processing', icon: <Package className="h-4 w-4" /> },
     { key: 'shipped', label: 'Shipped', icon: <Truck className="h-4 w-4" /> },
     { key: 'delivered', label: 'Delivered', icon: <CheckCircle className="h-4 w-4" /> },
   ];
@@ -225,7 +224,7 @@ const OrdersPage = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/orders/myorders', {
+      const response = await fetch(`${SERVER_BASE_URL}/api/orders/myorders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -258,7 +257,7 @@ const OrdersPage = () => {
     const { orderId, productId } = cancellationItem;
     
     try {
-      const res = await fetch(`http://localhost:5001/api/orders/${orderId}/product/${productId}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/orders/${orderId}/product/${productId}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -499,7 +498,7 @@ const OrdersPage = () => {
                       onClick={() => setSelectedImage(getMediaUrl(order.paymentProofUrl))}
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "/images/placeholder-receipt.jpg";
+                        e.target.src = PLACEHOLDER_RECEIPT;
                       }}
                     />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black bg-opacity-50 rounded-lg transition-opacity">

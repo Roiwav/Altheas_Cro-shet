@@ -1,47 +1,40 @@
-﻿// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
+// src/pages/main/CartPage.jsx (UPDATED - guest user buy now restrictions)
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, ShoppingBag, Package, CreditCard, Minus, Plus, X, Shield, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { SettingsContext } from "../../context/SettingsContext.jsx";
 import { useCart } from "../../context/cart-context.js";
 import { useUser } from "../../context/useUser.js";
+import { getProductImageSrc } from "../../utils/product.js";
 
 export default function CartPage() {
-    const location = useLocation();
-    const navigate = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    const getProductImageSrc = (image) =>
-    image && image.startsWith('/uploads')
-        ? `http://localhost:5001${image}`
-        : image || '/images/placeholder-product.jpg';
+  const {
+    cartItems,
+    getId,
+    updateQuantity,
+    removeFromCart,
+    removeMultipleFromCart,
+    shippingAddress,
+    setShippingAddress,
+    shippingFee,
+    setShippingFee
+  } = useCart();
 
+  const { user, isAuthenticated } = useUser();
 
-    const {
-        cartItems,
-        getId,
-        updateQuantity,
-        removeFromCart,
-        removeMultipleFromCart,
-        shippingAddress,
-        setShippingAddress,
-        shippingFee,
-        setShippingFee
-    } = useCart();
+  const singleProduct = location.state?.product;
+  const arOrder = location.state && !location.state.product ? location.state : null;
 
-    const { user, isAuthenticated } = useUser();
-    const { settings } = React.useContext(SettingsContext);
-
-    const singleProduct = location.state?.product;
-    const arOrder = location.state && !location.state.product ? location.state : null;
-
-    // Shipping fees data
-    const shippingFees = {
-        "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
-        "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
-        "Davao City": 34, "Cagayan de Oro": 33,
-    };
+    // Shipping fees data (memoized)
+  const shippingFees = useMemo(() => ({
+    "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
+    "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
+    "Davao City": 34, "Cagayan de Oro": 33,
+  }), []);
 
     const [selectedItems, setSelectedItems] = useState(new Set());
 
@@ -81,7 +74,7 @@ export default function CartPage() {
                 setShippingFee(shippingFees[defaultAddress.city] || 0);
             }
         }
-    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee]);
+    }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee, shippingFees]);
 
     // Calculate totals only for selected items
     const selectedCheckoutItems = checkoutItems.filter(item => selectedItems.has(getId(item)));
@@ -343,7 +336,7 @@ export default function CartPage() {
                                     </div>
                                 </div>
                                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {checkoutItems.map((item, index) => {
+{checkoutItems.map((item) => {
                                         const itemId = getId(item);
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;

@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Cookies from 'js-cookie';
 import { CartContext } from "./cart-context";
 import { GUEST_CART_ID_COOKIE } from "../utils/constants";
+import { SERVER_BASE_URL } from "../utils/product";
 
 export const CartProvider = ({ children }) => {
     const { user, token, isAuthenticated, isLoading: _isUserLoading } = useUser?.() || { 
@@ -15,19 +16,19 @@ export const CartProvider = ({ children }) => {
         isLoading: true 
     };
 
-    console.log("🧑‍💻 CartContext user:", user, "isAuthenticated:", isAuthenticated);
+    console.log(" CartContext user:", user, "isAuthenticated:", isAuthenticated);
 
     const [cartItems, setCartItems] = useState([]);
     const [shippingAddress, setShippingAddress] = useState(null);
     const [shippingFee, setShippingFee] = useState(0);
     const [isCartLoading, setIsCartLoading] = useState(true);
 
-    const API_BASE = "http://localhost:5001/api/v1";
+    const API_BASE = `${SERVER_BASE_URL}/api/v1`;
 
-    // Improved getId function to handle variations consistently
-    const getId = useCallback((product) => {
-        return product.productId || product._id || product.id;
-    }, []);
+    // Helper to consistently derive product id
+    const getId = useCallback((product) => (
+        product?.productId || product?._id || product?.id
+    ), []);
 
     // ✅ FIXED: Use localStorage as primary storage, backend as backup
     const saveCart = useCallback(async (items, currentShippingAddress, currentShippingFee) => {
@@ -98,7 +99,7 @@ export const CartProvider = ({ children }) => {
 
         setIsCartLoading(false);
         return cartData;
-    }, [user, token, isAuthenticated]);
+    }, [user, token, isAuthenticated, API_BASE]);
 
     // ✅ FIXED: Load cart from localStorage, try backend as fallback
     const loadCart = useCallback(async () => {
@@ -168,7 +169,7 @@ export const CartProvider = ({ children }) => {
         }
 
         setIsCartLoading(false);
-    }, [user, token, isAuthenticated]);
+    }, [user?.id, user?._id, user?.userId, isAuthenticated, token, API_BASE]);
 
     // ✅ IMPROVED: Manual merge function for localStorage-based carts
     const manualMergeGuestCart = useCallback(async (rawUserId) => {

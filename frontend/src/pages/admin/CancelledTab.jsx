@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Search, Eye, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser.js';
+import { SERVER_BASE_URL } from '../../utils/product.js';
 
 import useOrders from '../../hooks/useOrders.js';
 import OrderDetailsModal from '../../components/admin/orders/OrderDetailsModal.jsx';
@@ -117,7 +118,7 @@ export default function CancelledTab({ isDarkMode }) {
       if (!cleanToken) throw new Error('Not authenticated. Please log in again.');
 
       const res = await fetch(
-        `http://localhost:5001/api/orders/${row.orderId}/product/${row.productId}/mark-done`,
+        `${SERVER_BASE_URL}/api/orders/${row.orderId}/product/${row.productId}/mark-done`,
         {
           method: 'POST',
           headers: {
@@ -163,7 +164,7 @@ export default function CancelledTab({ isDarkMode }) {
       // Proceed; backend will return 401 if token is invalid
 
       const res = await fetch(
-        `http://localhost:5001/api/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
+        `${SERVER_BASE_URL}/api/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
         {
           method: 'POST',
           headers: {
