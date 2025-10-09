@@ -31,6 +31,8 @@ const ProductsTab = ({ isDarkMode }) => {
   const [newImage, setNewImage] = useState(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [newImagePreview, setNewImagePreview] = useState(null);
+  const [isAddingSubmitting, setIsAddingSubmitting] = useState(false);
+  const [isEditingSubmitting, setIsEditingSubmitting] = useState(false);
 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -155,24 +157,21 @@ const ProductsTab = ({ isDarkMode }) => {
 
   const handleNewProductSubmit = async (e) => {
     e.preventDefault();
-    if (
-      !addProductFormData.name?.trim() ||
-      !addProductFormData.description?.trim() ||
-      !newImage ||
-      !addProductFormData.price ||
-      !addProductFormData.category
-    ) {
+    if (!addProductFormData.name || !addProductFormData.description || !newImage || !addProductFormData.price || !addProductFormData.category) {
       toast.error("All fields and image required.");
       return;
     }
+    setIsAddingSubmitting(true);
     const formData = new FormData();
-    formData.append("name", addProductFormData.name.trim());
-    formData.append("description", addProductFormData.description.trim());
+    formData.append("name", addProductFormData.name);
+    formData.append("description", addProductFormData.description);
     formData.append("price", addProductFormData.price);
-    // quantity field not in modal; satisfy backend schema with default 0
     formData.append("quantity", addProductFormData.quantity ?? 0);
     formData.append("category", addProductFormData.category);
     formData.append("isFeatured", addProductFormData.isFeatured || false);
+    if (Array.isArray(addProductFormData.badges)) {
+      formData.append("badges", addProductFormData.badges.join(","));
+    }
     formData.append("image", newImage);
 
     try {
@@ -193,6 +192,8 @@ const ProductsTab = ({ isDarkMode }) => {
       }
     } catch {
       toast.error("Server error.");
+    } finally {
+      setIsAddingSubmitting(false);
     }
   };
 
@@ -205,6 +206,7 @@ const ProductsTab = ({ isDarkMode }) => {
       quantity: product.quantity,
       category: product.category || categories[0],
       isFeatured: product.isFeatured || false,
+      badges: Array.isArray(product.badges) ? product.badges : [],
     });
     setNewImagePreview(null); // Reset previous preview
     // Use a robust resolver that falls back to static assets by name (Option A)
@@ -222,16 +224,21 @@ const ProductsTab = ({ isDarkMode }) => {
   const handleEditProductSubmit = async (e) => {
     e.preventDefault();
 
-    if (!editFormData.name?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.category) {
+    if (!editFormData.name?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.quantity || !editFormData.category) {
       toast.error("All fields required.");
       return;
     }
+    setIsEditingSubmitting(true);
     const formData = new FormData();
     formData.append("name", editFormData.name);
     formData.append("description", editFormData.description);
     formData.append("price", editFormData.price);
+    formData.append("quantity", editFormData.quantity);
     formData.append("category", editFormData.category);
     formData.append("isFeatured", editFormData.isFeatured || false);
+    if (Array.isArray(editFormData.badges)) {
+      formData.append("badges", editFormData.badges.join(","));
+    }
     if (newImage) {
       formData.append("image", newImage);
     }
@@ -254,6 +261,8 @@ const ProductsTab = ({ isDarkMode }) => {
       }
     } catch {
       toast.error("Error updating product.");
+    } finally {
+      setIsEditingSubmitting(false);
     }
   };
 
@@ -335,12 +344,11 @@ const ProductsTab = ({ isDarkMode }) => {
           </select>
           <div className="flex items-center gap-2">
           <button
-            type="button"
-            onClick={() => setShowAddProductForm(!showAddProductForm)}
+            onClick={() => setShowAddProductForm(true)}
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
           >
             <Plus className="w-5 h-5 mr-2" />
-            {showAddProductForm ? 'Cancel' : 'Add Product'}
+            Add Product
           </button>
           </div>
         </div>
@@ -350,7 +358,6 @@ const ProductsTab = ({ isDarkMode }) => {
       <NewProductForm
         isOpen={showAddProductForm}
         onClose={() => setShowAddProductForm(false)}
-        showAddProductForm={showAddProductForm}
         isDarkMode={isDarkMode}
         categories={categories}
         addProductFormData={addProductFormData}
@@ -364,6 +371,7 @@ const ProductsTab = ({ isDarkMode }) => {
         onSubmit={handleNewProductSubmit}
         onToggleAddCategory={setIsAddingNewCategory}
         getCategoryColorClass={getCategoryColorClass}
+        submitting={isAddingSubmitting}
       />
 
       {/* Edit Modal */}
@@ -392,7 +400,15 @@ const ProductsTab = ({ isDarkMode }) => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className={`w-full max-w-2xl transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <Dialog.Panel className={`relative w-full max-w-2xl transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  {isEditingSubmitting && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30">
+                      <div className="flex items-center px-4 py-2 text-white bg-gray-900/80 rounded-md shadow">
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Saving...
+                      </div>
+                    </div>
+                  )}
                   <Dialog.Title as="h3" className={`text-lg font-medium leading-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Edit Product
                   </Dialog.Title>
@@ -436,6 +452,50 @@ const ProductsTab = ({ isDarkMode }) => {
                       </label>
                     </div>
                     <div>
+                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Badges</label>
+                      <div className="mt-2 flex flex-wrap gap-4">
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(editFormData.badges || []).includes('bestSeller')}
+                            onChange={(e) => {
+                              const current = editFormData.badges || [];
+                              const next = e.target.checked ? Array.from(new Set([...current, 'bestSeller'])) : current.filter(b => b !== 'bestSeller');
+                              handleEditFormChange({ target: { name: 'badges', value: next }});
+                            }}
+                            className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                          />
+                          <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Best Seller</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(editFormData.badges || []).includes('bestChoice')}
+                            onChange={(e) => {
+                              const current = editFormData.badges || [];
+                              const next = e.target.checked ? Array.from(new Set([...current, 'bestChoice'])) : current.filter(b => b !== 'bestChoice');
+                              handleEditFormChange({ target: { name: 'badges', value: next }});
+                            }}
+                            className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                          />
+                          <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Best Choice</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(editFormData.badges || []).includes('new')}
+                            onChange={(e) => {
+                              const current = editFormData.badges || [];
+                              const next = e.target.checked ? Array.from(new Set([...current, 'new'])) : current.filter(b => b !== 'new');
+                              handleEditFormChange({ target: { name: 'badges', value: next }});
+                            }}
+                            className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                          />
+                          <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>New</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Change Image (Optional)</label>
                       <div className="flex items-center mt-2 space-x-4">
                         <div className={`relative flex items-center justify-center w-32 h-32 rounded-md ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
@@ -469,9 +529,10 @@ const ProductsTab = ({ isDarkMode }) => {
                       </button>
                       <button
                         type="submit"
-                        className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                        disabled={isEditingSubmitting}
+                        className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ${isEditingSubmitting ? 'bg-pink-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'}`}
                       >
-                        Save Changes
+                        {isEditingSubmitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>) : 'Save Changes'}
                       </button>
                     </div>
                   </form>
@@ -504,7 +565,6 @@ const ProductsTab = ({ isDarkMode }) => {
               Clear search
             </button>
             <button
-              type="button"
               onClick={() => setShowAddProductForm(true)}
               className="px-3 py-1.5 rounded-md bg-pink-600 text-white hover:bg-pink-700"
             >

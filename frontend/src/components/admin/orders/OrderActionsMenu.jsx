@@ -9,7 +9,6 @@ export default function OrderActionsMenu({ order, isDarkMode = false, onViewDeta
     { value: 'processing', label: 'Mark as Processing', icon: RefreshCw, color: 'text-blue-500' },
     { value: 'shipped', label: 'Mark as Shipped', icon: Truck, color: 'text-purple-500' },
     { value: 'delivered', label: 'Mark as Delivered', icon: CheckCircle, color: 'text-green-500' },
-    { value: 'cancelled', label: 'Cancel Order', icon: X, color: 'text-gray-500' },
   ];
 
   return (
