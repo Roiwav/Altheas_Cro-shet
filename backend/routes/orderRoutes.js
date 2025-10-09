@@ -34,7 +34,7 @@ const upload = multer({
 // Routes
 router.post("/", upload.single("paymentProof"), createOrder);
 router.get("/", getAllOrders);
-router.get("/myorders", getMyOrders);
+router.get("/myorders", verifyToken, getMyOrders);
 router.get("/:id", getOrderById);
 router.put("/:id/status", updateOrderStatus);
 router.delete("/:id", deleteOrder);
