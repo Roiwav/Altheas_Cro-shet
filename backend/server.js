@@ -30,7 +30,7 @@ const app = express();
 // Seeder: ensure a default admin account exists
 async function ensureAdmin() {
   try {
-    const email = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'altheascroshet@gmail.com';
     const username = process.env.ADMIN_USERNAME || 'admin';
     const password = process.env.ADMIN_PASSWORD || 'admin123';
 

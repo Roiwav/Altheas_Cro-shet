@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
 import axios from 'axios';
@@ -13,6 +13,8 @@ const ForgotPassword = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const fromAdmin = searchParams.get('from') === 'admin';
 
   // Background bubbles effect
   useBubbles('forgot-container', { count: 16, sizeRange: [6, 14], durationRange: [10, 18], opacity: 0.18 });
@@ -39,11 +41,16 @@ const ForgotPassword = () => {
         throw new Error(data.message || "Failed to generate reset link.");
       }
 
+      // Append 'from=admin' to the reset link if applicable
+      const resetLink = fromAdmin
+        ? `${window.location.origin}/reset-password?token=${data.token}&from=admin`
+        : `${window.location.origin}/reset-password?token=${data.token}`;
+
       // Step 2: Prepare EmailJS template parameters
       const templateParams = {
         to_email: email.trim(),         // FIX: must match EmailJS recipient variable
         user_name: data.name || "User",
-        reset_link: `${window.location.origin}/reset-password?token=${data.token}`,
+        reset_link: resetLink,
       };
 
       console.log("EmailJS Template Params:", templateParams); // Debug

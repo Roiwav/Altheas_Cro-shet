@@ -71,7 +71,7 @@ export default function SignUpPage() {
       let role = "customer";
       if (
         formData.username === "admin" &&
-        formData.email === "admin@gmail.com" &&
+        formData.email === "altheascroshet@gmail.com" &&
         formData.password === "admin123"
       ) {
         role = "admin";

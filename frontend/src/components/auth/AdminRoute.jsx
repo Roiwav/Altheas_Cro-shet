@@ -10,7 +10,7 @@ const AdminRoute = () => {
     return <div>Loading...</div>; // Or a spinner component
   }
 
-  return user?.role === 'admin' ? <Outlet /> : <Navigate to="/login" state={{ from: location }} replace />;
+  return user?.role === 'admin' ? <Outlet /> : <Navigate to="/admin/login" state={{ from: location }} replace />;
 };
 
 export default AdminRoute;
