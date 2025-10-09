@@ -72,7 +72,7 @@ const FlowerViewerPage = () => {
     setShowQR(true);
   }, []);
 
-  // Helper to create the product object for cart/checkout
+  // ---- SNIPPET: ACTUAL PRODUCT OBJECT (variation: arrangement) ----
   const createProductObject = useCallback(async () => {
     const pricePerItem = FLOWER_PRICES[flowerType]?.[arrangement] || 0;
     const colorName = COLOR_NAMES[color.toLowerCase()] || 'Custom';
@@ -85,9 +85,10 @@ const FlowerViewerPage = () => {
       quantity: quantity,
       color: colorName,
       image: image,
-      variation: colorName,
+      variation: arrangement, // 'single' or 'bouquet'
     };
   }, [flowerType, arrangement, color, quantity]);
+  // ---------------------------------------------------------------
 
   // Handle place order
   const handlePlaceOrder = useCallback(async () => {
@@ -124,9 +125,8 @@ const FlowerViewerPage = () => {
     setLoading(true);
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 300); // A small delay to allow the model to re-render before enabling actions.
+    }, 300);
 
-    // Cleanup the timer if the component unmounts or dependencies change again quickly.
     return () => clearTimeout(timer);
   }, [flowerType, arrangement, color]);
 

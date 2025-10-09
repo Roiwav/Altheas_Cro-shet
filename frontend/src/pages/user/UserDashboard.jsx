@@ -32,7 +32,6 @@ function UserDashboard() {
         return;
       }
       try {
-        console.log('Fetching orders with token:', token ? 'Token present' : 'No token');
         const response = await fetch('http://localhost:5001/api/orders/myorders', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -43,17 +42,13 @@ function UserDashboard() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Failed to fetch orders:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText,
-          });
           throw new Error(`Failed to fetch orders: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        console.log('Orders data received:', data);
-        setOrders(Array.isArray(data) ? data : []);
+        const orders = Array.isArray(data.orders) ? data.orders : [];
+        setOrders(orders);
+        setHasFetched(true);
         setHasFetched(true);
       } catch (err) {
         setError(err.message);
@@ -229,11 +224,25 @@ function UserDashboard() {
                       </p>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                          {order.products?.length ?? 0} item(s)
-                        </p>
-                      </div>
+                      {/* Product details: name, qty, variation, color */}
+                      <ul className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-2">
+                        {order.products?.map((prod, idx) => (
+                          <li key={prod.productId || idx} className="flex items-center gap-1">
+                            <span className="font-medium text-gray-700 dark:text-gray-200">{prod.name}</span>
+                            <span className="px-1">x{prod.quantity}</span>
+                            {prod.variation && (
+                              <span className="px-1 text-xs bg-pink-100 dark:bg-pink-900/20 text-pink-600 dark:text-pink-300 rounded">
+                                {prod.variation}
+                              </span>
+                            )}
+                            {prod.color && (
+                              <span className="px-1 text-xs text-gray-400 italic">
+                                {prod.color}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                       <div className="mt-2 flex items-center text-sm text-gray-900 dark:text-white sm:mt-0 font-semibold">
                         <p>{currencyFormatter.format(order.total)}</p>
                       </div>
