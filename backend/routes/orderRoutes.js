@@ -15,6 +15,7 @@ const {
   cancelOrderItem,
   cancelOrderProduct,
   confirmCancelledProduct,
+  markCancelledProductDone,
 } = require("../controllers/orderController");
 
 // Multer setup for proof uploads (memory storage for Cloudinary)
@@ -46,6 +47,14 @@ router.post(
   verifyToken,
   requireAdmin,
   confirmCancelledProduct
+);
+
+// Admin marks a cancelled product as done (refund completed)
+router.post(
+  "/:id/product/:productId/mark-done",
+  verifyToken,
+  requireAdmin,
+  markCancelledProductDone
 );
 
 module.exports = router;

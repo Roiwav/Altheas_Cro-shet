@@ -1,14 +1,13 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
-import { Plus, Search, Loader2, Settings, Trash2, ArrowLeft, ArrowRight, ImageIcon } from 'lucide-react';
+import { Plus, Search, Loader2, Trash2, ArrowLeft, ArrowRight, ImageIcon } from 'lucide-react';
 import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
+import productList from '../../data/productList';
 import ProductsTable from '../../components/admin/products/ProductsTable';
 import NewProductForm from '../../components/admin/products/NewProductForm';
 import ProductsTableSkeleton from '../../components/admin/products/ProductsTableSkeleton';
 import DeleteConfirmModal from '../../components/admin/products/DeleteConfirmModal';
-import ManageCategoriesModal from '../../components/admin/products/ManageCategoriesModal';
-import BulkMoveCategoryModal from '../../components/admin/products/BulkMoveCategoryModal';
 import useAdminProductsList from '../../hooks/useAdminProductsList';
 
 const ProductsTab = ({ isDarkMode }) => {
@@ -17,33 +16,24 @@ const ProductsTab = ({ isDarkMode }) => {
   const {
     products, setProducts, loading,
     searchQuery, setSearchQuery,
-    sortBy, setSortBy, sortOrder, setSortOrder,
-    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages,
-    sortedProducts, paginatedProducts,
+    sortBy, setSortBy, sortOrder, setSortOrder, // Note: sorting is now applied after filtering
+    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
     selectedProducts, selectAllRef, handleSelectAll, handleSelectOne,
-    isDeleteConfirmOpen, setIsDeleteConfirmOpen, itemToDelete, handleDeleteClick, handleBulkDelete, confirmDeletion,
+    isDeleteConfirmOpen, setIsDeleteConfirmOpen, itemToDelete, handleDeleteClick, handleBulkDelete,
     handleToggleFeatured,
     fetchProducts,
   } = useAdminProductsList();
 
   const [showAddProductForm, setShowAddProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [addProductFormData, setAddProductFormData] = useState({});
+  const [addProductFormData, setAddProductFormData] = useState({ isFeatured: false });
   const [editFormData, setEditFormData] = useState({});
   const [newImage, setNewImage] = useState(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [newImagePreview, setNewImagePreview] = useState(null);
 
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
-  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
-  // State for category editing
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  // State for bulk-edit modal
-  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState(null);
-  const [productsToMove, setProductsToMove] = useState([]);
-  const [newCategoryForMove, setNewCategoryForMove] = useState('');
 
   // Categories derived from products
   useEffect(() => {
@@ -51,24 +41,85 @@ const ProductsTab = ({ isDarkMode }) => {
     setCategories(Array.from(new Set([...baseCategories, ...fetchedCategories])).sort());
   }, [products, baseCategories]);
 
-  // fetchProducts is provided by useAdminProductsList()
+  // Combined filtering and sorting logic
+  const filteredProducts = React.useMemo(() => {
+    let tempProducts = [...products];
+    // 1. Filter by search query
+    if (searchQuery) {
+      tempProducts = tempProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    // 2. Filter by category
+    if (categoryFilter !== 'all') {
+      tempProducts = tempProducts.filter(p => p.category === categoryFilter);
+    }
+    return tempProducts;
+  }, [products, searchQuery, categoryFilter]);
 
-  // Paging reset handled by hook
+  const finalSortedProducts = React.useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const valA = sortBy === 'name' ? a.name.toLowerCase() : sortBy === 'price' ? a.price : new Date(a.createdAt);
+      const valB = sortBy === 'name' ? b.name.toLowerCase() : sortBy === 'price' ? b.price : new Date(b.createdAt);
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredProducts, sortBy, sortOrder]);
 
-  // Sorting handled by hook
+  const finalTotalPages = Math.ceil(finalSortedProducts.length / itemsPerPage);
+  const finalPaginatedProducts = finalSortedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Selection syncing handled by hook
-
-  // Pagination handled by hook
-
-  // Checkbox selectAllRef handled by hook
+  // Reset page to 1 when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryFilter, itemsPerPage, setCurrentPage]);
 
   // Quick stats for header badges
   const totalCount = products.length;
   const featuredCount = products.filter(p => p.isFeatured).length;
-  const outOfStockCount = products.filter(p => !p.quantity || Number(p.quantity) <= 0).length;
+
+  // Helper function to assign colors to categories
+  const getCategoryColorClass = (category, isDarkMode) => {
+    if (category === 'all') {
+      return isDarkMode ? 'text-white' : 'text-gray-900';
+    }
+    switch (category) {
+      case 'Single Stem': return isDarkMode ? 'text-green-400' : 'text-green-700';
+      case 'Bouquet': return isDarkMode ? 'text-pink-400' : 'text-pink-600';
+      case 'Arrangement': return isDarkMode ? 'text-blue-400' : 'text-blue-600';
+      case 'Custom': return isDarkMode ? 'text-yellow-400' : 'text-yellow-600';
+      default: return isDarkMode ? 'text-gray-300' : 'text-gray-500';
+    }
+  };
+
+  const categoryColorClass = getCategoryColorClass(categoryFilter, isDarkMode);
 
   // Selection handlers provided by hook
+
+  // Map static shop products by name for fallback (Option A)
+  const nameToStaticImage = React.useMemo(() => {
+    const map = new Map();
+    try {
+      (productList || []).forEach((p) => {
+        if (p?.name && typeof p.image === 'string' && (p.image.startsWith('http://') || p.image.startsWith('https://'))) {
+          map.set(p.name.trim().toLowerCase(), p.image);
+        }
+      });
+    } catch { /* ignore */ }
+    return map;
+  }, []);
+
+  const resolveImageForProduct = (product) => {
+    const PLACEHOLDER_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+    if (!product) return PLACEHOLDER_SVG;
+    const isValidUrl = (u) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('blob:'));
+    const candidate = product.image;
+    const hasHttp = typeof candidate === 'string' && (candidate.startsWith('http://') || candidate.startsWith('https://'));
+    const isUploads = typeof candidate === 'string' && candidate.startsWith('/uploads');
+    if (hasHttp || isUploads) {
+      return getProductImageSrc(candidate);
+    }
+    const byName = nameToStaticImage.get((product.name || '').trim().toLowerCase());
+    if (isValidUrl(byName)) return byName;
+    return PLACEHOLDER_SVG;
+  };
 
   const handleNewImageChange = (e) => {
     const file = e.target.files[0];
@@ -104,15 +155,22 @@ const ProductsTab = ({ isDarkMode }) => {
 
   const handleNewProductSubmit = async (e) => {
     e.preventDefault();
-    if (!addProductFormData.productName || !addProductFormData.description || !newImage || !addProductFormData.price || !addProductFormData.quantity || !addProductFormData.category) {
+    if (
+      !addProductFormData.name?.trim() ||
+      !addProductFormData.description?.trim() ||
+      !newImage ||
+      !addProductFormData.price ||
+      !addProductFormData.category
+    ) {
       toast.error("All fields and image required.");
       return;
     }
     const formData = new FormData();
-    formData.append("name", addProductFormData.productName);
-    formData.append("description", addProductFormData.description);
+    formData.append("name", addProductFormData.name.trim());
+    formData.append("description", addProductFormData.description.trim());
     formData.append("price", addProductFormData.price);
-    formData.append("quantity", addProductFormData.quantity);
+    // quantity field not in modal; satisfy backend schema with default 0
+    formData.append("quantity", addProductFormData.quantity ?? 0);
     formData.append("category", addProductFormData.category);
     formData.append("isFeatured", addProductFormData.isFeatured || false);
     formData.append("image", newImage);
@@ -126,7 +184,7 @@ const ProductsTab = ({ isDarkMode }) => {
       if (res.ok && data.product) {
         setProducts(prev => [data.product, ...prev]);
         setShowAddProductForm(false);
-        setAddProductFormData({});
+        setAddProductFormData({ isFeatured: false });
         setNewImage(null);
         setNewImagePreview(null);
         toast.success("Product added!");
@@ -141,7 +199,7 @@ const ProductsTab = ({ isDarkMode }) => {
   const handleEditClick = (product) => {
     setEditingProduct(product);
     setEditFormData({
-      productName: product.name,
+      name: product.name,
       description: product.description,
       price: product.price,
       quantity: product.quantity,
@@ -149,14 +207,10 @@ const ProductsTab = ({ isDarkMode }) => {
       isFeatured: product.isFeatured || false,
     });
     setNewImagePreview(null); // Reset previous preview
-    // Use a more robust way to set the image preview URL, similar to ShopPage
-    if (product.image) {
-      setIsImageLoading(true); // Start loading
-      const imageUrl = getProductImageSrc(product.image);
-      setNewImagePreview(imageUrl);
-    } else {
-      setIsImageLoading(false); // No image to load
-    }
+    // Use a robust resolver that falls back to static assets by name (Option A)
+    setIsImageLoading(true);
+    const imageUrl = resolveImageForProduct(product);
+    setNewImagePreview(imageUrl);
     setShowAddProductForm(false);
   };
 
@@ -168,15 +222,14 @@ const ProductsTab = ({ isDarkMode }) => {
   const handleEditProductSubmit = async (e) => {
     e.preventDefault();
 
-    if (!editFormData.productName?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.quantity || !editFormData.category) {
+    if (!editFormData.name?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.category) {
       toast.error("All fields required.");
       return;
     }
     const formData = new FormData();
-    formData.append("name", editFormData.productName);
+    formData.append("name", editFormData.name);
     formData.append("description", editFormData.description);
     formData.append("price", editFormData.price);
-    formData.append("quantity", editFormData.quantity);
     formData.append("category", editFormData.category);
     formData.append("isFeatured", editFormData.isFeatured || false);
     if (newImage) {
@@ -212,92 +265,35 @@ const ProductsTab = ({ isDarkMode }) => {
     setNewImagePreview(null);
   };
 
+  // OVERRIDE: This logic should ideally be in the useAdminProductsList hook
+  // For this example, we'll override the confirmDeletion from the hook.
+  const handleSoftDelete = async () => {
+    if (!itemToDelete) return;
+
+    const isBulk = itemToDelete?.type === 'bulk';
+    const url = isBulk
+      ? `${SERVER_BASE_URL}/api/v1/products/bulk-soft-delete`
+      : `${SERVER_BASE_URL}/api/v1/products/${itemToDelete.id}/soft-delete`;
+    const method = isBulk ? 'POST' : 'PATCH';
+    const body = isBulk ? JSON.stringify({ productIds: itemToDelete.ids }) : null;
+
+    try {
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body });
+      if (res.ok) {
+        toast.success(`Product(s) moved to trash.`);
+        fetchProducts(); // Re-fetch the list
+      } else {
+        const data = await res.json();
+        toast.error(data.message || 'Failed to move product to trash.');
+      }
+    } catch {
+      toast.error('Server error while moving product to trash.');
+    } finally {
+      setIsDeleteConfirmOpen(false);
+    }
+  };
+
   // Delete click and toggle featured provided by hook
-
-  const handleDeleteCategory = (categoryToDelete) => {
-    // Check if any product is using this category
-    const productsInCategory = products.filter(p => p.category === categoryToDelete);
-    const isCategoryInUse = productsInCategory.length > 0;
-
-    if (isCategoryInUse) {
-      setCategoryToDelete(categoryToDelete);
-      setProductsToMove(productsInCategory);
-      setNewCategoryForMove(''); // Reset selection
-      setIsManageCategoriesOpen(false); // Close the manage modal
-      setShowBulkEditModal(true); // Open the bulk-edit modal
-    } else {
-      if (window.confirm(`Are you sure you want to delete the category "${categoryToDelete}"? This cannot be undone.`)) {
-        setCategories(prev => prev.filter(cat => cat !== categoryToDelete));
-        toast.success(`Category "${categoryToDelete}" has been deleted.`);
-      }
-    }
-  };
-
-  const handleBulkMoveAndDelete = async () => {
-    if (!newCategoryForMove) {
-      toast.error('Please select a new category to move the products to.');
-      return;
-    }
-
-    const productIds = productsToMove.map(p => p._id);
-
-    try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/bulk-update-category`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productIds, newCategory: newCategoryForMove }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(`${data.modifiedCount} products moved to "${newCategoryForMove}".`);
-        // Now delete the old category from state
-        setCategories(prev => prev.filter(cat => cat !== categoryToDelete));
-        // Refetch products to get the latest data
-        fetchProducts();
-        setShowBulkEditModal(false);
-      } else {
-        toast.error(data.message || 'Failed to move products.');
-      }
-    } catch {
-      toast.error('A server error occurred while moving products.');
-    }
-  };
-
-  const handleEditCategory = (category) => {
-    setEditingCategory(category);
-    setNewCategoryName(category);
-  };
-
-  const handleCancelCategoryEdit = () => {
-    setEditingCategory(null);
-    setNewCategoryName("");
-  };
-
-  const handleSaveCategoryEdit = async () => {
-    if (!newCategoryName.trim() || newCategoryName === editingCategory) {
-      handleCancelCategoryEdit();
-      return;
-    }
-
-    try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/update-category-name`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldCategory: editingCategory, newCategory: newCategoryName }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(`Category updated to "${newCategoryName}".`);
-        fetchProducts(); // Refetch all data to ensure consistency
-        handleCancelCategoryEdit();
-      } else {
-        toast.error(data.message || 'Failed to update category.');
-      }
-    } catch {
-      toast.error('A server error occurred while updating the category.');
-    }
-  };
 
   // Prevents typing 'e', '+', '-' in number inputs
   const blockInvalidNumberInput = (e) => {
@@ -314,7 +310,6 @@ const ProductsTab = ({ isDarkMode }) => {
           <div className="mt-2 flex flex-wrap gap-2">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>Total: {totalCount}</span>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`}>Featured: {featuredCount}</span>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-800'}`}>Out of stock: {outOfStockCount}</span>
           </div>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -328,11 +323,19 @@ const ProductsTab = ({ isDarkMode }) => {
               className={`block w-full py-2 pl-10 pr-3 border rounded-md leading-5 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:border-pink-500' : 'bg-white border-gray-300 text-gray-900 focus:border-pink-500'}`}
             />
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className={`py-2 pl-3 pr-8 border rounded-md leading-5 focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm font-medium ${isDarkMode ? 'bg-gray-700 border-gray-600 focus:border-pink-500' : 'bg-white border-gray-300 focus:border-pink-500'} ${categoryColorClass}`}
+          >
+            <option value="all" className={isDarkMode ? 'text-white' : 'text-gray-900'}>All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat} className={getCategoryColorClass(cat, isDarkMode)}>{cat}</option>
+            ))}
+          </select>
           <div className="flex items-center gap-2">
-            <button onClick={() => setIsManageCategoriesOpen(true)} className={`p-2 border rounded-md shadow-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
-              <Settings className="w-5 h-5" />
-            </button>
           <button
+            type="button"
             onClick={() => setShowAddProductForm(!showAddProductForm)}
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-transparent rounded-md shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
           >
@@ -343,22 +346,25 @@ const ProductsTab = ({ isDarkMode }) => {
         </div>
       </div>
 
-      {showAddProductForm && (
-        <NewProductForm
-          isDarkMode={isDarkMode}
-          categories={categories}
-          addProductFormData={addProductFormData}
-          isAddingNewCategory={isAddingNewCategory}
-          onAddFormChange={handleAddFormChange}
-          onCategoryChange={handleCategoryChange}
-          onImageChange={handleNewImageChange}
-          onImageRemove={handleNewRemoveImage}
-          newImagePreview={newImagePreview}
-          blockInvalidNumberInput={blockInvalidNumberInput}
-          onSubmit={handleNewProductSubmit}
-          onToggleAddCategory={setIsAddingNewCategory}
-        />
-      )}
+      {/* Add Product Modal */}
+      <NewProductForm
+        isOpen={showAddProductForm}
+        onClose={() => setShowAddProductForm(false)}
+        showAddProductForm={showAddProductForm}
+        isDarkMode={isDarkMode}
+        categories={categories}
+        addProductFormData={addProductFormData}
+        isAddingNewCategory={isAddingNewCategory}
+        onAddFormChange={handleAddFormChange}
+        onCategoryChange={handleCategoryChange}
+        onImageChange={handleNewImageChange}
+        onImageRemove={handleNewRemoveImage}
+        newImagePreview={newImagePreview}
+        blockInvalidNumberInput={blockInvalidNumberInput}
+        onSubmit={handleNewProductSubmit}
+        onToggleAddCategory={setIsAddingNewCategory}
+        getCategoryColorClass={getCategoryColorClass}
+      />
 
       {/* Edit Modal */}
       <Transition appear show={editingProduct !== null} as={Fragment}>
@@ -392,8 +398,8 @@ const ProductsTab = ({ isDarkMode }) => {
                   </Dialog.Title>
                   <form onSubmit={handleEditProductSubmit} className="mt-4 space-y-4">
                     <div>
-                      <label htmlFor="edit-productName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
-                      <input type="text" id="edit-productName" name="productName" value={editFormData.productName || ''} onChange={handleEditFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
+                      <label htmlFor="edit-name" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product Name</label>
+                      <input type="text" id="edit-name" name="name" value={editFormData.name || ''} onChange={handleEditFormChange} required className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
                     </div>
                     <div>
                       <label htmlFor="edit-description" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
@@ -476,49 +482,18 @@ const ProductsTab = ({ isDarkMode }) => {
         </Dialog>
       </Transition>
 
-      {/* Bulk Edit/Delete Category Modal */}
-      <BulkMoveCategoryModal
-        isOpen={showBulkEditModal}
-        isDarkMode={isDarkMode}
-        categoryToDelete={categoryToDelete}
-        productsCount={productsToMove.length}
-        categories={categories.filter(c => c !== categoryToDelete)}
-        newCategoryForMove={newCategoryForMove}
-        onChangeNewCategoryForMove={setNewCategoryForMove}
-        onCancel={() => setShowBulkEditModal(false)}
-        onConfirm={handleBulkMoveAndDelete}
-      />
-
-      {/* Manage Categories Modal */}
-      <ManageCategoriesModal
-        isOpen={isManageCategoriesOpen}
-        isDarkMode={isDarkMode}
-        categories={categories}
-        baseCategories={baseCategories}
-        editingCategory={editingCategory}
-        newCategoryName={newCategoryName}
-        onStartEditCategory={handleEditCategory}
-        onChangeNewCategory={setNewCategoryName}
-        onDeleteCategory={handleDeleteCategory}
-        onSaveCategoryEdit={handleSaveCategoryEdit}
-        onCancelCategoryEdit={handleCancelCategoryEdit}
-        onClose={() => setIsManageCategoriesOpen(false)}
-      />
-
-      
-
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={isDeleteConfirmOpen}
         isDarkMode={isDarkMode}
         itemToDelete={itemToDelete}
         onCancel={() => setIsDeleteConfirmOpen(false)}
-        onConfirm={confirmDeletion}
+        onConfirm={handleSoftDelete} // Use our new soft delete handler
       />
 
       {loading ? (
         <ProductsTableSkeleton isDarkMode={isDarkMode} />
-      ) : sortedProducts.length === 0 ? (
+      ) : finalSortedProducts.length === 0 ? (
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-10 text-center`}>
           <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-3`}>No products found.</p>
           <div className="flex items-center justify-center gap-2 text-sm">
@@ -529,6 +504,7 @@ const ProductsTab = ({ isDarkMode }) => {
               Clear search
             </button>
             <button
+              type="button"
               onClick={() => setShowAddProductForm(true)}
               className="px-3 py-1.5 rounded-md bg-pink-600 text-white hover:bg-pink-700"
             >
@@ -558,7 +534,7 @@ const ProductsTab = ({ isDarkMode }) => {
           <div className="overflow-x-auto">
             <ProductsTable
               isDarkMode={isDarkMode}
-              paginatedProducts={paginatedProducts}
+              paginatedProducts={finalPaginatedProducts}
               selectedProducts={selectedProducts}
               selectAllRef={selectAllRef}
               handleSelectAll={handleSelectAll}
@@ -570,13 +546,14 @@ const ProductsTab = ({ isDarkMode }) => {
               handleEditClick={handleEditClick}
               handleDeleteClick={handleDeleteClick}
               handleToggleFeatured={handleToggleFeatured}
+              getCategoryColorClass={getCategoryColorClass}
             />
           </div>
         </div>
       )}
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {finalTotalPages > 1 && (
         <div className="flex flex-col items-center justify-between gap-4 mt-4 md:flex-row">
           <div className="flex items-center self-start space-x-2 text-sm md:self-center">
             <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Items per page:</span>
@@ -596,17 +573,17 @@ const ProductsTab = ({ isDarkMode }) => {
           <div className="flex items-center self-end space-x-2 md:self-center">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || finalTotalPages === 0}
               className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <span className={`text-sm px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Page {currentPage} of {totalPages}
+              Page {finalTotalPages > 0 ? currentPage : 0} of {finalTotalPages}
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, finalTotalPages))}
+              disabled={currentPage === finalTotalPages || finalTotalPages === 0}
               className={`inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
             >
               <ArrowRight className="w-4 h-4" />

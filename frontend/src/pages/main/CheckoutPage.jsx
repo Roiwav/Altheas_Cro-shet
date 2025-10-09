@@ -83,7 +83,7 @@ export default function CheckoutPage() {
       setDerivedDeliveryEstimate(feeObj.estimated);
     } else {
       setDerivedShippingFee(passedShippingFee || 0);
-      setDerivedDeliveryEstimate("N/A");
+      setDerivedDeliveryEstimate(shippingFees[defaultRegion].estimated); // Fallback to default
     }
   }, [currentAddress, passedShippingFee, user]);
 
@@ -308,7 +308,7 @@ export default function CheckoutPage() {
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 totalCost={totalCost}
-                currencyFormatter={currencyFormatter}
+                currencyFormatter={currencyFormatter} 
                 estimatedDelivery={derivedDeliveryEstimate}
               />
 

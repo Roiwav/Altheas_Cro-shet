@@ -71,6 +71,44 @@ const createOrder = async (req, res) => {
   }
 };
 
+// ✅ Admin: mark a cancelled product as DONE (refund completed)
+const markCancelledProductDone = async (req, res) => {
+  try {
+    const { id: orderId, productId } = req.params;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const p = order.products.find(
+      (product) => (product.productId === productId || product._id?.toString() === productId)
+    );
+    if (!p) return res.status(404).json({ message: 'Product not found in order' });
+    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
+
+    p.refundStatus = 'Completed';
+    p.refundConfirmedAt = new Date();
+
+    // Optional: if all cancelled items are completed, set order-level refund status
+    const cancelledItems = order.products.filter((pr) => pr.cancelled);
+    const allCompleted = cancelledItems.length > 0 && cancelledItems.every((pr) => pr.refundStatus === 'Completed');
+    if (allCompleted) {
+      order.refundStatus = 'Completed';
+      order.refundProcessedAt = new Date();
+    }
+
+    await order.save();
+
+    return res.json({
+      message: 'Cancelled item marked as done',
+      order,
+      success: true,
+    });
+  } catch (error) {
+    console.error('❌ Error marking cancelled product as done:', error);
+    res.status(500).json({ message: 'Failed to mark cancelled product as done' });
+  }
+};
+
 // ✅ Fetch orders for logged-in user
 const getMyOrders = async (req, res) => {
   try {
@@ -356,4 +394,5 @@ module.exports = {
   cancelOrderItem,
   cancelOrderProduct,
   confirmCancelledProduct,
+  markCancelledProductDone,
 };

@@ -8,6 +8,7 @@ import OrdersTab from "./OrdersTab.jsx";
 import CancelledTab from "./CancelledTab.jsx";
 import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
+import TrashTab from "../../components/admin/products/TrashTab.jsx"; // Correct path to TrashTab
 import FeedbackTab from "./FeedbackTab.jsx";
 import { useDarkMode } from "../../context/useDarkMode.js";
 import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight, Menu as MenuIcon } from "lucide-react";
@@ -44,6 +45,7 @@ export default function AdminPage() {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "cancelled", label: "Cancelled", icon: XCircle },
     { id: "products", label: "Products", icon: Box },
+    { id: "trash", label: "Trash", icon: Trash2 }, // Add Trash tab
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -378,6 +380,7 @@ export default function AdminPage() {
               {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} />}
               {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} />}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
+              {activeTab === "trash" && <TrashTab isDarkMode={isDarkMode} />}
               {activeTab === "feedback" && <FeedbackTab isDarkMode={isDarkMode} />}
               {activeTab === "settings" && <SettingsTab isDarkMode={isDarkMode} />}
             </div>
