@@ -11,6 +11,8 @@ import {
   ShoppingBagIcon,
 } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
+import AboutUs from './AboutUs';
+import ContactPage from './Contact';
 import { useUser } from '../../context/useUser.js';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 import { useCart } from '../../context/cart-context.js';
@@ -87,7 +89,7 @@ function HomePage() {
       </section>
 
       {/* About / Why Choose Section */}
-      <section ref={aboutRef} className="py-20 bg-white dark:bg-gray-900">
+      <section className="py-20 bg-white dark:bg-gray-900">
         <div className="px-6 mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">
@@ -196,7 +198,7 @@ function HomePage() {
       <div className="h-0.5 bg-gradient-to-r from-pink-500/0 via-pink-500/50 to-pink-500/0"></div>
 
       {/* Testimonials Section */}
-      <section ref={contactRef} className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section className="py-20 bg-gray-50 dark:bg-gray-800">
         <div className="px-6 mx-auto max-w-7xl">
           <div className="mb-20 text-center">
             <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">
@@ -209,6 +211,14 @@ function HomePage() {
       </section>
 
       <div className="h-0.5 bg-gradient-to-r from-purple-600/0 via-purple-500/50 to-purple-600/0"></div>
+
+      {/* Embedded About Us Section (SPA scroll target) */}
+      <AboutUs ref={aboutRef} embedded={true} noNavbar={true} />
+
+      <div className="h-0.5 bg-gradient-to-r from-pink-600/0 via-pink-500/50 to-pink-600/0"></div>
+
+      {/* Embedded Contact Section (SPA scroll target) */}
+      <ContactPage ref={contactRef} embedded={true} />
     </div>
   );
 }

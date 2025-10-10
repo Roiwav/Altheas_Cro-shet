@@ -12,7 +12,6 @@ import Contact from './pages/main/Contact';
 import ShopPage from './pages/main/ShopPage';
 import GalleryPage from './pages/main/GalleryPage';
 import WishlistPage from './pages/main/WishlistPage';
-import PortfolioPage from './pages/main/PortfolioPage';
 import FAQPage from './pages/main/FAQPage';
 import BlogPage from './pages/main/BlogPage';
 import FeedbackPage from './pages/main/FeedbackPage';
@@ -81,7 +80,6 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/ar" element={<FlowerViewerPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
           
           {/* User-specific Pages */}
           <Route element={<ProtectedRoute />}>
