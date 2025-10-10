@@ -1,21 +1,9 @@
 // src/pages/main/GalleryPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useUser } from "../../context/useUser.js";
 import { FaArrowRight } from 'react-icons/fa';
-// Gallery images
-import img1 from '../../assets/images/gallery/image1.jpg';
-import img2 from '../../assets/images/gallery/image2.jpg';
-import img3 from '../../assets/images/gallery/image3.jpg';
-import img4 from '../../assets/images/gallery/image4.jpg';
-import img5 from '../../assets/images/gallery/image5.jpg';
-import img6 from '../../assets/images/gallery/image6.jpg';
-import img7 from '../../assets/images/gallery/image7.jpg';
-import img8 from '../../assets/images/gallery/image8.jpg';
-import img9 from '../../assets/images/gallery/image9.jpg';
-import img10 from '../../assets/images/gallery/image10.jpg';
-import img11 from '../../assets/images/gallery/image11.jpg';
-import img12 from '../../assets/images/gallery/image12.jpg';
+import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product.js';
 
 // Product data mapping with titles, descriptions, and prices
 const productData = {
@@ -83,23 +71,43 @@ const productData = {
 
 export default function GalleryPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [products, setProducts] = useState([]);
   const { user } = useUser();
   const navigate = useNavigate();
 
-  const images = [
-    { id: 1, src: img1, alt: 'Beautiful Handmade 1' },
-    { id: 2, src: img2, alt: 'Elegant Craft 2' },
-    { id: 3, src: img3, alt: 'Stylish Crochet 3' },
-    { id: 4, src: img4, alt: 'Charming Design 4' },
-    { id: 5, src: img5, alt: 'Lovely Piece 5' },
-    { id: 6, src: img6, alt: 'Artistic Creation 6' },
-    { id: 7, src: img7, alt: 'Unique Style 7' },
-    { id: 8, src: img8, alt: 'Crafted Beauty 8' },
-    { id: 9, src: img9, alt: 'Delicate Work 9' },
-    { id: 10, src: img10, alt: 'Masterpiece 10' },
-    { id: 11, src: img11, alt: 'Exquisite Craft 11' },
-    { id: 12, src: img12, alt: 'Handmade Wonder 12' },
-  ];
+  // Fetch products from backend to map to gallery items (Cloudinary-only)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
+        const data = await res.json();
+        if (!active) return;
+        setProducts(Array.isArray(data.products) ? data.products : []);
+      } catch {
+        setProducts([]);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const normalize = (s) => String(s || '').toLowerCase().trim();
+
+  const nameToProduct = useMemo(() => {
+    const map = new Map();
+    products.forEach((p) => map.set(normalize(p.name), p));
+    return map;
+  }, [products]);
+
+  // Build gallery tiles by matching productData names to backend products
+  const images = useMemo(() => {
+    return Object.entries(productData).map(([alt, meta], idx) => {
+      const p = nameToProduct.get(normalize(meta.name || alt));
+      const src = getProductImageSrc(p?.imagePublicId || p?.image);
+      const id = p?._id || String(idx + 1);
+      return { id, alt, src, product: p };
+    });
+  }, [nameToProduct]);
 
 
   return (
@@ -121,7 +129,7 @@ export default function GalleryPage() {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {images.map((image, index) => (
             <div
-              key={image.id}
+              key={`${image.id}-${image.alt}`}
               onClick={() => setSelectedProduct(image)}
               className="overflow-hidden transition-all duration-300 transform shadow-lg cursor-pointer group rounded-2xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm hover:shadow-2xl hover:scale-105 animate-fade-in-up"
               style={{ animationDelay: `${index * 100}ms` }}
@@ -130,6 +138,12 @@ export default function GalleryPage() {
                 src={image.src}
                 alt={image.alt}
                 className="object-cover w-full h-64 transition-opacity duration-300 group-hover:opacity-90"
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+                }}
               />
               <div className="p-4 text-center bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm">
                 <p className="font-medium text-gray-800 truncate dark:text-gray-200">
@@ -155,9 +169,15 @@ export default function GalleryPage() {
                 <div className="relative w-full md:w-[60%] h-[50vh] md:h-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center p-8">
                   <div className="absolute inset-0 bg-gradient-to-br from-pink-50 to-blue-50 dark:from-gray-700 dark:to-gray-900 opacity-50"></div>
                   <img
-                    src={selectedProduct.src}
+                    src={getProductImageSrc(selectedProduct.product?.imagePublicId || selectedProduct.product?.image)}
                     alt={selectedProduct.alt}
                     className="relative z-10 max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+                    }}
                   />
                 </div>
 
@@ -187,22 +207,22 @@ export default function GalleryPage() {
                     <div className="flex flex-col space-y-3">
                       <button
                         onClick={() => {
-                          const product = {
+                          const backendProduct = selectedProduct.product;
+                          const fallback = {
+                            _id: selectedProduct.id.toString(),
                             id: selectedProduct.id.toString(),
                             name: productData[selectedProduct.alt]?.name || selectedProduct.alt,
                             price: productData[selectedProduct.alt]?.price || 0,
                             description: productData[selectedProduct.alt]?.description || 'No description available.',
                             image: selectedProduct.src,
-                            variations: [] // Add empty variations array if your products have variations
                           };
-                          
-                          // Navigate to shop with the specific product
-                          navigate('/shop', { 
-                            state: { 
+                          const payload = backendProduct || fallback;
+                          navigate('/shop', {
+                            state: {
                               openProductModal: true,
-                              selectedProduct: product
+                              selectedProduct: payload,
                             },
-                            replace: true
+                            replace: true,
                           });
                         }}
                         className="group relative flex-1 flex items-center justify-center px-6 py-4 text-base font-medium text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 rounded-xl transition-all duration-300 overflow-hidden"

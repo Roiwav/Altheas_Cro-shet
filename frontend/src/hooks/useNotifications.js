@@ -11,13 +11,14 @@ export default function useNotifications() {
   const [loading, setLoading] = useState(false);
 
   const refetch = useCallback(async () => {
-    if (!isAuthenticated) return;
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated || !token) return;
     setLoading(true);
     try {
       const res = await fetch(`${SERVER_BASE_URL}/api/notifications/my`, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
       });
@@ -37,12 +38,12 @@ export default function useNotifications() {
 
   // Real-time: connect to Socket.IO and listen for new notifications
   useEffect(() => {
-    if (!isAuthenticated) return;
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated || !token) return;
     const socket = io(SERVER_BASE_URL);
 
     socket.on('connect', () => {
-      const token = localStorage.getItem('token');
-      if (token) socket.emit('register', token);
+      socket.emit('register', token);
     });
     // Swallow possible errors
     socket.on('register:error', () => {});
