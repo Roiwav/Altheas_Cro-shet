@@ -9,10 +9,10 @@ import MapImg from "../../assets/images/aboutPage/map.png";
 import HomeBg1 from "../../assets/images/homeBg/HomeBg1.png";
 
 // AboutPage component using forwardRef for scroll behavior
-const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
+const AboutPage = forwardRef(({ noNavbar = false, embedded = false }, ref) => {
   const { user } = useUser();
   return (
-    <div ref={ref} className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 ${user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''} transition-all duration-300 ease-in-out`}>
+    <div ref={ref} className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 ${embedded ? '' : (user ? 'lg:ml-[var(--sidebar-width,5rem)]' : '')} transition-all duration-300 ease-in-out`}>
       {/* Optional Navbar */}
       {!noNavbar && <Navbar />}
 
@@ -196,7 +196,7 @@ const AboutPage = forwardRef(({ noNavbar = false }, ref) => {
             </div>
             
             <h3 className="mb-6 text-3xl font-bold text-gray-800 md:text-4xl dark:text-white">
-              Ready to Create Something Beautiful?
+              Ready to Buy Something Beautiful?
             </h3>
             
             <p className="mb-8 text-xl leading-relaxed text-gray-600 dark:text-gray-300">

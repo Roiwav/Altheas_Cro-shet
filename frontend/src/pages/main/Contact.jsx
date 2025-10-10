@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import emailjs from '@emailjs/browser';
 import { MapPin, Phone, Mail, Clock, Facebook, Instagram, Send, MessageCircle, Star } from "lucide-react";
 import { useUser } from "../../context/useUser.js";
@@ -7,7 +7,7 @@ import { useUser } from "../../context/useUser.js";
 // import facebookLogo from "../../assets/images/icons/facebook-Logo.png";
 // import instagramLogo from "../../assets/images/icons/instagram-Logo.png";
 
-export default function ContactPage() {
+const ContactPage = forwardRef(({ embedded = false }, ref) => {
   const { user } = useUser();
   
   // State para sa form input
@@ -79,8 +79,8 @@ export default function ContactPage() {
   }, []);
 
   return (
-    <div className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 pt-24 lg:pt-32 px-6 pb-0 ${
-      user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
+    <div ref={ref} className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 pt-24 lg:pt-32 px-6 pb-0 ${
+      embedded ? '' : (user ? 'lg:ml-[var(--sidebar-width,5rem)]' : '')
     } transition-all duration-300 ease-in-out`}>
         {/* Hero Section */}
         <section className="relative pt-16 pb-20 overflow-hidden">
@@ -376,4 +376,6 @@ export default function ContactPage() {
         </section>
     </div>
   );
-}
+});
+
+export default ContactPage;
