@@ -156,7 +156,11 @@ const ARViewer = forwardRef(({
         alt={`${flowerType} ${arrangement}`}
         ar={ar ? true : undefined}
         ar-modes="webxr scene-viewer quick-look"
+        ar-placement="floor"
         ar-scale="auto"
+        ar-shadows
+        light-estimation
+        disable-scale
         interaction-prompt="auto"
         interaction-prompt-style="wiggle" // Adds a subtle animation to encourage interaction.
         camera-controls
