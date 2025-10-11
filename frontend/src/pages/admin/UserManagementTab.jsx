@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Search, MoreVertical, Trash2, Shield, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingBag, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
@@ -34,28 +33,47 @@ export default function UserManagementTab({ isDarkMode }) {
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
+  // ---- MODIFIED: Fetch from real backend ----
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      // This is a placeholder URL. You'll need to create this endpoint in your backend.
-      const response = await fetch('http://localhost:5001/api/users/all'); 
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      console.log("UserManagementTab token value:", token);
+      if (!token) {
+        toast.error('Authentication required');
+        setLoading(false);
+        return;
+      }
+      const response = await fetch('http://localhost:5001/api/v1/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        if (response.status === 403) {
+          toast.error('Access denied. Admin privileges required.');
+        } else {
+          throw new Error('Failed to fetch users');
+        }
+        setUsers([]);
+        setLoading(false);
+        return;
       }
       const data = await response.json();
-      setUsers(data); // Assuming the API returns an array of users
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.error(error.message);
-      setUsers([]); // Set to empty array on error
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // fetchUsers(); // You can uncomment this when your backend is ready
-    setLoading(false); // For now, just stop loading
+    fetchUsers();
   }, [fetchUsers]);
+  // ---- END MODIFIED ---
 
   const filteredUsers = useMemo(() => {
     return users.filter(user =>

@@ -137,7 +137,7 @@ const getMyOrders = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find().populate("userId", "name email");
-    res.json(orders);
+    res.json(orders); 
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ message: "Failed to fetch orders" });

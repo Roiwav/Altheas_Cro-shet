@@ -224,7 +224,7 @@ const OrdersPage = () => {
     }
 
     try {
-      const response = await fetch(`${SERVER_BASE_URL}/api/orders/myorders`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders/myorders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -257,7 +257,7 @@ const OrdersPage = () => {
     const { orderId, productId } = cancellationItem;
     
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/orders/${orderId}/product/${productId}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/orders/${orderId}/product/${productId}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`,

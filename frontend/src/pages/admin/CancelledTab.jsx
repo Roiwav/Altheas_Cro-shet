@@ -118,7 +118,7 @@ export default function CancelledTab({ isDarkMode }) {
       if (!cleanToken) throw new Error('Not authenticated. Please log in again.');
 
       const res = await fetch(
-        `${SERVER_BASE_URL}/api/orders/${row.orderId}/product/${row.productId}/mark-done`,
+        `${SERVER_BASE_URL}/api/v1/orders/${row.orderId}/product/${row.productId}/mark-done`,
         {
           method: 'POST',
           headers: {
@@ -164,7 +164,7 @@ export default function CancelledTab({ isDarkMode }) {
       // Proceed; backend will return 401 if token is invalid
 
       const res = await fetch(
-        `${SERVER_BASE_URL}/api/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
+        `${SERVER_BASE_URL}/api/v1/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
         {
           method: 'POST',
           headers: {

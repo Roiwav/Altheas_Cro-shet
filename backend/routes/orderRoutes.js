@@ -2,7 +2,6 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const path = require("path");
 
 const { verifyToken, requireAdmin } = require('../middleware/authMiddleware');
 const {
@@ -32,23 +31,27 @@ const upload = multer({
   },
 });
 
-// Routes
+// ===== USER ROUTES =====
 // Create order (authenticated users)
 router.post("/", verifyToken, upload.single("paymentProof"), createOrder);
-// Admin: list all orders
-router.get("/", verifyToken, requireAdmin, getAllOrders);
 // User: my orders
 router.get("/myorders", verifyToken, getMyOrders);
-// Admin: get order by id
-router.get("/:id", verifyToken, requireAdmin, getOrderById);
-// Admin: update status
-router.put("/:id/status", verifyToken, requireAdmin, updateOrderStatus);
-// Admin: delete order
-router.delete("/:id", verifyToken, requireAdmin, deleteOrder);
 // User: cancel whole order (if implemented)
 router.put("/:id/cancel", verifyToken, cancelOrderItem);
 // User: cancel a specific product in the order
 router.delete("/:id/product/:productId", verifyToken, cancelOrderProduct);
+
+// ===== ADMIN ROUTES =====
+// Admin: list all orders
+router.get("/", verifyToken, requireAdmin, getAllOrders);
+// Admin: get order by id
+router.get("/:id", verifyToken, requireAdmin, getOrderById);
+// Admin: update status
+router.put("/:id/status", verifyToken, requireAdmin, updateOrderStatus);
+router.patch("/:id/status", verifyToken, requireAdmin, updateOrderStatus);
+
+// Admin: delete order
+router.delete("/:id", verifyToken, requireAdmin, deleteOrder);
 // Admin confirms a cancelled product and notifies customer
 router.post(
   "/:id/product/:productId/confirm-cancel",
@@ -56,7 +59,6 @@ router.post(
   requireAdmin,
   confirmCancelledProduct
 );
-
 // Admin marks a cancelled product as done (refund completed)
 router.post(
   "/:id/product/:productId/mark-done",

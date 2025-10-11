@@ -205,7 +205,7 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/cart", cartRoutes);
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/users", userRoutes);
-  app.use("/api/orders", orderRoutes); // includes Multer upload for payment proof
+  app.use("/api/v1/orders", orderRoutes);
   app.use("/api/notifications", notificationRoutes);
 
   // 🟢 Serve uploaded images (proof of payment, etc.)
