@@ -3,6 +3,7 @@ const Product = require("../models/Product");
 const fs = require('fs');
 const path = require('path');
 const productCloudinary = require('../config/productCloudinary');
+const { createLog } = require('../controllers/logController');
 
 /**
  * @desc    Create a new product
@@ -10,6 +11,9 @@ const productCloudinary = require('../config/productCloudinary');
  * @access  Private/Admin
  */
 const createProduct = async (req, res) => {
+
+  console.log("PRODUCT ROUTE CALLED");
+
   try {
     const { name, description, price, quantity, category, isFeatured } = req.body;
 
@@ -56,12 +60,44 @@ const createProduct = async (req, res) => {
 
     await newProduct.save();
 
+    console.log('🔍 About to log product creation...');
+    console.log('🔍 req.user:', req.user);
+    console.log('🔍 newProduct._id:', newProduct._id.toString());
+    console.log('🔍 product name:', name);
+
+    // LOG PRODUCT CREATION
+    await createLog(
+      'Product Edit',
+      req.user?.username || req.user?.email || 'Admin',
+      newProduct._id.toString(),
+      `Created product "${name}" - ₱${price}`,
+      'Success',
+      { action: 'create', productName: name, price, category }
+    );
+
+    console.log('✅ Product logged successfully');
+
     res.status(201).json({
       message: "Product created successfully",
       product: newProduct,
     });
   } catch (error) {
     console.error("Error creating product:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'unknown',
+        `Failed to create product: ${error.message}`,
+        'Failure',
+        { action: 'create', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log product creation failure:", logError);
+    }
+    
     res.status(500).json({ message: "Failed to create product due to a server error." });
   }
 };
@@ -105,11 +141,24 @@ const getProductById = async (req, res) => {
  * @access  Private/Admin
  */
 const updateProduct = async (req, res) => {
+
+  console.log("UPDATE PRODUCT ROUTE CALLED");
+  
   try {
     const { name, description, price, quantity, category, isFeatured } = req.body;
     const product = await Product.findById(req.params.id);
 
     if (product) {
+      const originalName = product.name;
+      const changes = [];
+
+      if (name && name !== product.name) changes.push('name');
+      if (description && description !== product.description) changes.push('description');
+      if (price && price !== product.price) changes.push('price');
+      if (quantity !== undefined && quantity !== product.quantity) changes.push('quantity');
+      if (category && category !== product.category) changes.push('category');
+      if (isFeatured !== undefined && isFeatured !== product.isFeatured) changes.push('featured status');
+
       product.name = name || product.name;
       product.description = description || product.description;
       product.price = price || product.price;
@@ -118,6 +167,7 @@ const updateProduct = async (req, res) => {
       product.isFeatured = isFeatured !== undefined ? isFeatured : product.isFeatured;
 
       if (req.file && req.file.buffer) {
+        changes.push('image');
         // Delete old Cloudinary image if it exists
         if (product.imagePublicId) {
           try {
@@ -151,12 +201,42 @@ const updateProduct = async (req, res) => {
       }
 
       const updatedProduct = await product.save();
+
+      // LOG PRODUCT UPDATE
+      try {
+        await createLog(
+          'Product Edit',
+          req.user?.username || req.user?.email || 'Admin',
+          updatedProduct._id.toString(),
+          `Updated product "${originalName}"${changes.length > 0 ? ` - Changed: ${changes.join(', ')}` : ''}`,
+          'Success',
+          { action: 'update', productName: originalName, changedFields: changes }
+        );
+      } catch (logError) {
+        console.error("Failed to log product update:", logError);
+      }
+
       res.json({ message: "Product updated", product: updatedProduct });
     } else {
       res.status(404).json({ message: "Product not found" });
     }
   } catch (error) {
     console.error("Error updating product:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        req.params.id,
+        `Failed to update product: ${error.message}`,
+        'Failure',
+        { action: 'update', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log product update failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -171,6 +251,8 @@ const deleteProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (product) {
+      const productName = product.name;
+
       // If the product has an image, delete it from Cloudinary or filesystem (legacy)
       if (product.imagePublicId) {
         try {
@@ -186,13 +268,44 @@ const deleteProduct = async (req, res) => {
           }
         });
       }
+
       await product.deleteOne();
+
+      // LOG PRODUCT DELETION
+      try {
+        await createLog(
+          'Product Edit',
+          req.user?.username || req.user?.email || 'Admin',
+          req.params.id,
+          `Permanently deleted product "${productName}"`,
+          'Success',
+          { action: 'delete', productName }
+        );
+      } catch (logError) {
+        console.error("Failed to log product deletion:", logError);
+      }
+
       res.json({ message: "Product and associated image removed" });
     } else {
       res.status(404).json({ message: "Product not found" });
     }
   } catch (error) {
     console.error("Error deleting product:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        req.params.id,
+        `Failed to delete product: ${error.message}`,
+        'Failure',
+        { action: 'delete', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log product deletion failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error while deleting product." });
   }
 };
@@ -219,9 +332,38 @@ const updateCategoryName = async (req, res) => {
       { $set: { category: newCategory } }
     );
 
+    // LOG CATEGORY UPDATE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Updated category from "${oldCategory}" to "${newCategory}" for ${result.modifiedCount} products`,
+        'Success',
+        { action: 'category_update', oldCategory, newCategory, count: result.modifiedCount }
+      );
+    } catch (logError) {
+      console.error("Failed to log category update:", logError);
+    }
+
     res.json({ message: `${result.modifiedCount} products updated from category "${oldCategory}" to "${newCategory}".`, modifiedCount: result.modifiedCount });
   } catch (error) {
     console.error("Error updating product category name:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed to update category: ${error.message}`,
+        'Failure',
+        { action: 'category_update', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log category update failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error while updating category name." });
   }
 };
@@ -244,9 +386,38 @@ const bulkUpdateCategory = async (req, res) => {
       { $set: { category: newCategory } }
     );
 
+    // LOG BULK CATEGORY UPDATE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Bulk updated ${result.modifiedCount} products to category "${newCategory}"`,
+        'Success',
+        { action: 'bulk_category_update', newCategory, count: result.modifiedCount, productIds }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk category update:", logError);
+    }
+
     res.json({ message: `${result.modifiedCount} products updated successfully.`, modifiedCount: result.modifiedCount });
   } catch (error) {
     console.error("Error bulk updating product categories:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed bulk category update: ${error.message}`,
+        'Failure',
+        { action: 'bulk_category_update', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk category update failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error while bulk updating products." });
   }
 };
@@ -266,6 +437,7 @@ const bulkDeleteProducts = async (req, res) => {
 
     // Find products to get their image IDs/paths for deletion
     const productsToDelete = await Product.find({ _id: { $in: productIds } });
+    const productNames = productsToDelete.map(p => p.name);
 
     // Delete associated images from Cloudinary or filesystem (legacy)
     const imageDeletionPromises = productsToDelete.map(p => {
@@ -288,9 +460,38 @@ const bulkDeleteProducts = async (req, res) => {
     // Delete products from the database
     const result = await Product.deleteMany({ _id: { $in: productIds } });
 
+    // LOG BULK DELETION
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Bulk deleted ${result.deletedCount} products: ${productNames.join(', ')}`,
+        'Success',
+        { action: 'bulk_delete', count: result.deletedCount, productNames }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk deletion:", logError);
+    }
+
     res.json({ message: `${result.deletedCount} products deleted successfully.` });
   } catch (error) {
     console.error("Error bulk deleting products:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed bulk deletion: ${error.message}`,
+        'Failure',
+        { action: 'bulk_delete', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk deletion failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error during bulk deletion." });
   }
 };
@@ -304,14 +505,45 @@ const toggleFeatured = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (product) {
+      const originalStatus = product.isFeatured;
       product.isFeatured = !product.isFeatured;
       await product.save();
+
+      // LOG FEATURED TOGGLE
+      try {
+        await createLog(
+          'Product Edit',
+          req.user?.username || req.user?.email || 'Admin',
+          product._id.toString(),
+          `${product.isFeatured ? 'Featured' : 'Unfeatured'} product "${product.name}"`,
+          'Success',
+          { action: 'toggle_featured', productName: product.name, newStatus: product.isFeatured }
+        );
+      } catch (logError) {
+        console.error("Failed to log featured toggle:", logError);
+      }
+
       res.json({ message: "Product featured status updated", product });
     } else {
       res.status(404).json({ message: "Product not found" });
     }
   } catch (error) {
     console.error("Error toggling product featured status:", error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        req.params.id,
+        `Failed to toggle featured status: ${error.message}`,
+        'Failure',
+        { action: 'toggle_featured', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log featured toggle failure:", logError);
+    }
+    
     res.status(500).json({ message: "Server error while toggling product featured status." });
   }
 };
@@ -325,13 +557,43 @@ const softDeleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
+    
     if (!product.deletedAt) {
       product.deletedAt = new Date();
       await product.save();
+
+      // LOG SOFT DELETE
+      try {
+        await createLog(
+          'Product Edit',
+          req.user?.username || req.user?.email || 'Admin',
+          product._id.toString(),
+          `Moved product "${product.name}" to trash`,
+          'Success',
+          { action: 'soft_delete', productName: product.name }
+        );
+      } catch (logError) {
+        console.error("Failed to log soft delete:", logError);
+      }
     }
     res.json({ message: 'Product moved to trash', product });
   } catch (error) {
     console.error('Error soft deleting product:', error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        req.params.id,
+        `Failed to move product to trash: ${error.message}`,
+        'Failure',
+        { action: 'soft_delete', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log soft delete failure:", logError);
+    }
+    
     res.status(500).json({ message: 'Server error while soft deleting product.' });
   }
 };
@@ -347,13 +609,47 @@ const bulkSoftDelete = async (req, res) => {
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({ message: 'Product IDs array is required.' });
     }
+
+    const productsToDelete = await Product.find({ _id: { $in: productIds } });
+    const productNames = productsToDelete.map(p => p.name);
+
     const result = await Product.updateMany(
       { _id: { $in: productIds } },
       { $set: { deletedAt: new Date() } }
     );
+
+    // LOG BULK SOFT DELETE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Moved ${result.modifiedCount} products to trash: ${productNames.join(', ')}`,
+        'Success',
+        { action: 'bulk_soft_delete', count: result.modifiedCount, productNames }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk soft delete:", logError);
+    }
+
     res.json({ message: `${result.modifiedCount} products moved to trash.`, modifiedCount: result.modifiedCount });
   } catch (error) {
     console.error('Error bulk soft deleting products:', error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed bulk soft delete: ${error.message}`,
+        'Failure',
+        { action: 'bulk_soft_delete', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk soft delete failure:", logError);
+    }
+    
     res.status(500).json({ message: 'Server error during bulk soft delete.' });
   }
 };
@@ -384,13 +680,47 @@ const bulkRestoreProducts = async (req, res) => {
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({ message: 'Product IDs array is required.' });
     }
+
+    const productsToRestore = await Product.find({ _id: { $in: productIds } });
+    const productNames = productsToRestore.map(p => p.name);
+
     const result = await Product.updateMany(
       { _id: { $in: productIds } },
       { $set: { deletedAt: null } }
     );
+
+    // LOG BULK RESTORE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Restored ${result.modifiedCount} products from trash: ${productNames.join(', ')}`,
+        'Success',
+        { action: 'bulk_restore', count: result.modifiedCount, productNames }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk restore:", logError);
+    }
+
     res.json({ message: `${result.modifiedCount} products restored.`, modifiedCount: result.modifiedCount });
   } catch (error) {
     console.error('Error bulk restoring products:', error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed bulk restore: ${error.message}`,
+        'Failure',
+        { action: 'bulk_restore', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk restore failure:", logError);
+    }
+    
     res.status(500).json({ message: 'Server error during bulk restore.' });
   }
 };
@@ -409,6 +739,7 @@ const bulkPermanentDelete = async (req, res) => {
 
     // Find products to get their image IDs/paths for deletion
     const productsToDelete = await Product.find({ _id: { $in: productIds } });
+    const productNames = productsToDelete.map(p => p.name);
 
     // Delete associated images from Cloudinary or filesystem (legacy)
     const imageDeletionPromises = productsToDelete.map(p => {
@@ -431,9 +762,38 @@ const bulkPermanentDelete = async (req, res) => {
     // Delete products from the database
     const result = await Product.deleteMany({ _id: { $in: productIds } });
 
+    // LOG BULK PERMANENT DELETE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'Admin',
+        'bulk',
+        `Permanently deleted ${result.deletedCount} products from trash: ${productNames.join(', ')}`,
+        'Success',
+        { action: 'bulk_permanent_delete', count: result.deletedCount, productNames }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk permanent delete:", logError);
+    }
+
     res.json({ message: `${result.deletedCount} products permanently deleted.` });
   } catch (error) {
     console.error('Error bulk permanently deleting products:', error);
+    
+    // LOG FAILURE
+    try {
+      await createLog(
+        'Product Edit',
+        req.user?.username || req.user?.email || 'System',
+        'bulk',
+        `Failed bulk permanent delete: ${error.message}`,
+        'Failure',
+        { action: 'bulk_permanent_delete', error: error.message }
+      );
+    } catch (logError) {
+      console.error("Failed to log bulk permanent delete failure:", logError);
+    }
+    
     res.status(500).json({ message: 'Server error during bulk permanent deletion.' });
   }
 };
@@ -448,7 +808,6 @@ module.exports = {
   bulkUpdateCategory,
   updateCategoryName,
   bulkDeleteProducts,
-  // soft delete / trash
   softDeleteProduct,
   bulkSoftDelete,
   getDeletedProducts,

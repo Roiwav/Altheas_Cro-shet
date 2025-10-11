@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { createLog } = require("../controllers/logController");
 
 // =======================
 // Register User
@@ -39,6 +40,15 @@ exports.registerUser = async (req, res) => {
       role: "customer",
     });
 
+    // LOG USER ACTION: User registered an account
+    await createLog(
+      'User Action',
+      user.username || user.email || user._id.toString(),
+      user._id.toString(),
+      'User registered an account',
+      'Success'
+    );
+
     // Create JWT with role and user info
     const token = jwt.sign(
       {
@@ -68,12 +78,14 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+
 // =======================
 // Login User
 // =======================
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     // Validate required fields
     if (!email || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -90,6 +102,15 @@ exports.loginUser = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
+
+    // LOG USER ACTION: User logged in
+    await createLog(
+      'User Action',
+      user.username || user.email || user._id.toString(),
+      user._id.toString(),
+      'User logged in',
+      'Success'
+    );
 
     // Create JWT with role and user info
     const token = jwt.sign(
@@ -124,8 +145,7 @@ exports.loginUser = async (req, res) => {
 // (Other auth functions...)
 // =======================
 
-// Example function, adjust as needed.
+
 exports.logoutUser = (req, res) => {
-  // Invalidate token on frontend by removing it from storage/cookies
   return res.json({ message: "Logout successful" });
 };

@@ -6,8 +6,9 @@ const { setIo } = require('./socket');
 const jwtLib = require('jsonwebtoken');
 const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require("dotenv");
+const dotenv = require("dotenv"); 
 const path = require("path");
+const logRoutes = require("./routes/logRoutes");
 
 // 🟢 Load environment variables
 dotenv.config();
@@ -206,6 +207,7 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/users", userRoutes);
   app.use("/api/v1/orders", orderRoutes);
+  app.use("/api/v1/logs", logRoutes);
   app.use("/api/notifications", notificationRoutes);
 
   // 🟢 Serve uploaded images (proof of payment, etc.)

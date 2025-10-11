@@ -5,7 +5,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 
 const eventTypes = ['Order Update', 'Payment', 'User Action', 'Security', 'Product Edit', 'Order Creation', 'Customer Interaction'];
-
+ 
 const getEventTypeStyle = (type) => {
   switch (type) {
     case 'Order Update':
@@ -47,25 +47,34 @@ const LogsTab = ({ isDarkMode }) => {
   const fetchActivityLogs = useCallback(async () => {
     try {
       setLoading(true);
-      // This is a placeholder URL. You'll need to create this endpoint in your backend.
-      const response = await fetch('http://localhost:5001/api/logs/all'); 
-      if (!response.ok) {
-        throw new Error('Failed to fetch activity logs');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        setActivityLogs([]);
+        setLoading(false);
+        return;
       }
+      const params = new URLSearchParams();
+      if (selectedTypes.length > 0)
+        selectedTypes.forEach(type => params.append('eventType', type));
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      params.append('limit', 100); // allow plenty
+
+      const response = await fetch(`http://localhost:5001/api/v1/logs/all?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error('Failed to fetch activity logs');
       const data = await response.json();
-      setActivityLogs(data); // Assuming the API returns an array of logs
+      setActivityLogs(data.logs || []);
     } catch (error) {
       toast.error(error.message);
-      setActivityLogs([]); // Set to empty array on error
+      setActivityLogs([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedTypes, searchQuery]);
 
-  useEffect(() => {
-    // fetchActivityLogs(); // You can uncomment this when your backend is ready
-    setLoading(false); // For now, just stop loading
-  }, [fetchActivityLogs]);
+  useEffect(() => { fetchActivityLogs(); }, [fetchActivityLogs]);
 
   const filteredLogs = useMemo(() => {
     return activityLogs.filter(log => {

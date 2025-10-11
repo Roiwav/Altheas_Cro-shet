@@ -1,8 +1,10 @@
+//orderController.js
 const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
 const cloudinary = require('../config/cloudinary');
 const Notification = require('../models/Notification');
 const { getIo } = require('../socket');
+const { createLog } = require("../controllers/logController");
 
 // ✅ Create new order
 const createOrder = async (req, res) => {
@@ -64,8 +66,38 @@ const createOrder = async (req, res) => {
     });
 
     await newOrder.save();
+
+    // LOG PAYMENT EVENT
+    await createLog(
+      'Payment',
+      username || (userId && userId.toString()) || 'Unknown',
+      newOrder._id.toString(),
+      `User submitted proof of payment and placed order (₱${total})`,
+      'Success',
+      { paymentProofUrl, amount: total, products, paymentMethod }
+    );
+
+    // LOG ORDER CREATION EVENT
+    await createLog(
+      'Order Creation',
+      username || (userId && userId.toString()) || 'Unknown',
+      newOrder._id.toString(),
+      `Order created for ₱${total} - ${products.length} item(s): ${products.map(p => p.name).join(', ')}`,
+      'Success',
+      { orderTotal: total, productCount: products.length, paymentMethod }
+    );
+
     res.status(201).json({ message: "Order created successfully", order: newOrder });
   } catch (error) {
+    // LOG FAILURE EVENT
+    await createLog(
+      'Order Creation',
+      'System',
+      'unknown',
+      `Failed to create order: ${error.message}`,
+      'Failure',
+      { error: error.message }
+    );
     console.error("❌ Error creating order:", error);
     res.status(500).json({ message: "Failed to create order" });
   }
@@ -163,6 +195,7 @@ const updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) {
+      await createLog('Order Update', adminName || 'Admin', req.params.id, 'Attempted to update non-existent order.', 'Failure');
       return res.status(404).json({ message: "Order not found" });
     }
 
@@ -171,46 +204,45 @@ const updateOrderStatus = async (req, res) => {
     order.statusUpdatedAt = new Date();
     order.statusUpdatedBy = adminName || 'Admin';
 
-    // ✅ Handle different status changes
     switch (status?.toLowerCase()) {
-      case 'cancelled':
-        order.statusMessage = "Your order has been cancelled. A full refund will be processed within 5-7 business days.";
-        order.refundStatus = 'Processing';
-        order.refundAmount = order.total;
-        order.refundEstimatedDays = 7;
-        break;
-        
-      case 'rejected':
-        order.statusMessage = rejectionReason 
-          ? `Your order has been rejected. Reason: ${rejectionReason}. A full refund will be processed within 5-7 business days.`
-          : "Your order has been rejected due to product availability or payment issues. A full refund will be processed within 5-7 business days.";
-        order.rejectionReason = rejectionReason;
-        order.refundStatus = 'Processing';
-        order.refundAmount = order.total;
-        order.refundEstimatedDays = 7;
-        break;
-        
-      case 'processing':
-        order.statusMessage = "Your order is now being prepared. We'll notify you once it's ready for shipping.";
-        break;
-        
-      case 'shipped':
-        order.statusMessage = "Great news! Your order has been shipped and is on its way to you.";
-        break;
-        
-      case 'delivered':
-        order.statusMessage = "Your order has been successfully delivered. Thank you for your purchase!";
-        break;
-        
-      case 'pending':
-        order.statusMessage = "Your order is pending review. We'll update you soon.";
-        break;
-        
-      default:
-        order.statusMessage = `Your order status has been updated to ${status}.`;
+    case 'cancelled':
+      order.statusMessage = "Your order has been cancelled. A full refund will be processed within 5-7 business days.";
+      order.refundStatus = 'Processing';
+      order.refundAmount = order.total;
+      order.refundEstimatedDays = 7;
+      break;
+    case 'rejected':
+      order.statusMessage = rejectionReason 
+        ? `Your order has been rejected. Reason: ${rejectionReason}. A full refund will be processed within 5-7 business days.`
+        : "Your order has been rejected due to product availability or payment issues. A full refund will be processed within 5-7 business days.";
+      order.rejectionReason = rejectionReason;
+      order.refundStatus = 'Processing';
+      order.refundAmount = order.total;
+      order.refundEstimatedDays = 7;
+      break;
+    case 'processing':
+      order.statusMessage = "Your order is now being prepared. We'll notify you once it's ready for shipping.";
+      break;
+    case 'shipped':
+      order.statusMessage = "Great news! Your order has been shipped and is on its way to you.";
+      break;
+    case 'delivered':
+      order.statusMessage = "Your order has been successfully delivered. Thank you for your purchase!";
+      break;
+    case 'pending':
+      order.statusMessage = "Your order is pending review. We'll update you soon.";
+      break;
+    default:
+      order.statusMessage = `Your order status has been updated to ${status}.`;
     }
 
     await order.save();
+
+    await createLog('Order Update', adminName || 'Admin', order._id.toString(), `Order status changed from ${previousStatus} to ${status}`, 'Success', {
+      previousStatus,
+      newStatus: status,
+      orderId: order._id
+    });
 
     res.json({ 
       message: "Order status updated successfully", 
@@ -218,6 +250,7 @@ const updateOrderStatus = async (req, res) => {
       success: true 
     });
   } catch (error) {
+    await createLog('Order Update', 'System', req.params.id, `Failed to update order status: ${error.message}`, 'Failure');
     console.error("❌ Error updating order:", error);
     res.status(500).json({ message: "Failed to update order" });
   }
