@@ -17,6 +17,7 @@ import { useUser } from '../../context/useUser.js';
 import { useTestimonials } from '../../context/TestimonialsContext.jsx';
 import { useCart } from '../../context/cart-context.js';
 import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product';
+import ARPreviewVideo from '../../assets/AR.mp4';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -175,16 +176,22 @@ function HomePage() {
                 </div>
               </div>
               <div className="hidden md:block md:w-1/3">
-                <div className="relative flex items-center justify-center w-full h-64 p-6 bg-gradient-to-br from-pink-200 to-purple-200 dark:from-pink-900/30 dark:to-purple-900/30 rounded-2xl">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-pink-500 dark:text-pink-400">
-                    <Smartphone className="w-16 h-16 mb-4 opacity-20" />
-                    <p className="text-sm font-medium text-center opacity-70">
-                      AR Experience Preview
-                    </p>
-                  </div>
-                  <div className="relative z-10 flex items-center justify-center w-full h-full">
-                    <div className="absolute w-32 h-32 rounded-full bg-pink-400/20 animate-ping"></div>
-                    <div className="w-24 h-24 rounded-full shadow-lg bg-gradient-to-br from-pink-500 to-purple-600"></div>
+                <div className="relative w-full h-64 overflow-hidden rounded-2xl bg-black/80 dark:bg-black/60">
+                  <video
+                    src={ARPreviewVideo}
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    disablePictureInPicture
+                    disableRemotePlayback
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-white">
+                    <Smartphone className="w-12 h-12 mb-2 opacity-40" />
+                    <p className="text-sm font-medium opacity-90">AR Experience Preview</p>
                   </div>
                 </div>
               </div>
