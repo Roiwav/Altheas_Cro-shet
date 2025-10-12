@@ -70,36 +70,9 @@ const SettingsTab = ({ isDarkMode }) => {
               label="Maintenance Mode"
               description="When enabled, only administrators can access the store"
             />
-            <div className="my-2 border-t border-gray-200 dark:border-gray-600"></div>
-            <ToggleSwitch
-              enabled={settings.registration}
-              onChange={() => handleToggle('registration')}
-              label="User Registration"
-              description="Allow new customers to create accounts"
-            />
           </div>
         </div>
       </div>
-
-      <div className={sectionClasses}>
-        <div className={sectionHeaderClasses}>
-          <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment Methods</h3>
-          <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Configure available payment options for your customers
-          </p>
-        </div>
-        <div className={sectionBodyClasses}>
-          <div className={`${cardClasses} space-y-6`}>
-            <ToggleSwitch
-              enabled={settings.gcashPayment}
-              onChange={() => handleToggle('gcashPayment')}
-              label="GCash Payment"
-              description="Enable GCash as a payment option at checkout"
-            />
-          </div>
-        </div>
-      </div>
-
     </div>
   );
 };

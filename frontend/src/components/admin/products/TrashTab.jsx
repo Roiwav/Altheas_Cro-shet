@@ -148,19 +148,19 @@ const TrashTab = ({ isDarkMode }) => {
               <thead className={`text-xs uppercase ${isDarkMode ? 'text-gray-400 bg-gray-700' : 'text-gray-700 bg-gray-50'}`}>
                 <tr>
                   <th scope="col" className="p-4"><input type="checkbox" onChange={handleSelectAll} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500" /></th>
-                  <th scope="col" className="px-6 py-3">Product Name</th>
-                  <th scope="col" className="px-6 py-3">Category</th>
-                  <th scope="col" className="px-6 py-3">Date Deleted</th>
-                  <th scope="col" className="px-6 py-3">Time until Deletion</th>
+                  <th scope="col" className="px-6 py-3 whitespace-nowrap">Product Name</th>
+                  <th scope="col" className="px-6 py-3 whitespace-nowrap">Category</th>
+                  <th scope="col" className="px-6 py-3 whitespace-nowrap">Date Deleted</th>
+                  <th scope="col" className="px-6 py-3 whitespace-nowrap">Time until Deletion</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedProducts.map(product => (
                   <tr key={product._id} className={`border-b ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-50'}`}>
                     <td className="w-4 p-4"><input type="checkbox" checked={selectedProducts.includes(product._id)} onChange={() => handleSelectOne(product._id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500" /></td>
-                    <td className="px-6 py-4 font-medium whitespace-nowrap">{product.name}</td>
-                    <td className="px-6 py-4">{product.category}</td>
-                    <td className="px-6 py-4">{new Date(product.deletedAt).toLocaleDateString()}</td>
+                    <td className={`px-6 py-4 font-medium whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</td>
+                    <td className={`px-6 py-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{product.category}</td>
+                    <td className={`px-6 py-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{new Date(product.deletedAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full dark:bg-yellow-900/40 dark:text-yellow-300">
                         {getTimeLeft(product.deletedAt)}
