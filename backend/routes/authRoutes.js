@@ -121,7 +121,13 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne(query);
     if (!user || !(await user.matchPassword(password)))
       return res.status(400).json({ message: "Invalid email/username or password" });
-    
+
+    // Block login if account is currently suspended
+    const now = new Date();
+    if (user.suspendedUntil && user.suspendedUntil > now) {
+      return res.status(403).json({ message: "Your account is suspended. Please try again later." });
+    }
+
     await createLog(
       'User Action',
       user.username || user.email || user._id.toString(),

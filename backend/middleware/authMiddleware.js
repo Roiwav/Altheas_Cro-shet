@@ -10,6 +10,10 @@ const verifyToken = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select("-password");
 
       if (!req.user) return res.status(401).json({ message: "Not authorized, user not found" });
+      const now = new Date();
+      if (req.user.suspendedUntil && req.user.suspendedUntil > now) {
+        return res.status(401).json({ message: "Account suspended" });
+      }
       next();
     } catch (error) {
       return res.status(401).json({ message: "Not authorized, token failed" });

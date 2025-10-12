@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema(
     lastUsernameChangeAt: { type: Date },
     resetToken: { type: String },
     tokenExpiry: { type: Date },
+    suspendedUntil: { type: Date },
 
     role: { type: String, default: "customer" }
   },

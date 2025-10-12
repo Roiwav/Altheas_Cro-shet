@@ -17,7 +17,7 @@ export default function useNotifications() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/my`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/notifications/my`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -49,7 +49,7 @@ export default function useNotifications() {
   const markAsRead = async (id) => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/${id}/read`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/notifications/${id}/read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export default function useNotifications() {
   const markAllAsRead = async () => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`${SERVER_BASE_URL}/api/notifications/read-all`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/notifications/read-all`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

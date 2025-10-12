@@ -6,6 +6,7 @@ const {
   getUser,
   deleteUser,
   updateUserRole,
+  suspendUser,
 } = require("../controllers/userController.js");
 const { verifyToken } = require("../middleware/authMiddleware.js");
 
@@ -25,5 +26,8 @@ router.delete("/:id", verifyToken, deleteUser);
 
 // Update user role (Admin only)
 router.patch("/:id/role", verifyToken, updateUserRole);
+
+// Suspend or unsuspend user (Admin only)
+router.patch("/:id/suspend", verifyToken, suspendUser);
 
 module.exports = router;

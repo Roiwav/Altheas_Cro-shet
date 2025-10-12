@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Package, Heart, Home, User, ShoppingBag, XCircle } from 'lucide-react';
+import { Loader2, Package, Heart, Home, User, Bell, XCircle } from 'lucide-react';
 import { useUser } from '../../context/useUser';
 import { useWishlistCount } from '../../context/useWishlistCount.js';
 import { SERVER_BASE_URL } from '../../utils/product.js';
+import useNotifications from '../../hooks/useNotifications';
 /**
  * Formats a date string into a more readable format (e.g., "September 15, 2024").
  * @param {string} dateString - The date string to format.
@@ -16,7 +17,7 @@ const formatDate = (dateString) => {
 };
 
 // Currency formatter
-const currencyFormatter = new Intl.NumberFormat('en-PH', {
+const CURRENCY_FORMATTER = new Intl.NumberFormat('en-PH', {
   style: 'currency',
   currency: 'PHP',
 });
@@ -31,6 +32,7 @@ function UserDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const { notifications, unreadCount, loading: notifLoading, markAsRead, markAllAsRead } = useNotifications();
 
   /**
    * Fetches the user's orders from the backend on component mount
@@ -209,73 +211,42 @@ function UserDashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
           <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-              <ShoppingBag className="w-5 h-5 mr-2 text-pink-600 dark:text-pink-400" />
-              Recent Orders
+              <Bell className="w-5 h-5 mr-2 text-pink-600 dark:text-pink-400" />
+              Notifications
             </h2>
-            {orders.length > 0 && (
-              <Link to="/orders" className="text-sm font-medium text-pink-600 hover:underline">
-                View All
-              </Link>
-            )}
+            <div className="flex items-center gap-3">
+              {notifLoading && <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />}
+              {notifications.length > 0 && unreadCount > 0 && (
+                <button onClick={markAllAsRead} className="text-sm font-medium text-pink-600 hover:underline">
+                  Mark all as read
+                </button>
+              )}
+            </div>
           </div>
-          {orders.length > 0 ? (
+          {notifications.length > 0 ? (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-              {orders.slice(0, 3).map((order) => (
-                <li key={order._id}>
-                  <Link
-                    to="/orders"
-                    className="block hover:bg-gray-50 dark:hover:bg-gray-700/50 p-4 sm:p-6"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-pink-600 truncate">
-                        Order #{String(order._id).substring(0, 8)}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      {/* Product details: name, qty, variation, color */}
-                      <ul className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-2">
-                        {order.products?.map((prod, idx) => (
-                          <li key={prod.productId || idx} className="flex items-center gap-1">
-                            <span className="font-medium text-gray-700 dark:text-gray-200">{prod.name}</span>
-                            <span className="px-1">x{prod.quantity}</span>
-                            {prod.variation && (
-                              <span className="px-1 text-xs bg-pink-100 dark:bg-pink-900/20 text-pink-600 dark:text-pink-300 rounded">
-                                {prod.variation}
-                              </span>
-                            )}
-                            {prod.color && (
-                              <span className="px-1 text-xs text-gray-400 italic">
-                                {prod.color}
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-2 flex items-center text-sm text-gray-900 dark:text-white sm:mt-0 font-semibold">
-                        <p>{currencyFormatter.format(order.total)}</p>
+              {notifications.slice(0, 8).map((n) => (
+                <li key={n._id}>
+                  <div className="block p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div className="flex items-start gap-3">
+                      <div className={`${n.read ? 'bg-gray-300 dark:bg-gray-600' : 'bg-pink-500'} mt-1 w-2 h-2 rounded-full`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{n.title}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{n.message}</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatDate(n.createdAt)}</p>
                       </div>
+                      {!n.read && (
+                        <button onClick={() => markAsRead(n._id)} className="text-xs text-pink-600 hover:underline whitespace-nowrap">Read</button>
+                      )}
                     </div>
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
             <div className="p-8 text-center">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                No recent orders
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                When you place an order, it will appear here.
-              </p>
-              <Link
-                to="/shop"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200"
-              >
-                Start Shopping
-              </Link>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No notifications</h3>
+              <p className="text-gray-500 dark:text-gray-400">You're all caught up.</p>
             </div>
           )}
         </div>
