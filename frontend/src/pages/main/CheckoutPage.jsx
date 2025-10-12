@@ -200,7 +200,7 @@ export default function CheckoutPage() {
       formData.append("orderData", JSON.stringify(orderData));
       formData.append("paymentProof", paymentProof);
 
-      const response = await fetch(`${SERVER_BASE_URL}/api/orders`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

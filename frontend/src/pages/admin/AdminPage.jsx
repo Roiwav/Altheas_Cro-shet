@@ -8,18 +8,51 @@ import OrdersTab from "./OrdersTab.jsx";
 import CancelledTab from "./CancelledTab.jsx";
 import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
-import TrashTab from "../../components/admin/products/TrashTab.jsx"; // Correct path to TrashTab
+import TrashTab from "../../components/admin/products/TrashTab.jsx";
 import FeedbackTab from "./FeedbackTab.jsx";
+import UserManagementTab from "./UserManagementTab.jsx"; // <-- Added from second code
+import LogsTab from "./LogsTab.jsx"; // <-- Added from second code
 import { useDarkMode } from "../../context/useDarkMode.js";
-import { Search, ArrowUp, ArrowDown, X, ChevronDown, Package, Truck, CheckCircle, XCircle, Trash2, LayoutDashboard, ShoppingCart, Box, Users, MessageSquare, Mail, Settings as SettingsIcon, UploadCloud, Image as ImageIcon, Plus, Clock, RefreshCw, Check, CreditCard, DollarSign, ArrowLeft, ArrowRight, Menu as MenuIcon } from "lucide-react";
+import { 
+  Search, 
+  ArrowUp, 
+  ArrowDown, 
+  X, 
+  ChevronDown, 
+  Package, 
+  Truck, 
+  CheckCircle, 
+  XCircle, 
+  Trash2, 
+  LayoutDashboard, 
+  ShoppingCart, 
+  Box, 
+  Users, 
+  ClipboardList, // <-- Added logs icon from second code
+  MessageSquare, 
+  Mail, 
+  Settings as SettingsIcon, 
+  UploadCloud, 
+  Image as ImageIcon, 
+  Plus, 
+  Clock, 
+  RefreshCw, 
+  Check, 
+  CreditCard, 
+  DollarSign, 
+  ArrowLeft, 
+  ArrowRight, 
+  Menu as MenuIcon 
+} from "lucide-react";
 import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { SERVER_BASE_URL } from '../../utils/product.js';
 
+
 export default function AdminPage() {
   const { darkMode: isDarkMode } = useDarkMode();
   const { user } = useUser();
-  const token = sessionStorage.getItem("token"); // ✅ Read from sessionStorage
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
   const [metrics, setMetrics] = useState({
     revenue: 0,
     incomingOrders: 0,
@@ -34,34 +67,40 @@ export default function AdminPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10); // Number of items per page
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'descending' });
-  
+
   // Calculate total pages based on orders and items per page
   const totalPages = Math.ceil(orders.length / itemsPerPage);
-  
+
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('adminActiveTab') || 'dashboard';
   });
+
+  // Updated tabs array with new User Management and Logs tabs
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "cancelled", label: "Cancelled", icon: XCircle },
     { id: "products", label: "Products", icon: Box },
-    { id: "trash", label: "Trash", icon: Trash2 }, // Add Trash tab
+    { id: "usermanagement", label: "User Management", icon: Users }, // <-- Added from second code
+    { id: "logs", label: "Logs", icon: ClipboardList }, // <-- Added from second code
+    { id: "trash", label: "Trash", icon: Trash2 },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
+
 
   useEffect(() => {
   console.log("Orders from backend:", orders);
 }, [orders]);
 
+
   useEffect(() => {
-  fetch(`${SERVER_BASE_URL}/api/orders`, {
+  fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
     method: "GET",
     credentials: "include", // include cookies if backend uses them
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${sessionStorage.getItem("token")}`, // ✅ Use sessionStorage
+      Authorization: `Bearer ${token}`, // ✅ Use the new combined value
     },
   })
     .then((res) => res.json())
@@ -72,14 +111,17 @@ export default function AdminPage() {
     .finally(() => setLoading(false));
 }, []);
 
+
   useEffect(() => {
     // Calculate metrics from orders
     const totalRevenue = orders
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
 
+
     const incoming = orders.filter(o => o.status === 'pending').length;
     const shipped = orders.filter(o => o.status === 'shipped').length;
+
 
     setMetrics({
       revenue: totalRevenue,
@@ -88,26 +130,31 @@ export default function AdminPage() {
     });
   }, [orders]);
 
+
   // Save active tab to localStorage and reset search/filters when switching tabs
   useEffect(() => {
     localStorage.setItem('adminActiveTab', activeTab);
-    
+
     // Reset search and filters when switching to orders tab
     if (activeTab === 'orders') {
       setCurrentPage(1);
     }
   }, [activeTab]);
 
+
   // Reset to first page when sorting or filtering
   useEffect(() => {
   }, [searchQuery]);
+
 
   if (user?.role !== "admin") {
     return <Navigate to="/login" state={{ from: '/admin' }} replace />;
   }
 
+
   // Determine if search bar should be visible
   const showSearch = activeTab === 'dashboard' || activeTab === 'orders';
+
 
   const StatusBadge = ({ status }) => {
     const statusClasses = {
@@ -118,6 +165,7 @@ export default function AdminPage() {
       rejected: isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800',
       cancelled: isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800',
     };
+
 
     return (
       <span
@@ -130,9 +178,11 @@ export default function AdminPage() {
     );
   };
 
+
   const renderDashboard = () => {
     // If we're not on the dashboard tab, don't render anything
     if (activeTab !== 'dashboard') return null;
+
 
     return (
       <div className="space-y-8">
@@ -143,6 +193,7 @@ export default function AdminPage() {
             Here's what's happening with your store today.
           </p>
         </div>
+
 
         {/* Metrics */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -160,6 +211,7 @@ export default function AdminPage() {
             </div>
           </div>
 
+
           <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
             <div className="flex items-center justify-between">
               <div>
@@ -171,6 +223,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+
 
           <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
             <div className="flex items-center justify-between">
@@ -184,6 +237,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
 
         {/* Quick Actions */}
         <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
@@ -204,11 +258,25 @@ export default function AdminPage() {
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Manage Products</span>
             </button>
             <button 
+              onClick={() => setActiveTab('usermanagement')}
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-orange-500 hover:bg-orange-50 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              <Users className="w-6 h-6 mb-2 text-orange-600 dark:text-orange-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">User Management</span>
+            </button>
+            <button 
               onClick={() => setActiveTab('feedback')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-green-500 hover:bg-green-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <MessageSquare className="w-6 h-6 mb-2 text-green-600 dark:text-green-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View Feedback</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('logs')}
+              className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-cyan-500 hover:bg-cyan-50 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              <ClipboardList className="w-6 h-6 mb-2 text-cyan-600 dark:text-cyan-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View Logs</span>
             </button>
             <button 
               onClick={() => setActiveTab('settings')}
@@ -223,9 +291,11 @@ export default function AdminPage() {
     );
   };
 
+
   const renderSettings = () => {
     return <SettingsTab isDarkMode={isDarkMode} />;
   };
+
 
   const renderPagination = () => (
     <div className="flex items-center space-x-2">
@@ -251,8 +321,9 @@ export default function AdminPage() {
     </div>
   );
 
+
   const isSidebarCollapsed = !isSidebarHovered;
-  
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       {/* Mobile Sidebar */}
@@ -269,6 +340,7 @@ export default function AdminPage() {
           >
             <div className="fixed inset-0 bg-gray-600 bg-opacity-75" />
           </Transition.Child>
+
 
           <div className="fixed inset-0 z-40 flex">
             <Transition.Child
@@ -316,6 +388,7 @@ export default function AdminPage() {
         </Dialog>
       </Transition.Root>
 
+
       {/* Desktop Sidebar */}
       <aside 
         className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out overflow-x-hidden ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
@@ -332,6 +405,7 @@ export default function AdminPage() {
         />
       </aside>
 
+
       <div className="flex flex-col flex-1 w-0 overflow-y-auto">
         {/* Header for mobile and search */}
         <div className="sticky top-0 z-10 flex items-center justify-between flex-shrink-0 h-16 px-4 bg-gray-100 border-b border-gray-200 md:justify-end dark:bg-gray-900 dark:border-gray-700">
@@ -346,6 +420,7 @@ export default function AdminPage() {
           {/* You can add a search bar here if needed for desktop, or other header items */}
         </div>
 
+
         <main className="relative z-0 flex-1 focus:outline-none">
           {/* Header */}
           <div className="p-4 md:p-8">
@@ -358,6 +433,7 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+
 
             {/* Search Bar for Mobile */}
             {showSearch && (
@@ -375,12 +451,15 @@ export default function AdminPage() {
               </div>
             )}
 
+
             {/* Tab Content */}
             <div className="transition-all duration-300 ease-in-out">
               {activeTab === "dashboard" && renderDashboard()}
-              {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} />}
+              {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} orders={orders} />}
               {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} />}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
+              {activeTab === "usermanagement" && <UserManagementTab isDarkMode={isDarkMode} />}
+              {activeTab === "logs" && <LogsTab isDarkMode={isDarkMode} />}
               {activeTab === "trash" && <TrashTab isDarkMode={isDarkMode} />}
               {activeTab === "feedback" && <FeedbackTab isDarkMode={isDarkMode} />}
               {activeTab === "settings" && <SettingsTab isDarkMode={isDarkMode} />}

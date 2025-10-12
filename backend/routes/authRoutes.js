@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const User = require("../models/User");
 const { verifyToken } = require("../middleware/authMiddleware");
+const { createLog } = require("../controllers/logController");
 
 const router = express.Router();
 
@@ -77,6 +78,14 @@ router.post("/register", async (req, res) => {
       role = "admin";
 
     const user = await User.create({ fullName, username, email, password, role });
+    await createLog(
+      'User Action',
+      user.username || user.email || user._id.toString(),
+      user._id.toString(),
+      'User registered an account',
+      'Success'
+    );
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.status(201).json({
@@ -112,6 +121,14 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne(query);
     if (!user || !(await user.matchPassword(password)))
       return res.status(400).json({ message: "Invalid email/username or password" });
+    
+    await createLog(
+      'User Action',
+      user.username || user.email || user._id.toString(),
+      user._id.toString(),
+      'User logged in',
+      'Success'
+    );
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
     
