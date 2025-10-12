@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
+import MaintenanceRoute from './components/auth/MaintenanceRoute'; // Import the new route guard
 import Loader from './components/layout/Loader';
 import AdminRoute from './components/auth/AdminRoute';
 import AdminPage from './pages/admin/AdminPage';
@@ -29,6 +30,7 @@ import DataPolicy from './pages/main/DataPolicy';
 import ServiceTerm from './pages/main/ServiceTerm';
 import NotFoundPage from './pages/main/NotFoundPage';
 import ResetPassword from './pages/auth/ResetPassword';
+import MaintenancePage from './pages/main/MaintenancePage'; // Import the new maintenance page
 import ARViewerPage from './pages/ar/ARViewerPage';
 import FlowerViewerPage from './pages/ar/FlowerViewerPage';
 
@@ -54,43 +56,48 @@ function App() {
           <Route path="/admin" element={<AdminPage />} />
         </Route>
 
-        {/* Auth Pages without Layout */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} /> {/* Add route for admin login */}
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/auth/success" element={<OAuthCallback />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/data-policy" element={<DataPolicy />} />
-        <Route path="/service-terms" element={<ServiceTerm />} />
+        {/* Admin login is always accessible */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
 
-        {/* AR Viewer Page without Layout */}
-        <Route path="/view-ar" element={<ARViewerPage />} />
+        {/* Routes affected by maintenance mode */}
+        <Route element={<MaintenanceRoute />}>
+          {/* Auth Pages without Layout */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/auth/success" element={<OAuthCallback />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/data-policy" element={<DataPolicy />} />
+          <Route path="/service-terms" element={<ServiceTerm />} />
 
-        <Route element={<Layout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}>
-          {/* Main Pages */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/gallery" element={<GalleryPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/ar" element={<FlowerViewerPage />} />
-          
-          {/* User-specific Pages */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<UserDashboard />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+          {/* AR Viewer Page without Layout */}
+          <Route path="/view-ar" element={<ARViewerPage />} />
+
+          <Route element={<Layout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}>
+            {/* Main Pages */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/ar" element={<FlowerViewerPage />} />
+            
+            {/* User-specific Pages */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<UserDashboard />} />
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+
+            {/* Cart and Checkout */}
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
           </Route>
-
-          {/* Cart and Checkout */}
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
         </Route>
 
         {/* Catch-all for 404 Not Found - This should be the last route */}

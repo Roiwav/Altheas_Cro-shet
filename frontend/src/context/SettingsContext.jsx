@@ -1,11 +1,10 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback } from 'react';
 import { DEFAULT_SETTINGS } from '../constants/settings';
 import { loadSettingsFromLocalStorage, saveSettingsToLocalStorage } from '../utils/settingsUtils';
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const SettingsContext = createContext();
 
-const SettingsProvider = ({ children }) => {
+export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
   // Load settings from localStorage on initial load
@@ -28,5 +27,3 @@ const SettingsProvider = ({ children }) => {
     </SettingsContext.Provider>
   );
 };
-
-export default SettingsProvider;
