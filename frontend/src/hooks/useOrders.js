@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { SERVER_BASE_URL } from "../utils/product";
 
-const getAuthToken = () => localStorage.getItem("token");
+const getAuthToken = () => localStorage.getItem("token") || sessionStorage.getItem("token");
+
 
 export default function useOrders() {
+   console.log('DEBUG: useOrders function called');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,37 +19,49 @@ export default function useOrders() {
 
   // === Fetch all orders (admin endpoint) ===
   const refetch = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token = getAuthToken();
-      if (!token) {
-        setNoToken(true);
-        setLoading(false);
-        return;
-      }
-      setNoToken(false);
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("Failed to fetch orders");
-      const data = await res.json();
-      setOrders(Array.isArray(data) ? data : data.orders || []);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-      setOrders([]);
-      toast.error("Failed to fetch orders.");
-    } finally {
+  try {
+    setLoading(true);
+    const token = getAuthToken();
+    console.log('DEBUG: Token exists?', !!token); // ADD THIS
+    if (!token) {
+      setNoToken(true);
       setLoading(false);
+      return;
     }
-  }, []);
+    setNoToken(false);
+    const res = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log('DEBUG: Response status:', res.status); // ADD THIS
+    if (!res.ok) throw new Error("Failed to fetch orders");
+    const data = await res.json();
+    
+    // ADD THESE DEBUG LINES:
+    console.log('DEBUG: Raw API response data:', data);
+    console.log('DEBUG: Is data an array?', Array.isArray(data));
+    console.log('DEBUG: data.orders exists?', !!data.orders);
+    console.log('DEBUG: Final orders array:', Array.isArray(data) ? data : data.orders || []);
+    
+    setOrders(Array.isArray(data) ? data : data.orders || []);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    setOrders([]);
+    toast.error("Failed to fetch orders.");
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+
 
   useEffect(() => {
-    // Only refetch if we have a token
-    const token = getAuthToken();
+    console.log('DEBUG: useOrders useEffect running'); // ADD THIS LINE
+  const token = getAuthToken();
+  console.log('DEBUG: Token from localStorage:', token ? 'EXISTS' : 'MISSING');
     if (token) {
       refetch();
     } else {
