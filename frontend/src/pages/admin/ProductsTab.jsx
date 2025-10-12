@@ -152,7 +152,6 @@ const ProductsTab = ({ isDarkMode }) => {
     formData.append("name", addProductFormData.name);
     formData.append("description", addProductFormData.description);
     formData.append("price", addProductFormData.price);
-    formData.append("quantity", addProductFormData.quantity ?? 0);
     formData.append("category", addProductFormData.category);
     formData.append("isFeatured", addProductFormData.isFeatured || false);
     if (Array.isArray(addProductFormData.badges)) {
@@ -189,7 +188,6 @@ const ProductsTab = ({ isDarkMode }) => {
       name: product.name,
       description: product.description,
       price: product.price,
-      quantity: product.quantity,
       category: product.category || categories[0],
       isFeatured: product.isFeatured || false,
       badges: Array.isArray(product.badges) ? product.badges : [],
@@ -210,7 +208,7 @@ const ProductsTab = ({ isDarkMode }) => {
   const handleEditProductSubmit = async (e) => {
     e.preventDefault();
 
-    if (!editFormData.name?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.quantity || !editFormData.category) {
+    if (!editFormData.name?.trim() || !editFormData.description?.trim() || !editFormData.price || !editFormData.category) {
       toast.error("All fields required.");
       return;
     }
@@ -219,7 +217,6 @@ const ProductsTab = ({ isDarkMode }) => {
     formData.append("name", editFormData.name);
     formData.append("description", editFormData.description);
     formData.append("price", editFormData.price);
-    formData.append("quantity", editFormData.quantity);
     formData.append("category", editFormData.category);
     formData.append("isFeatured", editFormData.isFeatured || false);
     if (Array.isArray(editFormData.badges)) {
@@ -414,15 +411,9 @@ const ProductsTab = ({ isDarkMode }) => {
                         {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                       </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="edit-price" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Price (₱)</label>
-                        <input type="number" id="edit-price" name="price" value={editFormData.price || ''} onChange={handleEditFormChange} onKeyDown={blockInvalidNumberInput} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-                      </div>
-                      <div>
-                        <label htmlFor="edit-quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quantity</label>
-                        <input type="number" id="edit-quantity" name="quantity" value={editFormData.quantity || ''} onChange={handleEditFormChange} onKeyDown={blockInvalidNumberInput} required min="0" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
-                      </div>
+                    <div>
+                      <label htmlFor="edit-price" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Price (₱)</label>
+                      <input type="number" id="edit-price" name="price" value={editFormData.price || ''} onChange={handleEditFormChange} onKeyDown={blockInvalidNumberInput} required min="0" step="0.01" className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`} />
                     </div>
                     <div>
                       <label htmlFor="edit-isFeatured" className="flex items-center space-x-2 cursor-pointer">
