@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Search, Eye, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUser } from '../../context/useUser.js';
@@ -19,45 +19,46 @@ function formatDate(date) {
 }
 
 export default function CancelledTab({ isDarkMode }) {
-  const {
-    orders,
-    loading,
-    refetch,
-  } = useOrders();
-  const { token: authToken, user } = useUser();
-
+  const { user, authToken } = useUser();
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Get ALL orders from the hook
+  const { orders, loading, refetch } = useOrders();
 
-  // Flatten cancelled items across all orders
+  useEffect(() => {
+    console.log('Orders from useOrders hook:', orders);
+  }, [orders]);
+
+  // Find all cancelled products in all orders
   const cancellations = useMemo(() => {
+    console.log('Processing orders for cancellations:', orders);
     const rows = [];
     (orders || []).forEach((order) => {
-      (order?.products || []).forEach((p) => {
-        if (p?.cancelled) {
+      (order.products || []).forEach((p) => {
+        if (p.cancelled) {
           rows.push({
             id: `${order._id}:${p.productId || p._id}`,
             orderId: order._id,
             productId: p.productId || p._id,
             orderNumber: order.orderNumber,
             username: order.username,
-            status: order.status,
-            refundStatus: p.refundStatus,
             productName: p.name,
             quantity: p.quantity,
             price: p.price,
             reason: p.cancellationReason || 'No reason provided',
             cancelledAt: p.cancelledAt,
+            refundStatus: p.refundStatus,
             order,
           });
         }
       });
     });
-    // newest first
+    console.log('Found cancellations:', rows);
     return rows.sort((a, b) => new Date(b.cancelledAt || 0) - new Date(a.cancelledAt || 0));
   }, [orders]);
 
@@ -72,7 +73,6 @@ export default function CancelledTab({ isDarkMode }) {
     );
   }, [cancellations, searchQuery]);
 
-  // Split into unresolved and resolved groups
   const unresolved = useMemo(() => filtered.filter(c => (c.refundStatus || 'Pending') !== 'Completed'), [filtered]);
   const resolved = useMemo(() => filtered.filter(c => c.refundStatus === 'Completed'), [filtered]);
 
@@ -82,7 +82,7 @@ export default function CancelledTab({ isDarkMode }) {
 
   // Confirm modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmItem, setConfirmItem] = useState(null); // { orderId, productId, productName, defaultAmount }
+  const [confirmItem, setConfirmItem] = useState(null);
   const [etaHours, setEtaHours] = useState(24);
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -147,7 +147,6 @@ export default function CancelledTab({ isDarkMode }) {
       if (user && user.role && user.role !== 'admin') {
         throw new Error('Forbidden: Admins only');
       }
-      // Resolve and sanitize token
       const rawToken =
         authToken ||
         localStorage.getItem('token') ||
@@ -161,7 +160,6 @@ export default function CancelledTab({ isDarkMode }) {
       if (!cleanToken) {
         throw new Error('Not authenticated. Please log in again.');
       }
-      // Proceed; backend will return 401 if token is invalid
 
       const res = await fetch(
         `${SERVER_BASE_URL}/api/v1/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
@@ -243,13 +241,13 @@ export default function CancelledTab({ isDarkMode }) {
             <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <td colSpan={9} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     Loading cancellations...
                   </td>
                 </tr>
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <td colSpan={9} className={`px-4 py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     No cancelled items to resolve.
                   </td>
                 </tr>
@@ -263,7 +261,7 @@ export default function CancelledTab({ isDarkMode }) {
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.refundStatus || 'Pending'}</td>
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.reason}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
-                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.order.status}</td>
                     <td className="px-4 py-3 space-x-2">
                       <button 
                         onClick={() => { setSelectedOrder(c.order); setShowOrderModal(true); }}
@@ -382,7 +380,7 @@ export default function CancelledTab({ isDarkMode }) {
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>{c.refundStatus}</td>
                     <td className={`px-4 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.reason}</td>
                     <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(c.cancelledAt)}</td>
-                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.status}</td>
+                    <td className={`px-4 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{c.order.status}</td>
                   </tr>
                 ))
               )}
