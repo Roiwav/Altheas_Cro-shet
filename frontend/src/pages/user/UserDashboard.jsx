@@ -33,7 +33,7 @@ function UserDashboard() {
         return;
       }
       try {
-        const response = await fetch(`${SERVER_BASE_URL}/api/orders/myorders`, {
+        const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders/myorders`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
