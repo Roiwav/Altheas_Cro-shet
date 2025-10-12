@@ -1,6 +1,5 @@
 // src/hooks/useNotifications.js
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import io from 'socket.io-client';
 import { toast } from 'react-toastify';
 import { useUser } from '../context/useUser';
 import { SERVER_BASE_URL } from '../utils/product';
@@ -35,31 +34,6 @@ export default function useNotifications() {
   useEffect(() => {
     refetch();
   }, [refetch]);
-
-  // Real-time: connect to Socket.IO and listen for new notifications
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!isAuthenticated || !token) return;
-    const socket = io(SERVER_BASE_URL);
-
-    socket.on('connect', () => {
-      socket.emit('register', token);
-    });
-    // Swallow possible errors
-    socket.on('register:error', () => {});
-    socket.on('connect_error', () => {});
-    socket.on('error', () => {});
-
-    const handleNew = (notif) => {
-      setNotifications((prev) => [notif, ...prev]);
-    };
-    socket.on('notification:new', handleNew);
-
-    return () => {
-      socket.off('notification:new', handleNew);
-      socket.disconnect();
-    };
-  }, [isAuthenticated]);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 

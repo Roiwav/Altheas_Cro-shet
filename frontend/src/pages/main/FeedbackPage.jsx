@@ -14,11 +14,16 @@ const FeedbackPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
+  const MAX_QUOTE_LENGTH = 300;
 
   const { quote, author, rating } = formData;
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'quote' && value.length > MAX_QUOTE_LENGTH) {
+      return; // Prevent typing more than the limit
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleRatingClick = (newRating) => {
@@ -51,15 +56,21 @@ const FeedbackPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="quote" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Feedback / Testimonial
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="quote" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Feedback / Testimonial
+                </label>
+                <span className={`text-xs ${quote.length > MAX_QUOTE_LENGTH - 20 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {quote.length} / {MAX_QUOTE_LENGTH}
+                </span>
+              </div>
               <textarea
                 id="quote"
                 name="quote"
                 rows="4"
                 value={quote}
                 onChange={handleChange}
+                maxLength={MAX_QUOTE_LENGTH}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 placeholder="Your feedback..."
