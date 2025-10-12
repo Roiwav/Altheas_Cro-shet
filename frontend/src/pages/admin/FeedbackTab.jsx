@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trash2, CheckCircle, XCircle, Star, Loader2, ShieldCheck, ArrowUpDown, Filter, MoreVertical, ChevronDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useMediaQuery } from 'react-responsive';
+import { useTestimonials } from '../../context/TestimonialsContext';
 
 const FeedbackTab = ({ isDarkMode }) => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -11,6 +12,7 @@ const FeedbackTab = ({ isDarkMode }) => {
   const [filterRating, setFilterRating] = useState(0); // 0 for 'all', 1-5 for specific ratings
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'descending' });
   const isMobile = useMediaQuery({ query: '(max-width: 768px)' });
+  const { refetchTestimonials } = useTestimonials();
 
   const fetchFeedbacks = useCallback(async () => {
     try {
@@ -51,6 +53,9 @@ const FeedbackTab = ({ isDarkMode }) => {
         currentFeedbacks.map(f => (f._id === feedbackId ? updatedFeedback : f))
       );
       toast.success(`Feedback ${newStatus ? 'approved' : 'unapproved'}.`);
+      if (newStatus) {
+        refetchTestimonials(); // Refetch public testimonials on approval
+      }
     } catch (error) {
       toast.error(error.message);
     }
@@ -127,6 +132,7 @@ const FeedbackTab = ({ isDarkMode }) => {
           })
         );
         toast.success(`${successfulApprovals.length} feedbacks approved successfully.`);
+        refetchTestimonials(); // Refetch public testimonials on batch approval
       }
 
       if (failedApprovals.length > 0) {

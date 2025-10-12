@@ -2,7 +2,6 @@ const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
 const cloudinary = require('../config/cloudinary');
 const Notification = require('../models/Notification');
-const { getIo } = require('../socket');
 
 // ✅ Create new order
 const createOrder = async (req, res) => {
@@ -212,6 +211,24 @@ const updateOrderStatus = async (req, res) => {
 
     await order.save();
 
+    // Create a notification for the user about the status update
+    if (previousStatus !== status) {
+      try {
+        await Notification.create({
+          userId: order.userId,
+          title: `Order Status Updated: ${status}`,
+          message: order.statusMessage || `Your order #${order.orderNumber || order._id.toString().substring(0, 8)} is now ${status}.`,
+          type: 'order',
+          orderId: order._id.toString(),
+        });
+      } catch (notificationError) {
+        // Log the error but don't fail the main request.
+        // The status update is more critical than the notification.
+        console.error('Failed to create notification for status update:', notificationError);
+      }
+    }
+
+
     res.json({ 
       message: "Order status updated successfully", 
       order,
@@ -345,16 +362,6 @@ const confirmCancelledProduct = async (req, res) => {
         type: 'refund',
         orderId: order._id.toString(),
       });
-
-      // Emit a socket event to the user's room for real-time updates
-      try {
-        const io = getIo();
-        if (io) {
-          io.to(`user:${order.userId}`).emit('notification:new', createdNotif);
-        }
-      } catch (emitErr) {
-        console.error('Socket emit failed:', emitErr);
-      }
     } catch (e) {
       console.error('Failed to create notification:', e);
       // Do not fail the request because of notification issues

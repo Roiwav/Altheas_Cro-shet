@@ -1,9 +1,5 @@
 // server.js
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const { setIo } = require('./socket');
-const jwtLib = require('jsonwebtoken');
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -15,7 +11,6 @@ const session = require('express-session');
 const passport = require('passport');
 
 // 🟢 Import routes
-const setupChangeStream = require("./testimonialChangeStream.js");
 const cartRoutes = require("./routes/cartRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
@@ -64,39 +59,6 @@ async function ensureAdmin() {
     console.error('Admin seeding error:', e);
   }
 }
-
-// 🟢 Create HTTP server
-const server = http.createServer(app);
-
-// 🟢 Setup Socket.IO (for testimonials or live updates) with CORS
-const io = new Server(server, {
-  cors: {
-    origin: ["http://localhost:5173", "https://altheas-crochet-project.vercel.app"],
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
-
-// Make io available to other modules
-setIo(io);
-
-// Socket.IO: simple auth + join user room for notifications
-io.on('connection', (socket) => {
-  // Client should emit 'register' with JWT token
-  socket.on('register', (token) => {
-    try {
-      if (!token) return socket.emit('register:error', 'Missing token');
-      const decoded = jwtLib.verify(token, process.env.JWT_SECRET);
-      const userId = decoded.id || decoded._id;
-      if (!userId) return socket.emit('register:error', 'Invalid token');
-      const room = `user:${userId}`;
-      socket.join(room);
-      socket.emit('register:ok', { room });
-    } catch (e) {
-      socket.emit('register:error', 'Invalid token');
-    }
-  });
-});
 
 // Session configuration
 app.use(session({
@@ -235,11 +197,9 @@ mongoose
     console.log("✅ MongoDB Connected");
     // Ensure admin exists before starting streams/routes that might rely on it
     await ensureAdmin();
-    // Setup testimonial change stream after DB connection
-    setupChangeStream(io);
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // 🟢 Start the server
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
