@@ -140,7 +140,11 @@ export default function AdminLoginPage() {
 
       // 6. Security Check: Ensure the user has the 'admin' role.
       if (data?.user?.role !== "admin") {
-        throw new Error("Access Denied. You do not have administrator privileges.");
+        if (data?.user?.role === 'customer') {
+          throw new Error("Access Denied. Please use the main site to log in with a customer account.");
+        } else {
+          throw new Error("Access Denied. You do not have administrator privileges.");
+        }
       }
 
       // 7. Store token and user data in sessionStorage for this tab.

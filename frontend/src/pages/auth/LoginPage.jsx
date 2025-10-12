@@ -199,6 +199,13 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Login failed");
 
+      // Block admins from logging into the regular user portal.
+      if (data?.user?.role === 'admin') {
+        // Clear any session items just in case and throw an error.
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        throw new Error("Access Denied. Admins must use the admin portal to log in.");
+      }
       // Use sessionStorage to isolate login state to the current tab.
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(data.user));
@@ -209,13 +216,8 @@ export default function LoginPage() {
       localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);
 
       toast.success("Login successful!");
-      // Redirect admins to /admin; others to intended page unless it's admin-only
-      if (data?.user?.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        const dest = from && !from.startsWith('/admin') && !from.startsWith('/login') ? from : '/';
-        navigate(dest, { replace: true });
-      }
+      const dest = from && !from.startsWith('/admin') && !from.startsWith('/login') ? from : '/';
+      navigate(dest, { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       const errorMessage =
