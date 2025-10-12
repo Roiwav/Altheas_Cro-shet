@@ -414,7 +414,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       </div>
 
       {!isEditingAddress && addresses.length === 0 ? (
-        <div className="p-8 text-center border-2 border-dashed rounded-xl border-gray-200 dark:border-gray-700">
+        <div className="p-8 text-center border-2 border-gray-200 border-dashed rounded-xl dark:border-gray-700">
           <MapPin className="w-12 h-12 mx-auto text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No addresses yet</h3>
           <p className="mt-1 text-gray-500 dark:text-gray-400">
@@ -422,14 +422,14 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
           </p>
           <button
             onClick={addAddress}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-pink-600 transition-colors bg-pink-50 rounded-lg hover:bg-pink-100 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-900/50"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-pink-600 transition-colors rounded-lg bg-pink-50 hover:bg-pink-100 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-900/50"
           >
             <Plus className="w-4 h-4" />
             Add Address
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 items-start">
+        <div className="grid items-start gap-4 md:grid-cols-2">
           {sortedAddresses.map((address) => {
             const isEditingThis = isEditingAddress && activeAddressId === address.id;
 
@@ -689,7 +689,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       )}
 
       {!isEditingAddress && addresses.length > 0 && !isSelectMode && (
-        <div className="flex items-center justify-between p-4 mt-6 bg-gray-50 rounded-lg dark:bg-gray-800/50">
+        <div className="flex items-center justify-between p-4 mt-6 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-3">
             <div className="p-2 text-pink-600 rounded-full bg-pink-50 dark:bg-pink-900/20">
               <MapPin className="w-5 h-5" />

@@ -8,6 +8,7 @@ import { applyDarkMode } from "./darkModeUtils";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
 axios.defaults.baseURL = API_URL;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
@@ -124,24 +125,52 @@ export const UserProvider = ({ children }) => {
       });
       if (response.data) {
         const userData = response.data;
-        if (userData.addresses) {
-          userData.addresses = userData.addresses.map(addr => ({
+
+        const fullNameCandidate = (
+          userData.fullName ||
+          userData.name ||
+          userData.displayName ||
+          [userData.firstName, userData.lastName].filter(Boolean).join(' ').trim() ||
+          undefined
+        );
+        const avatarCandidate = (
+          userData.avatar ||
+          userData.picture ||
+          userData.avatarUrl ||
+          (Array.isArray(userData.photos) && userData.photos[0]?.value) ||
+          undefined
+        );
+        const usernameCandidate = (
+          userData.username ||
+          (typeof userData.email === 'string' ? userData.email.split('@')[0] : undefined)
+        );
+
+        let normalized = {
+          ...userData,
+          fullName: fullNameCandidate,
+          name: fullNameCandidate || userData.name,
+          avatar: avatarCandidate,
+          username: usernameCandidate,
+        };
+
+        if (normalized.addresses) {
+          normalized.addresses = normalized.addresses.map(addr => ({
             ...addr,
             id: addr._id || addr.id || crypto.randomUUID()
           }));
         }
-        if (typeof userData?.preferences?.darkMode === 'boolean') {
-          applyDarkMode(userData.preferences.darkMode);
+        if (typeof normalized?.preferences?.darkMode === 'boolean') {
+          applyDarkMode(normalized.preferences.darkMode);
         }
-        setUser(userData);
+        setUser(normalized);
         setIsAuthenticated(true);
-        const userDataString = JSON.stringify(userData);
+        const userDataString = JSON.stringify(normalized);
         if (localStorage.getItem("token")) {
           localStorage.setItem("user", userDataString);
         } else if (sessionStorage.getItem("token")) {
           sessionStorage.setItem("user", userDataString);
         }
-        return userData;
+        return normalized;
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -186,13 +215,13 @@ export const UserProvider = ({ children }) => {
             if (typeof userData?.preferences?.darkMode === 'boolean') {
               applyDarkMode(userData.preferences.darkMode);
             }
-          } catch (parseError) {
+          } catch {
             localStorage.removeItem("user");
             sessionStorage.removeItem("user");
           }
         }
         await fetchUserData(storedToken);
-      } catch (error) {
+      } catch {
         clearAuthData();
         setIsLoading(false);
       }
@@ -237,10 +266,33 @@ export const UserProvider = ({ children }) => {
         let processedUser = userObj;
 
         if (isOAuth) {
+          const fullNameCandidate = (
+            userObj.fullName ||
+            userObj.name ||
+            userObj.displayName ||
+            [userObj.firstName, userObj.lastName].filter(Boolean).join(' ').trim() ||
+            undefined
+          );
+          const avatarCandidate = (
+            userObj.avatar ||
+            userObj.picture ||
+            userObj.avatarUrl ||
+            (Array.isArray(userObj.photos) && userObj.photos[0]?.value) ||
+            undefined
+          );
+          const usernameCandidate = (
+            userObj.username ||
+            (typeof userObj.email === 'string' ? userObj.email.split('@')[0] : undefined)
+          );
+
           processedUser = {
             ...userObj,
             role: userObj.role || 'user',
-            isOAuth: true
+            isOAuth: true,
+            fullName: fullNameCandidate,
+            name: fullNameCandidate || userObj.name,
+            avatar: avatarCandidate,
+            username: usernameCandidate,
           };
         } else if (userObj.addresses) {
           processedUser = {

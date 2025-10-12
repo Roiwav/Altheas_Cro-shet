@@ -7,6 +7,28 @@ import { SERVER_BASE_URL } from '../../utils/product.js';
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
+function getInitialsFromUser(user) {
+  const raw = (user?.fullName || user?.name || user?.displayName || user?.username || user?.email || "").trim();
+  if (!raw) return "?";
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  const token = parts[0];
+  if (token.includes("@")) return token.split("@")[0].slice(0, 2).toUpperCase();
+  return token.slice(0, 2).toUpperCase();
+}
+
+function bgClassForKey(key) {
+  const palette = [
+    "bg-pink-600","bg-blue-600","bg-green-600","bg-indigo-600","bg-orange-600",
+    "bg-purple-600","bg-teal-600","bg-rose-600","bg-amber-600","bg-sky-600"
+  ];
+  const s = String(key || "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+  const idx = Math.abs(hash) % palette.length;
+  return palette[idx];
+}
+
 const RoleBadge = ({ role }) => {
   const roleClasses = {
     admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
@@ -279,7 +301,20 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             onChange={() => handleSelectOne(user._id)}
             className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-          <img className="w-12 h-12 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
+          {user?.avatar ? (
+            <img className="w-12 h-12 rounded-full" src={user.avatar} alt={`${user.name || user.fullName} avatar`} />
+          ) : (
+            getInitialsFromUser(user) === '?' ? (
+              <img className="w-12 h-12 rounded-full" src={DEFAULT_AVATAR} alt={`${user.name || user.fullName} avatar`} />
+            ) : (
+              <div
+                className={`${bgClassForKey(user?.email || user?.username || user?.fullName)} w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold`}
+                aria-label="User Avatar"
+              >
+                {getInitialsFromUser(user)}
+              </div>
+            )
+          )}
           <div className="ml-3">
             <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name || user.fullName}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
@@ -460,7 +495,20 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                     </div>
                   </td>
                   <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                    <img className="w-10 h-10 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
+                    {user?.avatar ? (
+                      <img className="w-10 h-10 rounded-full" src={user.avatar} alt={`${user.name || user.fullName} avatar`} />
+                    ) : (
+                      getInitialsFromUser(user) === '?' ? (
+                        <img className="w-10 h-10 rounded-full" src={DEFAULT_AVATAR} alt={`${user.name || user.fullName} avatar`} />
+                      ) : (
+                        <div
+                          className={`${bgClassForKey(user?.email || user?.username || user?.fullName)} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold`}
+                          aria-label="User Avatar"
+                        >
+                          {getInitialsFromUser(user)}
+                        </div>
+                      )
+                    )}
                     <div className="pl-3">
                       <div className="text-base font-semibold">{user.name || user.fullName}</div>
                       <div className="font-normal text-gray-500">{user.email}</div>

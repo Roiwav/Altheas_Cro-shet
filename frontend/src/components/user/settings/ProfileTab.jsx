@@ -25,6 +25,27 @@ export default function ProfileTab() {
   const defaultAvatar =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
+  const getInitials = (nameOrEmail) => {
+    const raw = String(nameOrEmail || "").trim();
+    if (!raw) return "?";
+    const hasAt = raw.includes("@");
+    const base = hasAt ? raw.split("@")[0] : raw;
+    const parts = base.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return base.slice(0, 2).toUpperCase();
+  };
+
+  const colorForKey = (key) => {
+    const palette = [
+      "bg-pink-600","bg-blue-600","bg-green-600","bg-indigo-600","bg-orange-600",
+      "bg-purple-600","bg-teal-600","bg-rose-600","bg-amber-600","bg-sky-600"
+    ];
+    const s = String(key || "");
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+    return palette[Math.abs(hash) % palette.length];
+  };
+
   /**
    * Effect to initialize the profile form state when the user object is available or changes.
    */
@@ -153,11 +174,27 @@ export default function ProfileTab() {
       {/* Avatar Section */}
       <div className="flex flex-col items-center gap-6 p-6 bg-white rounded-xl shadow-sm dark:bg-gray-800/50 md:flex-row">
         <div className="relative group">
-          <img
-            src={profile.avatar || defaultAvatar}
-            alt="Profile"
-            className="object-cover w-32 h-32 border-4 border-white rounded-full shadow-lg dark:border-gray-800"
-          />
+          {profile.avatar ? (
+            <img
+              src={profile.avatar}
+              alt="Profile"
+              className="object-cover w-32 h-32 border-4 border-white rounded-full shadow-lg dark:border-gray-800"
+            />
+          ) : (
+            getInitials(profile.fullName || profile.email) === '?' ? (
+              <img
+                src={defaultAvatar}
+                alt="Profile"
+                className="object-cover w-32 h-32 border-4 border-white rounded-full shadow-lg dark:border-gray-800"
+              />
+            ) : (
+              <div
+                className={`${colorForKey(profile.email || profile.username || profile.fullName)} w-32 h-32 rounded-full flex items-center justify-center text-white font-bold text-3xl border-4 border-white shadow-lg dark:border-gray-800`}
+              >
+                {getInitials(profile.fullName || profile.email)}
+              </div>
+            )
+          )}
           <label 
             htmlFor="avatarUpload" 
             className="absolute bottom-0 right-0 flex items-center justify-center w-10 h-10 text-white transition-all bg-pink-600 rounded-full cursor-pointer hover:bg-pink-700 group-hover:opacity-100 opacity-90"

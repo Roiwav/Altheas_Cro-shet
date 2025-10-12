@@ -20,7 +20,7 @@ export default function Navbar({
   setSidebarOpen = () => {},
   isAuthPage = false,
 }) {
-  const { user, isAuthenticated, logout, isAuthenticating } = useUser();
+  const { isAuthenticated, logout, isLoading } = useUser();
   
   // Hooks for cart and notification data.
   const { cartItems } = useCart();
@@ -211,7 +211,7 @@ export default function Navbar({
               </Link>
             )}
             {/* User Menu */}
-            {isAuthenticating ? null : isAuthenticated ? (
+            {isLoading ? null : isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsOpen(!isOpen)}
@@ -219,9 +219,7 @@ export default function Navbar({
                   aria-label="User menu"
                 >
                   <User size={20} />
-                  <span className="hidden md:inline">
-                    {user?.name || "Account"}
-                  </span>
+                  <span className="hidden md:inline">Account</span>
                 </button>
 
                 {isOpen && (
