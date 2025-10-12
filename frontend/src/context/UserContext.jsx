@@ -219,21 +219,19 @@ export const UserProvider = ({ children }) => {
   }, [token, logout]);
 
   // login function (supports JWT and dummy tokens)
-  const login = useCallback((userObj, authToken, options = { remember: false, isOAuth: false }) => {
+  const login = useCallback((userObj, authToken, options = { isOAuth: false }) => {
     return new Promise((resolve, reject) => {
-      const { remember = false, isOAuth = false } = options;
+      const { isOAuth = false } = options;
       try {
         if (!authToken) throw new Error('No authentication token provided');
         if (!userObj) throw new Error('No user data provided');
 
-        let tokenValidationPassed = false;
         if (authToken === 'dummy-admin-token' || authToken.startsWith('dummy-')) {
-          tokenValidationPassed = true;
+          // It's a dummy token, proceed
         } else if (typeof authToken === 'string' && authToken.includes('.')) {
-          const isExpired = isTokenExpired(authToken, true);
-          tokenValidationPassed = true; // Allow expired tokens for debugging
-        } else {
-          tokenValidationPassed = true;
+          if (isTokenExpired(authToken, true)) {
+            // For real tokens, you might want to reject if expired, but we'll allow for now.
+          }
         }
 
         let processedUser = userObj;
@@ -264,17 +262,11 @@ export const UserProvider = ({ children }) => {
         setIsAuthenticated(true);
 
         const userDataString = JSON.stringify(processedUser);
-        if (remember) {
-          localStorage.setItem("user", userDataString);
-          localStorage.setItem("token", authToken);
-          sessionStorage.removeItem("user");
-          sessionStorage.removeItem("token");
-        } else {
-          sessionStorage.setItem("user", userDataString);
-          sessionStorage.setItem("token", authToken);
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-        }
+        // ALWAYS use sessionStorage to keep logins tab-specific.
+        sessionStorage.setItem("user", userDataString);
+        sessionStorage.setItem("token", authToken);
+        localStorage.removeItem("user"); // Clean up old storage
+        localStorage.removeItem("token"); // Clean up old storage
         localStorage.removeItem("userAddresses");
 
         resolve(processedUser);

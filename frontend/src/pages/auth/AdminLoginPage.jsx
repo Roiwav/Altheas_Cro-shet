@@ -113,22 +113,23 @@ export default function AdminLoginPage() {
       }
 
       console.log("7. About to save token to localStorage");
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
       console.log("8. Token saved. Checking localStorage now...");
 
-      const testToken = localStorage.getItem("token");
+      const testToken = sessionStorage.getItem("token");
       console.log("9. localStorage.getItem('token') result:", testToken);
 
       if (!testToken) {
-        throw new Error("Could not write auth token to localStorage!");
+        throw new Error("Could not write auth token to sessionStorage!");
       }
 
       console.log("10. Success! About to call login() and navigate");
-
-      await login(data.user, data.token, { remember: true });
       localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
       localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);
+
+      // Use sessionStorage by default, so `remember` is false.
+      await login(data.user, data.token, { remember: false });
 
       toast.success("Admin login successful!");
       navigate(from, { replace: true });
