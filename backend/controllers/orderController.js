@@ -180,6 +180,9 @@ const updateOrderStatus = async (req, res) => {
         break;
         
       case 'rejected':
+        if (!rejectionReason) {
+          return res.status(400).json({ message: "A reason is required to reject an order." });
+        }
         order.statusMessage = rejectionReason 
           ? `Your order has been rejected. Reason: ${rejectionReason}. A full refund will be processed within 5-7 business days.`
           : "Your order has been rejected due to product availability or payment issues. A full refund will be processed within 5-7 business days.";

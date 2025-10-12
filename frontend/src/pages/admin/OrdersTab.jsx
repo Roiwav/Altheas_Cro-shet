@@ -129,8 +129,8 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     setUpdatingOrders(prev => new Set(prev).add(orderId));
 
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/orders/${orderId}/reject`, {
-        method: "PATCH",
+      const response = await fetch(`http://localhost:5001/api/v1/orders/${orderId}/status`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,

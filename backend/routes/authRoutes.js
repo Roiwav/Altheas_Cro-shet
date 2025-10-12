@@ -10,8 +10,8 @@ const { createLog } = require("../controllers/logController");
 const router = express.Router();
 
 // Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: '7d'
   });
 };
@@ -86,7 +86,7 @@ router.post("/register", async (req, res) => {
       'Success'
     );
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = generateToken(user._id, user.role);
 
     res.status(201).json({
       message: "User registered successfully",
@@ -130,7 +130,7 @@ router.post("/login", async (req, res) => {
       'Success'
     );
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = generateToken(user._id, user.role);
     
     // Return complete user data including addresses and preferences
     res.json({ 
