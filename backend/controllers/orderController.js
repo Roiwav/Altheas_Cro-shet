@@ -4,7 +4,7 @@ const cloudinary = require('../config/cloudinary');
 const Notification = require('../models/Notification');
 const { createLog } = require('./logController');
 
-// ✅ Create new order
+// ✅ Create new order WITH PAYMENT LOGGING
 const createOrder = async (req, res) => {
   try {
     // Parse the orderData JSON string from FormData
@@ -42,8 +42,48 @@ const createOrder = async (req, res) => {
             .end(req.file.buffer);
         });
         paymentProofUrl = uploadResult.secure_url;
+
+        // LOG PAYMENT PROOF UPLOAD SUCCESS
+        try {
+          await createLog(
+            'Payment',
+            username || userId || 'Customer',
+            'pending_order',
+            `Payment proof uploaded successfully via ${paymentMethod} - Amount: ₱${total}`,
+            'Success',
+            { 
+              paymentMethod,
+              amount: total,
+              paymentProofUrl: uploadResult.secure_url,
+              paymentAction: 'proof_uploaded'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log payment proof upload:", logError);
+        }
+
       } catch (err) {
         console.error('❌ Cloudinary upload error:', err);
+        
+        // LOG PAYMENT PROOF UPLOAD FAILURE
+        try {
+          await createLog(
+            'Payment',
+            username || userId || 'Customer',
+            'failed_order',
+            `Payment proof upload failed via ${paymentMethod} - Error: ${err.message}`,
+            'Failure',
+            { 
+              paymentMethod,
+              amount: total,
+              error: err.message,
+              paymentAction: 'proof_upload_failed'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log payment proof upload failure:", logError);
+        }
+
         return res.status(500).json({ message: 'Failed to upload payment proof' });
       }
     } else {
@@ -77,6 +117,27 @@ const createOrder = async (req, res) => {
       console.error("Failed to log order creation:", logError);
     }
 
+    // LOG PAYMENT RECEIVED
+    try {
+      await createLog(
+        'Payment',
+        username || userId || 'Customer',
+        newOrder._id.toString(),
+        `Payment received for order #${newOrder.orderNumber || newOrder._id.toString().substring(0, 8)} - ₱${total} via ${paymentMethod}`,
+        'Success',
+        { 
+          orderId: newOrder._id,
+          orderNumber: newOrder.orderNumber,
+          paymentMethod,
+          amount: total,
+          paymentProofUrl,
+          paymentAction: 'payment_received'
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log payment received:", logError);
+    }
+
     res.status(201).json({ message: "Order created successfully", order: newOrder });
   } catch (error) {
     console.error("❌ Error creating order:", error);
@@ -99,7 +160,7 @@ const createOrder = async (req, res) => {
   }
 };
 
-// ✅ Update order status (Admin) - WITH LOGGING - FIXED VERSION
+// ✅ Update order status (Admin) - WITH ENHANCED PAYMENT LOGGING
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, rejectionReason, adminName } = req.body;
@@ -126,14 +187,36 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // --- Status messages, refund logic as before ---
+    // --- Status messages, refund logic with PAYMENT LOGGING ---
     switch (status?.toLowerCase()) {
       case 'cancelled':
         order.statusMessage = "Your order has been cancelled. A full refund will be processed within 5-7 business days.";
         order.refundStatus = 'Processing';
         order.refundAmount = order.total;
         order.refundEstimatedDays = 7;
+        
+        // LOG PAYMENT REFUND INITIATED
+        try {
+          await createLog(
+            'Payment',
+            order.statusUpdatedBy,
+            order._id.toString(),
+            `Refund initiated for cancelled order - ₱${order.total} to be refunded within 7 days`,
+            'Success',
+            { 
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              refundAmount: order.total,
+              refundReason: 'Order cancelled',
+              estimatedDays: 7,
+              paymentAction: 'refund_initiated'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log refund initiation:", logError);
+        }
         break;
+        
       case 'rejected':
         if (!rejectionReason) {
           return res.status(400).json({ message: "A reason is required to reject an order." });
@@ -143,15 +226,78 @@ const updateOrderStatus = async (req, res) => {
         order.refundStatus = 'Processing';
         order.refundAmount = order.total;
         order.refundEstimatedDays = 7;
+        
+        // LOG PAYMENT REFUND FOR REJECTION
+        try {
+          await createLog(
+            'Payment',
+            order.statusUpdatedBy,
+            order._id.toString(),
+            `Refund initiated for rejected order - ₱${order.total} to be refunded. Reason: ${rejectionReason}`,
+            'Success',
+            { 
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              refundAmount: order.total,
+              refundReason: rejectionReason,
+              estimatedDays: 7,
+              paymentAction: 'refund_for_rejection'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log rejection refund:", logError);
+        }
         break;
+        
       case 'processing':
         order.statusMessage = "Your order is now being prepared. We'll notify you once it's ready for shipping.";
+        
+        // LOG PAYMENT CONFIRMED/VERIFIED
+        try {
+          await createLog(
+            'Payment',
+            order.statusUpdatedBy,
+            order._id.toString(),
+            `Payment verified and confirmed for order #${order.orderNumber || order._id.toString().substring(0, 8)} - ₱${order.total}`,
+            'Success',
+            { 
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              amount: order.total,
+              paymentMethod: order.paymentMethod,
+              paymentAction: 'payment_verified'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log payment verification:", logError);
+        }
         break;
+        
       case 'shipped':
         order.statusMessage = "Great news! Your order has been shipped and is on its way to you.";
         break;
       case 'delivered':
         order.statusMessage = "Your order has been successfully delivered. Thank you for your purchase!";
+        
+        // LOG PAYMENT COMPLETED
+        try {
+          await createLog(
+            'Payment',
+            'System',
+            order._id.toString(),
+            `Payment transaction completed for delivered order #${order.orderNumber || order._id.toString().substring(0, 8)} - ₱${order.total}`,
+            'Success',
+            { 
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              amount: order.total,
+              paymentMethod: order.paymentMethod,
+              paymentAction: 'payment_completed'
+            }
+          );
+        } catch (logError) {
+          console.error("Failed to log payment completion:", logError);
+        }
         break;
       case 'pending':
         order.statusMessage = "Your order is pending review. We'll update you soon.";
@@ -162,7 +308,7 @@ const updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    // (Logging, notifications, and response code remains unchanged)
+    // LOG ORDER STATUS UPDATE (keeping existing)
     try {
       await createLog(
         'Order Update',
@@ -207,7 +353,184 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// ✅ Admin: confirm a cancelled product and notify customer - WITH PAYMENT LOGGING
+const confirmCancelledProduct = async (req, res) => {
+  try {
+    const { id: orderId, productId } = req.params;
+    const { etaHours = 24, amount, message } = req.body || {};
 
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const p = order.products.find(
+      (product) => (product.productId === productId || product._id?.toString() === productId)
+    );
+
+    if (!p) return res.status(404).json({ message: 'Product not found in order' });
+    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
+
+    // Set refund details
+    const refundAmount = typeof amount === 'number' ? amount : (p.price || 0) * (p.quantity || 1);
+    p.refundStatus = 'Processing';
+    p.refundAmount = refundAmount;
+    p.refundETAHours = Number(etaHours) || 24;
+    p.refundConfirmedAt = new Date();
+
+    // Optional: update order level message
+    order.statusMessage = message || `Your refund for ${p.name} is being processed and will be returned within ${p.refundETAHours} hour(s).`;
+    order.statusUpdatedAt = new Date();
+
+    await order.save();
+
+    // LOG PAYMENT REFUND CONFIRMATION
+    try {
+      await createLog(
+        'Payment',
+        req.user?.username || req.user?.email || 'Admin',
+        order._id.toString(),
+        `Partial refund confirmed for cancelled product "${p.name}" - ₱${refundAmount} within ${p.refundETAHours} hours`,
+        'Success',
+        { 
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          productId,
+          productName: p.name,
+          refundAmount,
+          etaHours: p.refundETAHours,
+          paymentAction: 'partial_refund_confirmed'
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log refund confirmation:", logError);
+    }
+
+    // LOG ORDER UPDATE (keeping existing)
+    try {
+      await createLog(
+        'Order Update',
+        req.user?.username || req.user?.email || 'Admin',
+        order._id.toString(),
+        `Admin confirmed refund for cancelled product "${p.name}" - ₱${refundAmount} within ${p.refundETAHours}h`,
+        'Success',
+        { 
+          orderId: order._id,
+          productId,
+          productName: p.name,
+          refundAmount,
+          etaHours: p.refundETAHours,
+          orderNumber: order.orderNumber
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log refund confirmation:", logError);
+    }
+
+    // Create a notification for the user
+    try {
+      await Notification.create({
+        userId: order.userId,
+        title: 'Refund processing',
+        message: `Your cancellation for "${p.name}" has been confirmed. Refund of ₱${refundAmount?.toFixed(2)} will be returned within ${p.refundETAHours} hour(s).`,
+        type: 'refund',
+        orderId: order._id.toString(),
+      });
+    } catch (e) {
+      console.error('Failed to create notification:', e);
+    }
+
+    res.json({
+      message: 'Cancellation confirmed and customer notified',
+      order,
+      success: true,
+    });
+  } catch (error) {
+    console.error('❌ Error confirming cancelled product:', error);
+    res.status(500).json({ message: 'Failed to confirm cancelled product' });
+  }
+};
+
+// ✅ Admin: mark a cancelled product as DONE (refund completed) - WITH PAYMENT LOGGING
+const markCancelledProductDone = async (req, res) => {
+  try {
+    const { id: orderId, productId } = req.params;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const p = order.products.find(
+      (product) => (product.productId === productId || product._id?.toString() === productId)
+    );
+
+    if (!p) return res.status(404).json({ message: 'Product not found in order' });
+    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
+
+    p.refundStatus = 'Completed';
+    p.refundConfirmedAt = new Date();
+
+    // Optional: if all cancelled items are completed, set order-level refund status
+    const cancelledItems = order.products.filter((pr) => pr.cancelled);
+    const allCompleted = cancelledItems.length > 0 && cancelledItems.every((pr) => pr.refundStatus === 'Completed');
+
+    if (allCompleted) {
+      order.refundStatus = 'Completed';
+      order.refundProcessedAt = new Date();
+    }
+
+    await order.save();
+
+    // LOG PAYMENT REFUND COMPLETED
+    try {
+      await createLog(
+        'Payment',
+        req.user?.username || req.user?.email || 'Admin',
+        order._id.toString(),
+        `Refund completed for cancelled product "${p.name}" - ₱${p.refundAmount || 'amount not specified'}`,
+        'Success',
+        { 
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          productId,
+          productName: p.name,
+          refundAmount: p.refundAmount,
+          paymentAction: 'refund_completed'
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log refund completion:", logError);
+    }
+
+    // LOG ORDER UPDATE (keeping existing)
+    try {
+      await createLog(
+        'Order Update',
+        req.user?.username || req.user?.email || 'Admin',
+        order._id.toString(),
+        `Refund completed for cancelled product "${p.name}"`,
+        'Success',
+        { 
+          orderId: order._id,
+          productId,
+          productName: p.name,
+          refundAmount: p.refundAmount,
+          orderNumber: order.orderNumber
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log refund completion:", logError);
+    }
+
+    return res.json({
+      message: 'Cancelled item marked as done',
+      order,
+      success: true,
+    });
+  } catch (error) {
+    console.error('❌ Error marking cancelled product as done:', error);
+    res.status(500).json({ message: 'Failed to mark cancelled product as done' });
+  }
+};
+
+// Keep all your other existing functions unchanged...
 // ✅ Cancel an order item (User) - WITH LOGGING
 const cancelOrderItem = async (req, res) => {
   try {
@@ -323,140 +646,6 @@ const cancelOrderProduct = async (req, res) => {
   } catch (error) {
     console.error("❌ Error cancelling product:", error);
     res.status(500).json({ message: "Failed to cancel product" });
-  }
-};
-
-// ✅ Admin: confirm a cancelled product and notify customer - WITH LOGGING
-const confirmCancelledProduct = async (req, res) => {
-  try {
-    const { id: orderId, productId } = req.params;
-    const { etaHours = 24, amount, message } = req.body || {};
-
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    const p = order.products.find(
-      (product) => (product.productId === productId || product._id?.toString() === productId)
-    );
-
-    if (!p) return res.status(404).json({ message: 'Product not found in order' });
-    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
-
-    // Set refund details
-    const refundAmount = typeof amount === 'number' ? amount : (p.price || 0) * (p.quantity || 1);
-    p.refundStatus = 'Processing';
-    p.refundAmount = refundAmount;
-    p.refundETAHours = Number(etaHours) || 24;
-    p.refundConfirmedAt = new Date();
-
-    // Optional: update order level message
-    order.statusMessage = message || `Your refund for ${p.name} is being processed and will be returned within ${p.refundETAHours} hour(s).`;
-    order.statusUpdatedAt = new Date();
-
-    await order.save();
-
-    // LOG ADMIN CONFIRMATION
-    try {
-      await createLog(
-        'Order Update',
-        req.user?.username || req.user?.email || 'Admin',
-        order._id.toString(),
-        `Admin confirmed refund for cancelled product "${p.name}" - ₱${refundAmount} within ${p.refundETAHours}h`,
-        'Success',
-        { 
-          orderId: order._id,
-          productId,
-          productName: p.name,
-          refundAmount,
-          etaHours: p.refundETAHours,
-          orderNumber: order.orderNumber
-        }
-      );
-    } catch (logError) {
-      console.error("Failed to log refund confirmation:", logError);
-    }
-
-    // Create a notification for the user
-    try {
-      await Notification.create({
-        userId: order.userId,
-        title: 'Refund processing',
-        message: `Your cancellation for "${p.name}" has been confirmed. Refund of ₱${refundAmount?.toFixed(2)} will be returned within ${p.refundETAHours} hour(s).`,
-        type: 'refund',
-        orderId: order._id.toString(),
-      });
-    } catch (e) {
-      console.error('Failed to create notification:', e);
-    }
-
-    res.json({
-      message: 'Cancellation confirmed and customer notified',
-      order,
-      success: true,
-    });
-  } catch (error) {
-    console.error('❌ Error confirming cancelled product:', error);
-    res.status(500).json({ message: 'Failed to confirm cancelled product' });
-  }
-};
-
-// ✅ Admin: mark a cancelled product as DONE (refund completed) - WITH LOGGING
-const markCancelledProductDone = async (req, res) => {
-  try {
-    const { id: orderId, productId } = req.params;
-
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    const p = order.products.find(
-      (product) => (product.productId === productId || product._id?.toString() === productId)
-    );
-
-    if (!p) return res.status(404).json({ message: 'Product not found in order' });
-    if (!p.cancelled) return res.status(400).json({ message: 'Product is not marked as cancelled' });
-
-    p.refundStatus = 'Completed';
-    p.refundConfirmedAt = new Date();
-
-    // Optional: if all cancelled items are completed, set order-level refund status
-    const cancelledItems = order.products.filter((pr) => pr.cancelled);
-    const allCompleted = cancelledItems.length > 0 && cancelledItems.every((pr) => pr.refundStatus === 'Completed');
-
-    if (allCompleted) {
-      order.refundStatus = 'Completed';
-      order.refundProcessedAt = new Date();
-    }
-
-    await order.save();
-
-    // LOG COMPLETION
-    try {
-      await createLog(
-        'Order Update',
-        req.user?.username || req.user?.email || 'Admin',
-        order._id.toString(),
-        `Refund completed for cancelled product "${p.name}"`,
-        'Success',
-        { 
-          orderId: order._id,
-          productId,
-          productName: p.name,
-          refundAmount: p.refundAmount,
-          orderNumber: order.orderNumber
-        }
-      );
-    } catch (logError) {
-      console.error("Failed to log refund completion:", logError);
-    }
-
-    return res.json({
-      message: 'Cancelled item marked as done',
-      order,
-      success: true,
-    });
-  } catch (error) {
-    console.error('❌ Error marking cancelled product as done:', error);
-    res.status(500).json({ message: 'Failed to mark cancelled product as done' });
   }
 };
 
