@@ -33,7 +33,7 @@ export default function UserManagementTab({ isDarkMode }) {
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
-  // ---- MODIFIED: Fetch from real backend ----
+  // Fetch users from backend
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -73,7 +73,114 @@ export default function UserManagementTab({ isDarkMode }) {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-  // ---- END MODIFIED ---
+
+  // USER MANAGEMENT FUNCTIONS - RENAMED TO AVOID CONFLICTS
+  const handleChangeUserRole = async (userId, currentRole) => {
+    const newRole = currentRole === 'Customer' ? 'admin' : 'customer';
+    
+    if (!confirm(`Change user role to ${newRole}?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to change user role');
+      }
+
+      toast.success(`User role changed to ${newRole} successfully`);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Change user role error:', error);
+      toast.error(error.message);
+    }
+  };
+
+  // RENAMED: suspendUser -> handleSuspendUser to avoid naming conflict
+  const handleSuspendUser = async (userId, currentStatus) => {
+    const suspend = currentStatus !== 'Suspended';
+    const action = suspend ? 'suspend' : 'unsuspend';
+    
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/suspend`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          suspend, 
+          reason: suspend ? 'Account suspended by admin for policy violation' : null 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to ${action} user`);
+      }
+
+      const responseData = await response.json();
+      toast.success(responseData.message || `User ${action}ed successfully`);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Suspend user error:', error);
+      toast.error(error.message);
+    }
+  };
+
+  // RENAMED: deleteUser -> handleDeleteUser to avoid naming conflict
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete user');
+      }
+
+      const responseData = await response.json();
+      toast.success(responseData.message || 'User deleted successfully');
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Delete user error:', error);
+      toast.error(error.message);
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
@@ -135,6 +242,7 @@ export default function UserManagementTab({ isDarkMode }) {
     return <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
+  // FIXED: Updated renderUserCard to use renamed functions
   const renderUserCard = (user) => (
     <div key={user.id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
@@ -167,13 +275,37 @@ export default function UserManagementTab({ isDarkMode }) {
             <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
               <div className="py-1">
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}> <Shield className="w-4 h-4 mr-3" /> Change Role </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleChangeUserRole(user.id, user.role)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
+                    >
+                      <Shield className="w-4 h-4 mr-3" />
+                      Change to {user.role === "Customer" ? "Admin" : "Customer"}
+                    </button>
+                  )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}> <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleSuspendUser(user.id, user.status)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
+                    >
+                      <ShieldOff className="w-4 h-4 mr-3" />
+                      {user.status === "Suspended" ? "Unsuspend" : "Suspend"} Account
+                    </button>
+                  )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}> <Trash2 className="w-4 h-4 mr-3" /> Delete Account </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-3" />
+                      Delete Account
+                    </button>
+                  )}
                 </Menu.Item>
               </div>
             </Menu.Items>
@@ -360,23 +492,35 @@ export default function UserManagementTab({ isDarkMode }) {
                           <div className="py-1">
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}>
-                                  <Shield className="w-4 h-4 mr-3" /> Change Role
-                                </a>
+                                <button 
+                                  onClick={() => handleChangeUserRole(user.id, user.role)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
+                                >
+                                  <Shield className="w-4 h-4 mr-3" /> 
+                                  Change to {user.role === 'Customer' ? 'Admin' : 'Customer'}
+                                </button>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
-                                  <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
-                                </a>
+                                <button 
+                                  onClick={() => handleSuspendUser(user.id, user.status)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
+                                >
+                                  <ShieldOff className="w-4 h-4 mr-3" /> 
+                                  {user.status === 'Suspended' ? 'Unsuspend' : 'Suspend'} Account
+                                </button>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
-                                  <Trash2 className="w-4 h-4 mr-3" /> Delete Account
-                                </a>
+                                <button 
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-3" /> 
+                                  Delete Account
+                                </button>
                               )}
                             </Menu.Item>
                           </div>

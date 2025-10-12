@@ -1,29 +1,21 @@
 const express = require("express");
 const router = express.Router();
+const { verifyToken, requireAdmin } = require("../middleware/authMiddleware");
 const {
   getAllUsers,
-  updateUser,
   getUser,
+  updateUser,
   deleteUser,
   updateUserRole,
-} = require("../controllers/userController.js");
-const { verifyToken } = require("../middleware/authMiddleware.js");
+  suspendUser
+} = require("../controllers/userController");
 
-// All routes in this file are automatically prefixed with /api/v1/users
-
-// Get all users (Admin only)
-router.get("/", verifyToken, getAllUsers);
-
-// Get specific user
+// All routes prefixed with /api/v1/users
+router.get("/", verifyToken, requireAdmin, getAllUsers);
 router.get("/:id", verifyToken, getUser);
-
-// Update user profile
 router.patch("/:id", verifyToken, updateUser);
-
-// Delete user (Admin only)
-router.delete("/:id", verifyToken, deleteUser);
-
-// Update user role (Admin only)
-router.patch("/:id/role", verifyToken, updateUserRole);
+router.patch("/:id/role", verifyToken, requireAdmin, updateUserRole);
+router.patch("/:id/suspend", verifyToken, requireAdmin, suspendUser);
+router.delete("/:id", verifyToken, requireAdmin, deleteUser);
 
 module.exports = router;

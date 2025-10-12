@@ -10,54 +10,55 @@ import ProductsTab from "./ProductsTab.jsx";
 import SettingsTab from "./SettingsTab.jsx";
 import TrashTab from "../../components/admin/products/TrashTab.jsx";
 import FeedbackTab from "./FeedbackTab.jsx";
-import UserManagementTab from "./UserManagementTab.jsx"; // <-- Added from second code
-import LogsTab from "./LogsTab.jsx"; // <-- Added from second code
+import UserManagementTab from "./UserManagementTab.jsx";
+import LogsTab from "./LogsTab.jsx";
 import { useDarkMode } from "../../context/useDarkMode.js";
-import { 
-  Search, 
-  ArrowUp, 
-  ArrowDown, 
-  X, 
-  ChevronDown, 
-  Package, 
-  Truck, 
-  CheckCircle, 
-  XCircle, 
-  Trash2, 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Box, 
-  Users, 
-  ClipboardList, // <-- Added logs icon from second code
-  MessageSquare, 
-  Mail, 
-  Settings as SettingsIcon, 
-  UploadCloud, 
-  Image as ImageIcon, 
-  Plus, 
-  Clock, 
-  RefreshCw, 
-  Check, 
-  CreditCard, 
-  DollarSign, 
-  ArrowLeft, 
-  ArrowRight, 
-  Menu as MenuIcon 
+import {
+  Search,
+  ArrowUp,
+  ArrowDown,
+  X,
+  ChevronDown,
+  Package,
+  Truck,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  LayoutDashboard,
+  ShoppingCart,
+  Box,
+  Users,
+  ClipboardList,
+  MessageSquare,
+  Mail,
+  Settings as SettingsIcon,
+  UploadCloud,
+  Image as ImageIcon,
+  Plus,
+  Clock,
+  RefreshCw,
+  Check,
+  CreditCard,
+  DollarSign,
+  ArrowLeft,
+  ArrowRight,
+  Menu as MenuIcon
 } from "lucide-react";
 import { Dialog, Transition, Menu, Switch } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { SERVER_BASE_URL } from '../../utils/product.js';
 
-
 export default function AdminPage() {
   const { darkMode: isDarkMode } = useDarkMode();
   const { user } = useUser();
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
   const [metrics, setMetrics] = useState({
     revenue: 0,
     incomingOrders: 0,
     shippedProducts: 0,
   });
+  const [revenuePerDay, setRevenuePerDay] = useState({});
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   // Search state
@@ -81,47 +82,78 @@ export default function AdminPage() {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "cancelled", label: "Cancelled", icon: XCircle },
     { id: "products", label: "Products", icon: Box },
-    { id: "usermanagement", label: "User Management", icon: Users }, // <-- Added from second code
-    { id: "logs", label: "Logs", icon: ClipboardList }, // <-- Added from second code
+    { id: "usermanagement", label: "User Management", icon: Users },
+    { id: "logs", label: "Logs", icon: ClipboardList },
     { id: "trash", label: "Trash", icon: Trash2 },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
+  // Refresh Orders Utility
+  const refreshOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+
+      const data = await response.json();
+      const ordersArray = Array.isArray(data) ? data : data.orders || [];
+      setOrders(ordersArray);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      toast.error("Failed to refresh orders");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-  console.log("Orders from backend:", orders);
-}, [orders]);
+    refreshOrders();
+  }, []);
 
-
-  useEffect(() => {
-  fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
-    method: "GET",
-    credentials: "include", // include cookies if backend uses them
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // ✅ Use the new combined value
-    },
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      setOrders(Array.isArray(data) ? data : data.orders || []);
-    })
-    .catch((err) => console.error("Error fetching orders:", err))
-    .finally(() => setLoading(false));
-}, []);
-
-
+  // Live Metrics & Revenue By Day Calculation
   useEffect(() => {
     // Calculate metrics from orders
     const totalRevenue = orders
-      .filter(o => o.status === 'delivered')
-      .reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
+      .filter(o => String(o.status).trim().toLowerCase() === 'delivered')
+      .reduce((sum, o) => {
+        let price = parseFloat(
+          o.total ?? o.total_price ?? o.totalPrice ?? o.amount ?? 0
+        );
+        return sum + (isNaN(price) ? 0 : price);
+      }, 0);
 
+    const incoming = orders.filter(
+      o => String(o.status).trim().toLowerCase() === 'pending'
+    ).length;
 
-    const incoming = orders.filter(o => o.status === 'pending').length;
-    const shipped = orders.filter(o => o.status === 'shipped').length;
+    const shipped = orders.filter(
+      o => String(o.status).trim().toLowerCase() === 'shipped'
+    ).length;
 
+    // Revenue Per Day
+    const delivered = orders.filter(o =>
+      String(o.status).trim().toLowerCase() === 'delivered'
+    );
+    const revenueByDay = {};
+    delivered.forEach(o => {
+      const date = new Date(o.createdAt);
+      const yyyy_mm_dd = date.toISOString().slice(0, 10);
+      const amount = parseFloat(o.total ?? o.total_price ?? o.totalPrice ?? 0);
+      if (!revenueByDay[yyyy_mm_dd]) revenueByDay[yyyy_mm_dd] = 0;
+      revenueByDay[yyyy_mm_dd] += !isNaN(amount) ? amount : 0;
+    });
+    setRevenuePerDay(revenueByDay);
 
     setMetrics({
       revenue: totalRevenue,
@@ -130,31 +162,24 @@ export default function AdminPage() {
     });
   }, [orders]);
 
-
   // Save active tab to localStorage and reset search/filters when switching tabs
   useEffect(() => {
     localStorage.setItem('adminActiveTab', activeTab);
 
-    // Reset search and filters when switching to orders tab
     if (activeTab === 'orders') {
       setCurrentPage(1);
     }
   }, [activeTab]);
 
-
   // Reset to first page when sorting or filtering
-  useEffect(() => {
-  }, [searchQuery]);
-
+  useEffect(() => {}, [searchQuery]);
 
   if (user?.role !== "admin") {
     return <Navigate to="/login" state={{ from: '/admin' }} replace />;
   }
 
-
   // Determine if search bar should be visible
   const showSearch = activeTab === 'dashboard' || activeTab === 'orders';
-
 
   const StatusBadge = ({ status }) => {
     const statusClasses = {
@@ -165,7 +190,6 @@ export default function AdminPage() {
       rejected: isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800',
       cancelled: isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800',
     };
-
 
     return (
       <span
@@ -178,12 +202,8 @@ export default function AdminPage() {
     );
   };
 
-
   const renderDashboard = () => {
-    // If we're not on the dashboard tab, don't render anything
     if (activeTab !== 'dashboard') return null;
-
-
     return (
       <div className="space-y-8">
         {/* Welcome Card */}
@@ -193,7 +213,6 @@ export default function AdminPage() {
             Here's what's happening with your store today.
           </p>
         </div>
-
 
         {/* Metrics */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -211,7 +230,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-
           <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
             <div className="flex items-center justify-between">
               <div>
@@ -223,7 +241,6 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-
 
           <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
             <div className="flex items-center justify-between">
@@ -238,47 +255,70 @@ export default function AdminPage() {
           </div>
         </div>
 
+        
+        <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800 mt-8">
+          <h3 className={`mb-2 text-lg font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-900"}`}>Revenue Per Day</h3>
+          <table className="min-w-full">
+            <thead>
+              <tr>
+                <th className={`px-6 py-2 text-left ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>Date</th>
+                <th className={`px-6 py-2 text-left ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(revenuePerDay)
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .map(([date, amount]) => (
+                  <tr key={date}>
+                    <td className={`px-6 py-2 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>{date}</td>
+                    <td className={`px-6 py-2 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>₱{amount.toLocaleString()}</td>
+                  </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
 
         {/* Quick Actions */}
         <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800">
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <button 
+            <button
               onClick={() => setActiveTab('orders')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-pink-500 hover:bg-pink-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <ShoppingCart className="w-6 h-6 mb-2 text-pink-600 dark:text-pink-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View All Orders</span>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('products')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <Box className="w-6 h-6 mb-2 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Manage Products</span>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('usermanagement')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-orange-500 hover:bg-orange-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <Users className="w-6 h-6 mb-2 text-orange-600 dark:text-orange-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">User Management</span>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('feedback')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-green-500 hover:bg-green-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <MessageSquare className="w-6 h-6 mb-2 text-green-600 dark:text-green-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View Feedback</span>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('logs')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-cyan-500 hover:bg-cyan-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <ClipboardList className="w-6 h-6 mb-2 text-cyan-600 dark:text-cyan-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View Logs</span>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
               className="flex flex-col items-center justify-center p-4 transition-colors border border-gray-300 border-dashed rounded-lg hover:border-purple-500 hover:bg-purple-50 dark:border-gray-600 dark:hover:bg-gray-700"
             >
@@ -291,11 +331,9 @@ export default function AdminPage() {
     );
   };
 
-
   const renderSettings = () => {
     return <SettingsTab isDarkMode={isDarkMode} />;
   };
-
 
   const renderPagination = () => (
     <div className="flex items-center space-x-2">
@@ -321,7 +359,6 @@ export default function AdminPage() {
     </div>
   );
 
-
   const isSidebarCollapsed = !isSidebarHovered;
 
   return (
@@ -340,7 +377,6 @@ export default function AdminPage() {
           >
             <div className="fixed inset-0 bg-gray-600 bg-opacity-75" />
           </Transition.Child>
-
 
           <div className="fixed inset-0 z-40 flex">
             <Transition.Child
@@ -388,9 +424,8 @@ export default function AdminPage() {
         </Dialog>
       </Transition.Root>
 
-
       {/* Desktop Sidebar */}
-      <aside 
+      <aside
         className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out overflow-x-hidden ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
         onMouseEnter={() => setIsSidebarHovered(true)}
         onMouseLeave={() => setIsSidebarHovered(false)}
@@ -405,7 +440,6 @@ export default function AdminPage() {
         />
       </aside>
 
-
       <div className="flex flex-col flex-1 w-0 overflow-y-auto">
         {/* Header for mobile and search */}
         <div className="sticky top-0 z-10 flex items-center justify-between flex-shrink-0 h-16 px-4 bg-gray-100 border-b border-gray-200 md:justify-end dark:bg-gray-900 dark:border-gray-700">
@@ -417,14 +451,10 @@ export default function AdminPage() {
             <span className="sr-only">Open sidebar</span>
             <MenuIcon className="w-6 h-6" aria-hidden="true" />
           </button>
-          {/* You can add a search bar here if needed for desktop, or other header items */}
         </div>
 
-
         <main className="relative z-0 flex-1 focus:outline-none">
-          {/* Header */}
           <div className="p-4 md:p-8">
-            {/* This div is now inside main content */}
             <div className="flex justify-end mb-4">
               {loading && (
                 <div className="flex items-center space-x-2">
@@ -433,7 +463,6 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-
 
             {/* Search Bar for Mobile */}
             {showSearch && (
@@ -451,12 +480,11 @@ export default function AdminPage() {
               </div>
             )}
 
-
             {/* Tab Content */}
             <div className="transition-all duration-300 ease-in-out">
               {activeTab === "dashboard" && renderDashboard()}
-              {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} orders={orders} />}
-              {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} />}
+              {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} orders={orders} refreshOrders={refreshOrders} />}
+              {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} refreshOrders={refreshOrders} />}
               {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
               {activeTab === "usermanagement" && <UserManagementTab isDarkMode={isDarkMode} />}
               {activeTab === "logs" && <LogsTab isDarkMode={isDarkMode} />}

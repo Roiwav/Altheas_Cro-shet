@@ -1,4 +1,5 @@
 const User = require("../models/User.js");
+const { createLog } = require('./logController'); // Add this import
 
 /**
  * @desc Get all users (Admin only)
@@ -12,7 +13,7 @@ const getAllUsers = async (req, res) => {
       return res.status(403).json({ message: "Access denied. Admin only." });
     }
 
-    const users = await User.find({}).select("-password -resetToken -tokenExpiry");
+    const users = await User.find({ deletedAt: null }).select("-password -resetToken -tokenExpiry");
     
     // Transform data for frontend compatibility
     const transformedUsers = users.map(user => ({
@@ -22,9 +23,9 @@ const getAllUsers = async (req, res) => {
       email: user.email,
       username: user.username,
       role: user.role.charAt(0).toUpperCase() + user.role.slice(1), // Capitalize first letter
-      status: 'Active', // Default status - you can add this field to your schema later
+      status: user.status || 'Active',
       joinedDate: user.createdAt,
-      avatar: user.avatar,
+      avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.email)}&background=ec4899&color=fff`,
       addresses: user.addresses,
       preferences: user.preferences,
       lastUsernameChangeAt: user.lastUsernameChangeAt,
@@ -150,31 +151,83 @@ const updateUser = async (req, res) => {
 };
 
 /**
- * @desc Delete user (Admin only)
+ * @desc Delete user (Admin only) - FIXED FOR DATABASE SAVE
  * @route DELETE /api/v1/users/:id
  * @access Private/Admin
  */
 const deleteUser = async (req, res) => {
   try {
-    // Only admins can delete users
+    const { id } = req.params;
+    
+    // Admin role check
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: "Access denied. Admin only." });
     }
-
-    // Prevent admin from deleting themselves
-    if (req.user.id.toString() === req.params.id) {
+    
+    // Self-delete check
+    if (req.user.id.toString() === id) {
       return res.status(400).json({ message: "Cannot delete your own account" });
     }
-
-    const user = await User.findById(req.params.id);
+    
+    const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    
+    // Check if user is already deleted
+    if (user.deletedAt) {
+      return res.status(400).json({ message: "User is already deleted" });
+    }
 
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted successfully" });
-  } catch (error) {
-    console.error("Delete User Error:", error);
+    console.log(`🗑️ Attempting to delete user: ${user.email} (ID: ${user._id})`);
+    
+    // FIXED: Use findByIdAndUpdate to avoid pre-save hook issues
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deletedAt: new Date(),
+          deletedBy: req.user.id,
+          status: 'Inactive' // Also update status
+        }
+      },
+      { 
+        new: true,
+        runValidators: false // Skip validators to avoid password hashing
+      }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Failed to delete user" });
+    }
+
+    console.log(`✅ User deleted successfully: ${user.email} at ${updatedUser.deletedAt}`);
+    
+    // Log the deletion
+    try {
+      await createLog(
+        'User Action',
+        req.user?.fullName || req.user?.email || 'Admin',
+        user._id.toString(),
+        `User ${user.fullName || user.email} was deleted by admin`,
+        'Success',
+        { 
+          userId: user._id,
+          userEmail: user.email,
+          deletedBy: req.user?._id,
+          deletedAt: updatedUser.deletedAt
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log user deletion:", logError);
+    }
+    
+    res.json({ 
+      message: "User deleted successfully",
+      deletedAt: updatedUser.deletedAt
+    });
+  } catch (err) {
+    console.error("Delete User Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -208,20 +261,152 @@ const updateUserRole = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.role = role.toLowerCase();
-    await user.save();
+    const oldRole = user.role;
+
+    // FIXED: Use findByIdAndUpdate to avoid pre-save hook issues
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          role: role.toLowerCase()
+        }
+      },
+      { 
+        new: true,
+        runValidators: false // Skip validators to avoid password hashing
+      }
+    );
+
+    console.log(`🔄 Role updated for ${user.email}: ${oldRole} → ${role.toLowerCase()}`);
+
+    // Log the role change
+    try {
+      await createLog(
+        'User Action',
+        req.user?.fullName || req.user?.email || 'Admin',
+        user._id.toString(),
+        `User role changed from ${oldRole} to ${role.toLowerCase()} for ${user.fullName || user.email}`,
+        'Success',
+        { 
+          userId: user._id,
+          userEmail: user.email,
+          oldRole,
+          newRole: role.toLowerCase(),
+          changedBy: req.user?._id
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log role change:", logError);
+    }
 
     res.json({ 
       message: "User role updated successfully",
       user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role
+        id: updatedUser._id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        role: updatedUser.role
       }
     });
   } catch (error) {
     console.error("Update User Role Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * @desc Suspend/Unsuspend user account (Admin only) - FIXED FOR DATABASE SAVE
+ * @route PATCH /api/v1/users/:id/suspend
+ * @access Private/Admin
+ */
+const suspendUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { suspend = true, reason } = req.body;
+    
+    // Admin role check
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied. Admin only." });
+    }
+    
+    // Self-suspend check
+    if (req.user.id.toString() === id) {
+      return res.status(400).json({ message: "Cannot suspend your own account" });
+    }
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Check if user is deleted
+    if (user.deletedAt) {
+      return res.status(400).json({ message: "Cannot suspend a deleted user" });
+    }
+    
+    const oldStatus = user.status;
+    const newStatus = suspend ? "Suspended" : "Active";
+    const suspensionReason = suspend ? (reason || "No reason provided") : null;
+
+    console.log(`🚫 Attempting to ${suspend ? 'suspend' : 'unsuspend'} user: ${user.email}`);
+    
+    // FIXED: Use findByIdAndUpdate to avoid pre-save hook issues
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          status: newStatus,
+          suspensionReason: suspensionReason,
+          suspendedAt: suspend ? new Date() : null,
+          suspendedBy: suspend ? req.user.id : null
+        }
+      },
+      { 
+        new: true,
+        runValidators: false // Skip validators to avoid password hashing
+      }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Failed to update user status" });
+    }
+
+    console.log(`✅ User ${suspend ? 'suspended' : 'unsuspended'} successfully: ${user.email} (Status: ${updatedUser.status})`);
+    
+    // Log the suspension/unsuspension
+    try {
+      await createLog(
+        'User Action',
+        req.user?.fullName || req.user?.email || 'Admin',
+        user._id.toString(),
+        `User ${suspend ? 'suspended' : 'unsuspended'}: ${user.fullName || user.email}${suspend && reason ? ` - Reason: ${reason}` : ''}`,
+        'Success',
+        { 
+          userId: user._id,
+          userEmail: user.email,
+          action: suspend ? 'suspend' : 'unsuspend',
+          oldStatus,
+          newStatus: updatedUser.status,
+          reason: suspend ? reason : null,
+          actionBy: req.user?._id,
+          suspendedAt: updatedUser.suspendedAt
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log user suspension:", logError);
+    }
+    
+    res.json({ 
+      message: `User ${suspend ? "suspended" : "unsuspended"} successfully`,
+      user: {
+        id: updatedUser._id,
+        status: updatedUser.status,
+        suspendedAt: updatedUser.suspendedAt,
+        suspensionReason: updatedUser.suspensionReason
+      }
+    });
+  } catch (err) {
+    console.error("Suspend User Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -232,4 +417,5 @@ module.exports = {
   updateUser,
   deleteUser,
   updateUserRole,
+  suspendUser,
 };
