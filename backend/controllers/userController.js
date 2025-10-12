@@ -13,8 +13,8 @@ const getAllUsers = async (req, res) => {
       return res.status(403).json({ message: "Access denied. Admin only." });
     }
 
-    const users = await User.find({ deletedAt: null }).select("-password -resetToken -tokenExpiry");
-    
+    const users = await User.find({}).select("-password -resetToken -tokenExpiry");
+    const now = new Date();
     // Transform data for frontend compatibility
     const transformedUsers = users.map(user => ({
       id: user._id,
@@ -23,7 +23,7 @@ const getAllUsers = async (req, res) => {
       email: user.email,
       username: user.username,
       role: user.role.charAt(0).toUpperCase() + user.role.slice(1), // Capitalize first letter
-      status: user.status || 'Active',
+      status: user.suspendedUntil && user.suspendedUntil > now ? 'Suspended' : 'Active',
       joinedDate: user.createdAt,
       avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.email)}&background=ec4899&color=fff`,
       addresses: user.addresses,
@@ -40,6 +40,54 @@ const getAllUsers = async (req, res) => {
   } catch (error) {
     console.error("Get All Users Error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * @desc Suspend or unsuspend a user for a given number of days (Admin only)
+ * @route PATCH /api/v1/users/:id/suspend
+ * @access Private/Admin
+ */
+const suspendUser = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied. Admin only." });
+    }
+
+    const { id } = req.params;
+    const { days } = req.body;
+
+    // Prevent admin from suspending themselves
+    if (req.user.id.toString() === id) {
+      return res.status(400).json({ message: "Cannot suspend your own account" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const parsed = parseInt(days, 10);
+    if (Number.isNaN(parsed)) {
+      return res.status(400).json({ message: "Invalid days value" });
+    }
+
+    if (parsed > 0) {
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      user.suspendedUntil = new Date(Date.now() + parsed * MS_PER_DAY);
+    } else {
+      user.suspendedUntil = null; // clear suspension
+    }
+
+    await user.save();
+
+    return res.json({
+      message: parsed > 0 ? `User suspended for ${parsed} day(s)` : 'User suspension cleared',
+      suspendedUntil: user.suspendedUntil,
+    });
+  } catch (error) {
+    console.error("Suspend User Error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 

@@ -7,15 +7,22 @@ const {
   updateUser,
   deleteUser,
   updateUserRole,
-  suspendUser
-} = require("../controllers/userController");
+  suspendUser,
+} = require("../controllers/userController.js");
+const { verifyToken } = require("../middleware/authMiddleware.js");
 
 // All routes prefixed with /api/v1/users
 router.get("/", verifyToken, requireAdmin, getAllUsers);
 router.get("/:id", verifyToken, getUser);
 router.patch("/:id", verifyToken, updateUser);
-router.patch("/:id/role", verifyToken, requireAdmin, updateUserRole);
-router.patch("/:id/suspend", verifyToken, requireAdmin, suspendUser);
-router.delete("/:id", verifyToken, requireAdmin, deleteUser);
+
+// Delete user (Admin only)
+router.delete("/:id", verifyToken, deleteUser);
+
+// Update user role (Admin only)
+router.patch("/:id/role", verifyToken, updateUserRole);
+
+// Suspend or unsuspend user (Admin only)
+router.patch("/:id/suspend", verifyToken, suspendUser);
 
 module.exports = router;

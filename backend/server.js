@@ -114,6 +114,11 @@ app.get('/auth/google/callback',
   }),
   (req, res) => {
     try {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const now = new Date();
+      if (req.user && req.user.suspendedUntil && req.user.suspendedUntil > now) {
+        return res.redirect(`${frontendUrl}/login?error=oauth_error&message=${encodeURIComponent('Your account is suspended. Please try again later.')}`);
+      }
       // Generate JWT token
       const jwt = require('jsonwebtoken');
       const token = jwt.sign(
@@ -138,7 +143,7 @@ app.get('/auth/google/callback',
       
       // Redirect to frontend OAuth callback with token and user data
       res.redirect(
-        `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?` +
+        `${frontendUrl}/auth/success?` +
         `token=${encodeURIComponent(token)}&` +
         `user=${encodeURIComponent(JSON.stringify(userData))}`
       );
@@ -170,7 +175,7 @@ app.get('/auth/check', (req, res) => {
   app.use("/api/v1/users", userRoutes);
   app.use("/api/v1/orders", orderRoutes);
   app.use("/api/v1/logs", logRoutes);
-  app.use("/api/notifications", notificationRoutes);
+  app.use("/api/v1/notifications", notificationRoutes);
 
   // 🟢 Serve uploaded images (proof of payment, etc.)
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));

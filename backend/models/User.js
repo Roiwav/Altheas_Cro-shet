@@ -17,21 +17,25 @@ const PreferencesSchema = new mongoose.Schema({
   darkMode: { type: Boolean, default: true }
 }, { _id: false });
 
-const userSchema = new mongoose.Schema({
-  fullName: { type: String, required: true },
-  username: { type: String, required: true, unique: true, sparse: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String },
-  googleId: { type: String, sparse: true },
-  avatar: { type: String, default: "" },
-  addresses: [AddressSchema],
-  preferences: PreferencesSchema,
-  role: { type: String, enum: ["admin","customer","moderator"], default: "customer" },
-  status: { type: String, enum: ["Active","Suspended"], default: "Active" },
-  suspensionReason: { type: String, default: null },
-  suspendedAt: { type: Date, default: null },
-  deletedAt: { type: Date, default: null }
-}, { timestamps: true });
+const userSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true },
+    username: { type: String, required: true, unique: true, sparse: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String },
+    googleId: { type: String, sparse: true },
+    avatar: { type: String, default: "" },
+    addresses: [AddressSchema],
+    preferences: PreferencesSchema,
+    lastUsernameChangeAt: { type: Date },
+    resetToken: { type: String },
+    tokenExpiry: { type: Date },
+    suspendedUntil: { type: Date },
+
+    role: { type: String, default: "customer" }
+  },
+  { timestamps: true }
+);
 
 userSchema.pre("save", async function(next) {
   if (this.isModified("password") && this.password) {

@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, MoreVertical, Trash2, Shield, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingBag, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingBag, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
+import { SERVER_BASE_URL } from '../../utils/product.js';
+
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
 const RoleBadge = ({ role }) => {
   const roleClasses = {
@@ -43,7 +46,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         setLoading(false);
         return;
       }
-      const response = await fetch('http://localhost:5001/api/v1/users', {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -257,6 +260,53 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
+  const handleSuspend = async (userId) => {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) return toast.error('Authentication required');
+      const input = window.prompt('Enter number of days to suspend (0 to unsuspend):', '7');
+      if (input === null) return; // cancelled
+      const days = parseInt(input, 10);
+      if (Number.isNaN(days) || days < 0) return toast.error('Please enter a valid non-negative number');
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}/suspend`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ days })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update suspension');
+      toast.success(data.message || 'Updated');
+      fetchUsers();
+    } catch (e) {
+      toast.error(e.message || 'Action failed');
+    }
+  };
+
+  const handleDelete = async (userId) => {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) return toast.error('Authentication required');
+      const ok = window.confirm('Are you sure you want to delete this account? This action cannot be undone.');
+      if (!ok) return;
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to delete user');
+      toast.success('User deleted');
+      fetchUsers();
+    } catch (e) {
+      toast.error(e.message || 'Delete failed');
+    }
+  };
+
   const renderUserCard = (user) => (
     <div key={user._id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
@@ -268,7 +318,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             onChange={() => handleSelectOne(user._id)}
             className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-          <img className="w-12 h-12 rounded-full" src={user.avatar || 'https://via.placeholder.com/48'} alt={`${user.name} avatar`} />
+          <img className="w-12 h-12 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
           <div className="ml-3">
             <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name || user.fullName}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
@@ -289,37 +339,13 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
               <div className="py-1">
                 <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleChangeUserRole(user._id, user.role)}
-                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
-                    >
-                      <Shield className="w-4 h-4 mr-3" />
-                      Change to {user.role === "Customer" ? "Admin" : "Customer"}
-                    </button>
-                  )}
+                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}> <Shield className="w-4 h-4 mr-3" /> Change Role </a> )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleSuspendUser(user._id, user.status)}
-                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
-                    >
-                      <ShieldOff className="w-4 h-4 mr-3" />
-                      {user.status === "Suspended" ? "Unsuspend" : "Suspend"} Account
-                    </button>
-                  )}
+                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}> <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account </a> )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleDeleteUser(user._id)}
-                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
-                    >
-                      <Trash2 className="w-4 h-4 mr-3" />
-                      Delete Account
-                    </button>
-                  )}
+                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}> <Trash2 className="w-4 h-4 mr-3" /> Delete Account </a> )}
                 </Menu.Item>
               </div>
             </Menu.Items>
@@ -376,7 +402,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-900" data-dark={isDarkMode ? '1' : '0'}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">Manage and monitor all user accounts.</p>
@@ -468,7 +494,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                     </div>
                   </td>
                   <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                    <img className="w-10 h-10 rounded-full" src={user.avatar || 'https://via.placeholder.com/40'} alt={`${user.name} avatar`} />
+                    <img className="w-10 h-10 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
                     <div className="pl-3">
                       <div className="text-base font-semibold">{user.name || user.fullName}</div>
                       <div className="font-normal text-gray-500">{user.email}</div>
@@ -506,35 +532,23 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                           <div className="py-1">
                             <Menu.Item>
                               {({ active }) => (
-                                <button 
-                                  onClick={() => handleChangeUserRole(user._id, user.role)}
-                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
-                                >
-                                  <Shield className="w-4 h-4 mr-3" /> 
-                                  Change to {user.role === 'Customer' ? 'Admin' : 'Customer'}
-                                </button>
+                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}>
+                                  <Shield className="w-4 h-4 mr-3" /> Change Role
+                                </a>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <button 
-                                  onClick={() => handleSuspendUser(user._id, user.status)}
-                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
-                                >
-                                  <ShieldOff className="w-4 h-4 mr-3" /> 
-                                  {user.status === 'Suspended' ? 'Unsuspend' : 'Suspend'} Account
-                                </button>
+                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                                  <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
+                                </a>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <button 
-                                  onClick={() => handleDeleteUser(user._id)}
-                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-3" /> 
-                                  Delete Account
-                                </button>
+                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                                  <Trash2 className="w-4 h-4 mr-3" /> Delete Account
+                                </a>
                               )}
                             </Menu.Item>
                           </div>
