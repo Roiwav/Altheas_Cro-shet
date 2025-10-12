@@ -601,10 +601,15 @@ export default function ShopPage() {
                   <div>
                     <label htmlFor="quantity-input" className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
                     <div className="flex items-center">
-                      <button onClick={() => setModalQuantity((q) => Math.max(1, q - 1))} className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-r-0 border-gray-300 rounded-l-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500">-</button>
-                      <input id="quantity-input" type="number" value={modalQuantity} onChange={(e) => setModalQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-16 py-2 text-center text-gray-900 bg-white border-t border-b border-gray-300 dark:text-white dark:bg-gray-700 dark:border-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none" />
-                      <button onClick={() => setModalQuantity((q) => q + 1)} className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-l-0 border-gray-300 rounded-r-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500">+</button>
+                      <button onClick={() => setModalQuantity((q) => Math.max(1, q - 1))} className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-r-0 border-gray-300 rounded-l-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500" disabled={modalQuantity <= 1}>-</button>                      <input id="quantity-input" type="number" value={modalQuantity} onChange={(e) => {
+                        const value = parseInt(e.target.value, 10);
+                        setModalQuantity(Math.min(50, Math.max(1, isNaN(value) ? 1 : value)));
+                      }} className="w-16 py-2 text-center text-gray-900 bg-white border-t border-b border-gray-300 dark:text-white dark:bg-gray-700 dark:border-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none" />
+                      <button onClick={() => setModalQuantity((q) => Math.min(50, q + 1))} className="px-4 py-2 font-semibold text-gray-700 transition bg-gray-200 border border-l-0 border-gray-300 rounded-r-lg dark:text-gray-300 dark:bg-gray-600 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500" disabled={modalQuantity >= 50}>+</button>
                     </div>
+                    {modalQuantity >= 50 && (
+                      <p className="mt-2 text-sm text-red-600 dark:text-red-400">Maximum quantity of 50 per item reached.</p>
+                    )}
                   </div>
                 </div>
 

@@ -228,8 +228,16 @@ export default function CartPage() {
     };
 
     const handleIncreaseQuantity = async (item) => {
-        const newQty = (item.quantity || 1) + 1;
+        const newQty = Math.min(50, (item.quantity || 1) + 1);
         await updateQuantity(getId(item), newQty);
+    };
+
+    const handleQuantityInputChange = async (item, value) => {
+        const newQty = Math.min(50, Math.max(1, parseInt(value, 10) || 1));
+        // Only update if the value is different to avoid unnecessary re-renders
+        if (newQty !== item.quantity) {
+            await updateQuantity(getId(item), newQty);
+        }
     };
 
     const handleRemoveItem = async (itemId) => {
@@ -341,6 +349,7 @@ export default function CartPage() {
                                         const isSelected = selectedItems.has(itemId);
                                         const currentQty = item.quantity || 1;
                                         const isMinQuantity = currentQty <= 1;
+                                        const isMaxQuantity = currentQty >= 50;
                                         
                                         return (
                                             <div key={itemId} className={`p-6 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
@@ -392,16 +401,20 @@ export default function CartPage() {
                                                                                     : 'hover:bg-gray-200 dark:hover:bg-gray-600'
                                                                             }`}
                                                                         >
-                                                                            <Minus className="w-4 h-4" />
+                                                                            <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                                                                         </button>
-                                                                        <span className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-white min-w-[2.5rem] text-center">
-                                                                            {currentQty}
-                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={currentQty}
+                                                                            onChange={(e) => handleQuantityInputChange(item, e.target.value)}
+                                                                            className="w-12 px-1 py-2 text-sm font-medium text-center text-gray-900 bg-transparent dark:text-white focus:outline-none"
+                                                                        />
                                                                         <button 
                                                                             onClick={() => handleIncreaseQuantity(item)}
-                                                                            className="p-2.5 sm:p-2 text-gray-600 rounded-r-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-gray-400"
+                                                                            disabled={isMaxQuantity}
+                                                                            className={`p-2.5 sm:p-2 text-gray-600 rounded-r-lg dark:text-gray-400 transition-colors ${isMaxQuantity ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                                                                         >
-                                                                            <Plus className="w-4 h-4" />
+                                                                            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                                                                         </button>
                                                                     </div>
                                                                     <button
@@ -412,6 +425,9 @@ export default function CartPage() {
                                                                         <X className="w-4 h-4" />
                                                                     </button>
                                                                 </div>
+                                                            )}
+                                                            {isMaxQuantity && !singleProduct && !arOrder && (
+                                                                <p className="mt-2 text-xs text-red-600 dark:text-red-400">Maximum quantity of 50 reached.</p>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center justify-between mt-3">
