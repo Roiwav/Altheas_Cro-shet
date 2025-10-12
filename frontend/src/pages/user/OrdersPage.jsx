@@ -28,7 +28,11 @@ const PLACEHOLDER_RECEIPT =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Receipt not available</text></svg>";
 
 
-// Helper functions
+/**
+ * Formats a date string into a more readable format (e.g., "Sep 15, 2024").
+ * @param {string} dateString - The date string to format.
+ * @returns {string} The formatted date string.
+ */
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString(undefined, { 
   year: 'numeric', 
   month: 'short', 
@@ -36,7 +40,11 @@ const formatDate = (dateString) => new Date(dateString).toLocaleDateString(undef
 });
 const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
-// Status Badge Component
+/**
+ * A component that displays a styled badge for a given order status.
+ * @param {object} props - The component props.
+ * @param {string} props.status - The status of the order (e.g., 'pending', 'shipped').
+ */
 const StatusBadge = ({ status }) => {
   const statusLower = (status || 'pending').toLowerCase();
   const config = {
@@ -55,7 +63,11 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// Order Tracker Component
+/**
+ * A visual component to track the progress of an order through its various stages.
+ * @param {object} props - The component props.
+ * @param {string} props.status - The current status of the order.
+ */
 const OrderTracker = ({ status }) => {
   const steps = [
     { key: 'pending', label: 'Pending', icon: <Clock className="h-4 w-4" /> },
@@ -110,7 +122,11 @@ const OrderTracker = ({ status }) => {
   );
 };
 
-// âœ… NEW: Refund Status Component
+/**
+ * Displays the status of a refund associated with an order.
+ * @param {object} props - The component props.
+ * @param {object} props.order - The order object, which may contain refund information.
+ */
 const RefundStatus = ({ order }) => {
   if (!order.refundStatus || order.refundStatus === 'Not Required') return null;
 
@@ -184,7 +200,12 @@ const RefundStatus = ({ order }) => {
   );
 };
 
-// Payment Proof Modal
+/**
+ * A full-screen modal to display a larger view of the payment proof image.
+ * @param {object} props - The component props.
+ * @param {string|null} props.imageUrl - The URL of the image to display.
+ * @param {function} props.onClose - Callback function to close the modal.
+ */
 const PaymentProofModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
 
@@ -208,6 +229,10 @@ const PaymentProofModal = ({ imageUrl, onClose }) => {
   );
 };
 
+/**
+ * Renders the "My Orders" page for a logged-in user.
+ * It fetches and displays a list of the user's past and current orders.
+ */
 const OrdersPage = () => {
   const { user, token } = useUser();
   const [orders, setOrders] = useState([]);
@@ -216,7 +241,10 @@ const OrdersPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [cancellationItem, setCancellationItem] = useState(null);
 
-  // Fetch orders function
+  /**
+   * Fetches the user's orders from the backend.
+   * Wrapped in useCallback to prevent re-creation on every render.
+   */
   const fetchOrders = useCallback(async () => {
     if (!user || !token) {
       setLoading(false);
@@ -224,7 +252,7 @@ const OrdersPage = () => {
     }
 
     try {
-      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders/myorders`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/orders/myorders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -245,19 +273,27 @@ const OrdersPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Show cancellation modal
+  /**
+   * Sets the state to show the cancellation confirmation modal for a specific item.
+   * @param {string} orderId - The ID of the order containing the item.
+   * @param {string} productId - The ID of the product to be cancelled.
+   * @param {string} productName - The name of the product to be cancelled.
+   */
   const showCancelConfirmation = (orderId, productId, productName) => {
     setCancellationItem({ orderId, productId, productName });
   };
 
-  // Handle cancellation confirmation
+  /**
+   * Handles the actual cancellation of a product within an order after user confirmation.
+   * @param {string} reason - The reason for the cancellation provided by the user.
+   */
   const handleCancelProduct = async (reason) => {
     if (!cancellationItem) return;
     
     const { orderId, productId } = cancellationItem;
     
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/orders/${orderId}/product/${productId}`, {
+      const res = await fetch(`${SERVER_BASE_URL}/api/orders/${orderId}/product/${productId}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -269,6 +305,7 @@ const OrdersPage = () => {
       if (!res.ok) {
         let errorMessage = 'Failed to cancel product';
         
+        // Try to parse a more specific error message from the backend response.
         try {
           const errorData = await res.json();
           errorMessage = errorData.message || errorMessage;
@@ -286,6 +323,7 @@ const OrdersPage = () => {
 
       const data = await res.json();
 
+      // If the entire order was deleted (e.g., it was the last item), remove it from the list.
       if (data.orderDeleted) {
         setOrders(prev => prev.filter(o => o._id !== orderId));
         toast.success('Item cancelled and order removed.');
@@ -294,7 +332,7 @@ const OrdersPage = () => {
         toast.success('Item cancelled successfully.');
       }
       
-      // Close the modal
+      // Close the cancellation modal.
       setCancellationItem(null);
     } catch (err) {
       console.error(err);
@@ -302,6 +340,7 @@ const OrdersPage = () => {
     }
   };
 
+  // --- Render Logic ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen pt-20 px-4">
@@ -357,7 +396,7 @@ const OrdersPage = () => {
 
         <div className="space-y-6">
           {orders.map(order => (
-            <div key={order._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div key={order._id} className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-xl dark:border-gray-700">
               {/* Order Header */}
               <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -374,7 +413,7 @@ const OrdersPage = () => {
                 </div>
               </div>
 
-              {/* âœ… NEW: Status Message */}
+              {/* Status Message Section */}
               {order.statusMessage && (
                 <div className={`px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${
                   order.status === 'rejected' || order.status === 'cancelled' 
@@ -423,7 +462,7 @@ const OrdersPage = () => {
                     </div>
                   </div>
 
-                  {/* âœ… NEW: Refund Status */}
+                  {/* Refund Status Sub-component */}
                   <RefundStatus order={order} />
                 </div>
               )}
@@ -559,4 +598,3 @@ const OrdersPage = () => {
 };
 
 export default OrdersPage;
-

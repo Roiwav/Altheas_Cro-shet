@@ -4,8 +4,11 @@ import { Loader2, Package, Heart, Home, User, ShoppingBag, XCircle } from 'lucid
 import { useUser } from '../../context/useUser';
 import { useWishlistCount } from '../../context/useWishlistCount.js';
 import { SERVER_BASE_URL } from '../../utils/product.js';
-
-// Helper function to format date
+/**
+ * Formats a date string into a more readable format (e.g., "September 15, 2024").
+ * @param {string} dateString - The date string to format.
+ * @returns {string} The formatted date string, or an empty string if the input is invalid.
+ */
 const formatDate = (dateString) => {
   if (!dateString) return '';
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -18,6 +21,9 @@ const currencyFormatter = new Intl.NumberFormat('en-PH', {
   currency: 'PHP',
 });
 
+/**
+ * Renders the main dashboard for a logged-in user, displaying key stats and recent orders.
+ */
 function UserDashboard() {
   const { user, token } = useUser();
   const { wishlistCount } = useWishlistCount();
@@ -26,6 +32,10 @@ function UserDashboard() {
   const [error, setError] = useState(null);
   const [hasFetched, setHasFetched] = useState(false);
 
+  /**
+   * Fetches the user's orders from the backend on component mount
+   * or when the user/token changes.
+   */
   useEffect(() => {
     const fetchOrders = async () => {
       if (!user || !token) {
@@ -59,6 +69,7 @@ function UserDashboard() {
     fetchOrders();
   }, [user, token]);
 
+  // Configuration for the statistics cards displayed on the dashboard.
   const stats = [
     {
       title: 'Orders',

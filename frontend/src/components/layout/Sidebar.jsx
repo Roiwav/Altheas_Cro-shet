@@ -20,6 +20,19 @@ import {
 import { useDarkMode } from "../../context/useDarkMode.js";
 import { useUser } from "../../context/useUser.js";
 
+/**
+ * Renders the main application sidebar.
+ * It handles navigation, user profile display, dark mode toggling, and adapts its
+ * appearance (collapsed/expanded) based on user interaction and screen size.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isOpen - Controls visibility on mobile.
+ * @param {function} props.setIsOpen - Function to update mobile visibility state.
+ * @param {boolean} props.isHovered - State indicating if the desktop sidebar is hovered.
+ * @param {function} props.setIsHovered - Function to update the hover state.
+ * @param {function} props.scrollToSection - Function to scroll to a section on the homepage.
+ * @param {React.RefObject} props.aboutRef - Ref for the "About Us" section.
+ * @param {React.RefObject} props.contactRef - Ref for the "Contact Us" section.
+ */
 export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, scrollToSection, aboutRef, contactRef }) {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
@@ -27,6 +40,10 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
   const { user, updateUser } = useUser();
 
   // Prevent browser's back/forward swipe gesture on mobile
+  /**
+   * Effect to prevent the browser's back/forward swipe gesture on mobile,
+   * which can interfere with the slide-out sidebar.
+   */
   useEffect(() => {
     document.body.style.overscrollBehaviorX = 'contain';
     // Cleanup function to restore default behavior if the component unmounts
@@ -35,9 +52,11 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     };
   }, []);
 
+  /**
+   * Effect to set a CSS variable for the sidebar width on desktop.
+   * This allows other components (like the Navbar and Footer) to adjust their layout.
+   */
   useEffect(() => {
-    // This effect is for desktop view to communicate hover state to Navbar.
-    // It sets a CSS variable that the Navbar can use for its positioning.
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) { // lg breakpoint
       document.documentElement.style.setProperty(
         '--sidebar-width',
@@ -52,6 +71,9 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     setAvatar(user?.avatar || null);
   }, [user]);
 
+  /**
+   * Navigates to the settings page or prompts login if not authenticated.
+   */
   const handleAvatarClick = () => {
     if (!user) {
       toast.info("Please sign in to manage your profile");
@@ -61,6 +83,11 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     navigate("/settings");
   };
 
+  /**
+   * Handles the file input change for updating the user's avatar.
+   * It reads the file as a data URL and updates the user context.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The file input change event.
+   */
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -75,6 +102,10 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
   const sidebarOpen = isOpen || false;
   const setSidebarOpen = setIsOpen || (() => {});
 
+  /**
+   * Smoothly scrolls the window to the top.
+   * @param {number} [duration=1200] - The duration of the scroll animation in milliseconds.
+   */
   const smoothScrollToTop = (duration = 1200) => {
     const start = window.scrollY;
     const startTime = performance.now();
@@ -90,8 +121,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
 
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
 
-  // Note: sign-out is handled in Navbar; no local handler here to avoid duplication
-
+  // Dynamically generate menu items based on user authentication status.
   const Menus = user
     ? [
         // Logged-in user menu

@@ -4,6 +4,12 @@ import { RotateCcw, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SERVER_BASE_URL } from '../../../utils/product';
 import ProductsTableSkeleton from './ProductsTableSkeleton';
 
+/**
+ * A component tab for viewing and managing soft-deleted products.
+ * Allows for bulk restoration or permanent deletion of items from the trash.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ */
 const TrashTab = ({ isDarkMode }) => {
   const [deletedProducts, setDeletedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,6 +17,9 @@ const TrashTab = ({ isDarkMode }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  /**
+   * Fetches the list of soft-deleted products from the server.
+   */
   const fetchDeletedProducts = async () => {
     setLoading(true);
     try {
@@ -28,17 +37,24 @@ const TrashTab = ({ isDarkMode }) => {
     }
   };
 
-
   useEffect(() => {
     fetchDeletedProducts();
   }, []);
 
+  /**
+   * Toggles the selection state of a single product.
+   * @param {string} productId - The ID of the product to select/deselect.
+   */
   const handleSelectOne = (productId) => {
     setSelectedProducts(prev =>
       prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
     );
   };
 
+  /**
+   * Selects or deselects all products on the current page.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The change event from the checkbox.
+   */
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedProducts(paginatedProducts.map(p => p._id));
@@ -47,6 +63,10 @@ const TrashTab = ({ isDarkMode }) => {
     }
   };
 
+  /**
+   * Performs a bulk action (restore or permanent delete) on the selected products.
+   * @param {'restore' | 'delete'} action - The action to perform.
+   */
   const handleBulkAction = async (action) => {
     if (selectedProducts.length === 0) {
       toast.info('No products selected.');
@@ -76,6 +96,10 @@ const TrashTab = ({ isDarkMode }) => {
   const totalPages = Math.ceil(deletedProducts.length / itemsPerPage);
   const paginatedProducts = deletedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  /**
+   * Calculates the time remaining until a product is permanently deleted.
+   * @param {string} deletedAt - The ISO date string of when the product was soft-deleted.
+   */
   const getTimeLeft = (deletedAt) => {
     const deleteTime = new Date(deletedAt).getTime();
     const threeDays = 3 * 24 * 60 * 60 * 1000;

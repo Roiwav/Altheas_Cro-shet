@@ -3,9 +3,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import axios from 'axios';
 
+// --- Constants ---
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
+/**
+ * Renders the "Reset Password" page.
+ * This component allows a user to set a new password using a token
+ * received from a password reset link.
+ */
 function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -23,6 +29,10 @@ function ResetPassword() {
   const togglePasswordVisibility = () => setShowPassword(prev => !prev);
   const toggleConfirmVisibility = () => setShowConfirm(prev => !prev);
 
+  /**
+   * Handles the form submission to reset the user's password.
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submission event.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -41,6 +51,7 @@ function ResetPassword() {
     setLoading(true);
 
     try {
+      // Call the backend endpoint to reset the password with the provided token.
       const { data } = await axios.post(`${API_URL}/reset-password`, { token, password });
 
       if (data.success) {

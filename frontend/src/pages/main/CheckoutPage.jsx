@@ -17,7 +17,7 @@ import PlaceOrderButton from "../../components/checkout/PlaceOrderButton.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import AddressesTab from "../../components/user/settings/AddressesTab.jsx";
 
-// Shipping fee/region logic
+// --- Shipping Logic ---
 const regions = {
   "Inside Calamba": ["Calamba", "Calamba City"],
   "Inside Laguna": ["Los Baños", "Cabuyao", "San Pablo", "Biñan", "Sta. Rosa"],
@@ -35,10 +35,20 @@ const shippingFees = {
   "Visayas/Mindanao":    { min: 250,  max: 400,  estimated: "5 – 10 days" }
 };
 const defaultRegion = "Inside Calamba";
+
+/**
+ * Determines the shipping region based on a given city.
+ * @param {string} city - The city name.
+ * @returns {string} The corresponding region name or a default.
+ */
 function getRegionByCity(city) {
   return Object.keys(regions).find(region => regions[region].includes(city)) || defaultRegion;
 }
 
+/**
+ * Renders the checkout page where users finalize their order.
+ * It handles address selection, payment proof upload, and order submission.
+ */
 export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -58,22 +68,29 @@ export default function CheckoutPage() {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
 
+  // The items to be included in this checkout session.
   const checkoutItems = singleProduct ? [singleProduct] : cartItems;
 
-  // Dynamically derive shipping fee and estimated delivery
+  // State for dynamically derived shipping fee and delivery estimate based on address.
   const [derivedShippingFee, setDerivedShippingFee] = useState(0);
   const [derivedDeliveryEstimate, setDerivedDeliveryEstimate] = useState("");
 
+  // Determine the current address to use for the order.
   const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
   const currentAddress = selectedAddress || passedShippingAddress || defaultAddress;
 
+  /**
+   * Effect to set the selected address to the user's default address on initial load.
+   */
   useEffect(() => {
     if (user && !selectedAddress) {
       setSelectedAddress(defaultAddress);
     }
   }, [user, defaultAddress, selectedAddress]);
 
-  // Watch the (possibly changed) address for shipping calculation
+  /**
+   * Effect to recalculate the shipping fee and delivery estimate whenever the address changes.
+   */
   useEffect(() => {
     let addressObj = currentAddress;
     if (addressObj && addressObj.city) {
@@ -87,6 +104,9 @@ export default function CheckoutPage() {
     }
   }, [currentAddress, passedShippingFee, user]);
 
+  /**
+   * Effect to redirect the user if they land on the checkout page with no items.
+   */
   useEffect(() => {
     if (checkoutItems.length === 0) {
       toast.error("No items to checkout");
@@ -94,25 +114,36 @@ export default function CheckoutPage() {
     }
   }, [checkoutItems.length, navigate]);
 
+  // Calculate order totals.
   const subtotal = checkoutItems.reduce(
     (sum, item) => sum + item.price * (item.quantity || 1),
     0
   );
 
-  // Always use the dynamically derived shipping fee
   const shippingFee = derivedShippingFee;
-
   const totalCost = subtotal + shippingFee;
 
+  /**
+   * Opens the address management modal.
+   */
   const handleChangeAddress = () => {
     setIsAddressModalOpen(true);
   };
 
+  /**
+   * Handles the selection of an address from the modal.
+   * @param {object} address - The selected address object.
+   */
   const handleSelectAddress = (address) => {
     setSelectedAddress(address);
     setIsAddressModalOpen(false);
   };
 
+  /**
+   * Handles the file upload for the payment proof.
+   * Validates file type and size before setting the state.
+   * @param {React.ChangeEvent<HTMLInputElement>} event - The file input change event.
+   */
   const handlePaymentProofUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -138,6 +169,9 @@ export default function CheckoutPage() {
     toast.success("Payment proof uploaded successfully!");
   };
 
+  /**
+   * Removes the currently uploaded payment proof.
+   */
   const handleRemovePaymentProof = () => {
     setPaymentProof(null);
     setPaymentProofPreview(null);
@@ -147,6 +181,10 @@ export default function CheckoutPage() {
     }
   };
 
+  /**
+   * Handles the final order submission.
+   * It validates the form, constructs FormData, and sends the order to the backend.
+   */
   const handlePlaceOrder = async () => {
     if (!isAuthenticated) {
       toast.info("You need to sign up first before placing an order.");
@@ -174,6 +212,7 @@ export default function CheckoutPage() {
     try {
       const formData = new FormData();
 
+      // Prepare order data object to be sent to the backend.
       const orderData = {
         userId: user?.id,
         username: user?.username,
@@ -200,7 +239,7 @@ export default function CheckoutPage() {
       formData.append("orderData", JSON.stringify(orderData));
       formData.append("paymentProof", paymentProof);
 
-      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/orders`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -234,11 +273,13 @@ export default function CheckoutPage() {
     }
   };
 
+  // Memoized currency formatter for performance.
   const currencyFormatter = new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
   });
 
+  // Return null if there are no items to check out (e.g., after a redirect).
   if (checkoutItems.length === 0) return null;
 
   const canPlaceOrder = paymentProof && currentAddress && !isPlacingOrder;

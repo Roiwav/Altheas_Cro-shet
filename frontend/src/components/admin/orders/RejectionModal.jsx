@@ -4,6 +4,18 @@ import { Dialog } from '@headlessui/react';
 import { X } from 'lucide-react';
 import { formatPHP } from '../../../utils/currency.js';
 
+/**
+ * A modal for administrators to reject an order and provide an optional reason.
+ * @param {object} props - The component props.
+ * @param {boolean} props.open - Whether the modal is open.
+ * @param {function} props.onClose - Callback function to close the modal.
+ * @param {object} props.order - The order object being rejected.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {string} props.rejectionReason - The current value of the rejection reason input.
+ * @param {function} props.setRejectionReason - Function to update the rejection reason state.
+ * @param {function} props.onConfirm - Callback function to confirm the rejection.
+ */
+
 export default function RejectionModal({
   open,
   onClose,
@@ -25,7 +37,12 @@ export default function RejectionModal({
               <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 Reject Order #{order.orderNumber || order._id?.substring(0, 8)}
               </Dialog.Title>
-              <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

@@ -1,30 +1,51 @@
 import React, { Component } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
+/**
+ * A React Error Boundary component specifically designed to catch and handle
+ * errors within the AR (Augmented Reality) components. It displays a user-friendly
+ * fallback UI when a rendering error occurs.
+ */
 export class ARErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
+    this.state = {
+      hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null,
     };
   }
 
+  /**
+   * A static lifecycle method that is called after an error has been thrown by a descendant component.
+   * It returns a state update to trigger a re-render with the fallback UI.
+   * @param {Error} error - The error that was thrown.
+   * @returns {object} A state object to update the component's state.
+   */
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
 
+  /**
+   * This lifecycle method is invoked after an error has been thrown by a descendant component.
+   * It receives the error and an object with a `componentStack` key containing information about
+   * which component threw the error.
+   * @param {Error} error - The error that was thrown.
+   * @param {object} errorInfo - An object with a `componentStack` property.
+   */
   componentDidCatch(error, errorInfo) {
     console.error('AR Error Boundary caught an error:', error, errorInfo);
     this.setState({ errorInfo });
-    
+
     // Log to error reporting service in production
     if (process.env.NODE_ENV === 'production') {
       // Example: logErrorToService(error, errorInfo);
     }
   }
 
+  /**
+   * Resets the error state and reloads the page to allow the user to try again.
+   */
   handleRetry = () => {
     this.setState({ 
       hasError: false, 
@@ -34,6 +55,9 @@ export class ARErrorBoundary extends Component {
     window.location.reload();
   };
 
+  /**
+   * Navigates the user back to the homepage.
+   */
   handleGoHome = () => {
     window.location.href = '/';
   };

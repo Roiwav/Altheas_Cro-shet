@@ -4,6 +4,24 @@ import { ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import OrderActionsMenu from './OrderActionsMenu.jsx';
 
+/**
+ * Renders a table of orders with sorting, selection, and action capabilities.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {boolean} props.loading - Indicates if orders are currently being loaded.
+ * @param {Array} props.columns - Configuration for the table columns.
+ * @param {Array} props.paginatedOrders - The array of order objects to display for the current page.
+ * @param {Array} props.selectedOrders - An array of IDs for the currently selected orders.
+ * @param {function} props.setSelectedOrders - Function to update the selected orders.
+ * @param {object} props.sortConfig - The current sorting configuration (key and direction).
+ * @param {function} props.requestSort - Function to request a sort on a specific column.
+ * @param {object} props.currencyFormatter - An Intl.NumberFormat instance for formatting currency.
+ * @param {function} props.setSelectedOrder - Function to set the currently selected order for details view.
+ * @param {function} props.setShowOrderModal - Function to control the visibility of the order details modal.
+ * @param {function} props.updateOrderStatus - Function to update an order's status.
+ * @param {function} props.handleRejectOrder - Function to handle the rejection of an order.
+ */
+
 export default function OrdersTable({
   isDarkMode = false,
   loading,
@@ -40,11 +58,23 @@ export default function OrdersTable({
             </th>
 
             {columns.slice(1).map((col) => (
-              <th key={col.key || 'actions'} className={`px-4 py-3 text-left text-xs font-medium ${col.width} ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <th
+                key={col.key || 'actions'}
+                className={`px-4 py-3 text-left text-xs font-medium ${col.width} ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}
+              >
                 {col.key ? (
-                  <button onClick={() => requestSort(col.key)} className="flex items-center w-full space-x-1 text-left transition-colors hover:text-pink-500">
+                  <button
+                    onClick={() => requestSort(col.key)}
+                    className="flex items-center w-full space-x-1 text-left transition-colors hover:text-pink-500"
+                  >
                     <span className="truncate">{col.label}</span>
-                    {sortConfig.key === col.key && (sortConfig.direction === 'ascending' ? <ArrowUp className="flex-shrink-0 w-3 h-3" /> : <ArrowDown className="flex-shrink-0 w-3 h-3" />)}
+                    {sortConfig.key === col.key &&
+                      (sortConfig.direction === 'ascending' ? (
+                        <ArrowUp className="flex-shrink-0 w-3 h-3" />
+                      ) : (
+                        <ArrowDown className="flex-shrink-0 w-3 h-3" />
+                      ))}
                   </button>
                 ) : (
                   <span className="truncate">{col.label}</span>

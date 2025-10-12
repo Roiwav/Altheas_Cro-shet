@@ -2,6 +2,20 @@
 import React from 'react';
 import { Search, Download } from 'lucide-react';
 
+/**
+ * Renders the toolbar for the orders management page, including search, filtering, and bulk actions.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {number} [props.totalCount=0] - The total number of orders being displayed.
+ * @param {string} props.searchQuery - The current search query.
+ * @param {function} props.setSearchQuery - Function to update the search query.
+ * @param {string} props.statusFilter - The current status filter.
+ * @param {function} props.setStatusFilter - Function to update the status filter.
+ * @param {function} props.setCurrentPage - Function to set the current page, used when filtering.
+ * @param {function} props.exportToCsv - Function to trigger a CSV export of the orders.
+ * @param {Array} [props.selectedOrders=[]] - An array of IDs for the currently selected orders.
+ * @param {function} props.updateMultipleStatuses - Function to update the status of multiple selected orders.
+ */
 export default function OrdersToolbar({
   isDarkMode = false,
   totalCount = 0,
@@ -35,16 +49,23 @@ export default function OrdersToolbar({
                 placeholder="Search orders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
               />
             </div>
           </div>
 
           <select
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className={`block w-full sm:w-40 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${
-              isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className={`block w-full sm:w-40 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-pink-500 sm:text-sm ${isDarkMode
+                ? 'bg-gray-700 border-gray-600 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
             <option value="">All Status</option>
@@ -58,8 +79,9 @@ export default function OrdersToolbar({
 
           <button
             onClick={exportToCsv}
-            className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-              isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${isDarkMode
+                ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
             <Download className="w-4 h-4 mr-2" />
@@ -69,7 +91,11 @@ export default function OrdersToolbar({
       </div>
 
       {selectedOrders.length > 0 && (
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-blue-50 border-blue-200'}`}>
+        <div
+          className={`p-4 rounded-lg border ${isDarkMode
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-blue-50 border-blue-200'}`}
+        >
           <div className="flex flex-wrap gap-2">
             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {selectedOrders.length} order(s) selected:

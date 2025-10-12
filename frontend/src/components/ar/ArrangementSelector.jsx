@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Package } from 'lucide-react';
 
+// Defines the available arrangement types with their properties.
 const ARRANGEMENT_TYPES = [
   {
     id: 'single',
@@ -16,6 +17,13 @@ const ARRANGEMENT_TYPES = [
   },
 ];
 
+/**
+ * A memoized component that allows users to select between a 'single' stem or a 'bouquet' arrangement.
+ * @param {object} props - The component props.
+ * @param {string} [props.selectedArrangement='single'] - The currently selected arrangement ID.
+ * @param {function} props.onSelect - Callback function triggered when an arrangement is selected.
+ * @param {string} [props.className=''] - Optional additional CSS classes for the container.
+ */
 const ArrangementSelector = React.memo(({
   selectedArrangement = 'single',
   onSelect,

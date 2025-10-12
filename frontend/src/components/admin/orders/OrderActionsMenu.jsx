@@ -3,6 +3,16 @@ import React, { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { ChevronDown, Clock, RefreshCw, Truck, CheckCircle, X, XCircle, Check, Eye } from 'lucide-react';
 
+/**
+ * Renders a dropdown menu with actions for a specific order, such as changing status or rejecting it.
+ * @param {object} props - The component props.
+ * @param {object} props.order - The order object.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {function} props.onViewDetails - Callback function to open the order details modal.
+ * @param {function} props.updateOrderStatus - Callback function to update the order's status.
+ * @param {function} props.handleRejectOrder - Callback function to initiate the order rejection process.
+ */
+
 export default function OrderActionsMenu({ order, isDarkMode = false, onViewDetails, updateOrderStatus, handleRejectOrder }) {
   const statusOptions = [
     { value: 'processing', label: 'Mark as Processing', icon: RefreshCw, color: 'text-blue-500' },
@@ -15,7 +25,9 @@ export default function OrderActionsMenu({ order, isDarkMode = false, onViewDeta
       <button
         onClick={onViewDetails}
         className={`p-2 rounded-lg transition-colors ${
-          isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          isDarkMode
+            ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
         }`}
         title="View order details"
       >
@@ -24,16 +36,20 @@ export default function OrderActionsMenu({ order, isDarkMode = false, onViewDeta
 
       <Menu as="div" className="relative inline-block text-left">
         <Menu.Button className={`inline-flex items-center justify-center rounded-md border shadow-sm px-3 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 ${
-          isDarkMode ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+          isDarkMode
+            ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
+            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
         }`}>
           Actions
           <ChevronDown className="w-4 h-4 ml-1" />
         </Menu.Button>
 
         <Transition as={Fragment}>
-          <Menu.Items className={`absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 ${
-            isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-          }`}>
+          <Menu.Items
+            className={`absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 ${
+              isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+            }`}
+          >
             <div className="px-1 py-1">
               {statusOptions.map((status) => {
                 const Icon = status.icon;
@@ -42,9 +58,10 @@ export default function OrderActionsMenu({ order, isDarkMode = false, onViewDeta
                     {({ active }) => (
                       <button
                         onClick={() => updateOrderStatus(order._id, status.value)}
-                        className={`${
-                          active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-200' : 'text-gray-700')
-                        } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        className={`${active
+                            ? isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'
+                            : isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
                       >
                         <Icon className={`mr-3 h-4 w-4 ${status.color}`} />
                         {status.label}
@@ -59,9 +76,10 @@ export default function OrderActionsMenu({ order, isDarkMode = false, onViewDeta
                 {({ active }) => (
                   <button
                     onClick={() => handleRejectOrder(order)}
-                    className={`${
-                      active ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900') : (isDarkMode ? 'text-gray-200' : 'text-gray-700')
-                    } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                    className={`${active
+                        ? isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'
+                        : isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                      } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
                   >
                     <XCircle className="w-4 h-4 mr-3 text-red-500" />
                     Reject Order

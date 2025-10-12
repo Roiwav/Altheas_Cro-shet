@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Listbox, Transition } from '@headlessui/react';
 
+// Defines the available flower types with their properties.
 const FLOWER_TYPES = [
   { 
     id: 'rose',   
@@ -50,11 +51,20 @@ const FLOWER_TYPES = [
   },
 ];
 
+/**
+ * A memoized component for selecting a flower type.
+ * It renders as a grid on larger screens and was intended to render as a dropdown on smaller screens.
+ * @param {object} props - The component props.
+ * @param {string} [props.selectedType='rose'] - The ID of the currently selected flower type.
+ * @param {function} props.onSelect - Callback function triggered when a flower type is selected.
+ * @param {string} [props.className=''] - Optional additional CSS classes for the container.
+ */
 const FlowerTypeSelector = React.memo(({ 
   selectedType = 'rose', 
   onSelect,
   className = ''
 }) => {
+  // Memoize the selected flower object to avoid re-finding it on every render.
   const selectedFlower = useMemo(
     () => FLOWER_TYPES.find(type => type.id === selectedType) || FLOWER_TYPES[0],
     [selectedType]
@@ -64,7 +74,7 @@ const FlowerTypeSelector = React.memo(({
     <div className={`space-y-2 ${className}`}>
       
       
-      {/* Mobile/Tablet - Dropdown */}
+      {/* Mobile/Tablet - Dropdown (Currently hidden, but can be enabled with responsive classes) */}
       <div className="hidden">
         <Listbox value={selectedType} onChange={onSelect}>
           {({ open }) => (

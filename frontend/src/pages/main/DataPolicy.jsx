@@ -3,6 +3,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDarkMode } from '../../context/useDarkMode.js';
 
+/**
+ * Renders the Privacy Policy page.
+ * This is a static content page that displays the company's data policy.
+ */
 export default function DataPolicy() {
   const navigate = useNavigate();
   const { isDarkMode } = useDarkMode();

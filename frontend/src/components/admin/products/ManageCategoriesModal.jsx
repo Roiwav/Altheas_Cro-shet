@@ -2,6 +2,23 @@ import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Edit, Trash2, Check, X } from 'lucide-react';
 
+/**
+ * A modal for managing product categories.
+ * Allows admins to view, edit, and delete categories.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isOpen - Controls the visibility of the modal.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ * @param {string[]} props.categories - The list of all categories.
+ * @param {string[]} [props.baseCategories=[]] - A list of non-deletable/non-editable base categories.
+ * @param {string|null} props.editingCategory - The name of the category currently being edited.
+ * @param {string} props.newCategoryName - The new name for the category being edited.
+ * @param {function} props.onStartEditCategory - Callback to start editing a category.
+ * @param {function} props.onChangeNewCategory - Handler for the new category name input.
+ * @param {function} props.onDeleteCategory - Callback to initiate deleting a category.
+ * @param {function} props.onSaveCategoryEdit - Callback to save the edited category name.
+ * @param {function} props.onCancelCategoryEdit - Callback to cancel the current edit.
+ * @param {function} props.onClose - Callback to close the modal.
+ */
 export default function ManageCategoriesModal({
   isOpen,
   isDarkMode,
@@ -42,7 +59,11 @@ export default function ManageCategoriesModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <Dialog.Panel
+                className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${
+                  isDarkMode ? 'bg-gray-800' : 'bg-white'
+                }`}
+              >
                 <Dialog.Title as="h3" className={`text-lg font-medium leading-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Manage Categories
                 </Dialog.Title>
@@ -55,7 +76,9 @@ export default function ManageCategoriesModal({
                           value={newCategoryName}
                           onChange={(e) => onChangeNewCategory(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && onSaveCategoryEdit()}
-                          className={`flex-grow text-sm rounded-md ${isDarkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                          className={`flex-grow text-sm rounded-md ${
+                            isDarkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'
+                          }`}
                           autoFocus
                         />
                       ) : (
@@ -63,14 +86,22 @@ export default function ManageCategoriesModal({
                       )}
                       {editingCategory === cat ? (
                         <div className="flex items-center space-x-2">
-                          <button onClick={onSaveCategoryEdit} className="text-green-500 hover:text-green-700"><Check className="w-5 h-5" /></button>
-                          <button onClick={onCancelCategoryEdit} className="text-gray-500 hover:text-gray-700"><X className="w-5 h-5" /></button>
+                          <button onClick={onSaveCategoryEdit} className="text-green-500 hover:text-green-700">
+                            <Check className="w-5 h-5" />
+                          </button>
+                          <button onClick={onCancelCategoryEdit} className="text-gray-500 hover:text-gray-700">
+                            <X className="w-5 h-5" />
+                          </button>
                         </div>
                       ) : (
                         !baseCategories.includes(cat) && (
                           <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
-                            <button onClick={() => onStartEditCategory(cat)} title={`Edit "${cat}"`} className="text-blue-500 hover:text-blue-700"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => onDeleteCategory(cat)} title={`Delete "${cat}"`} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => onStartEditCategory(cat)} title={`Edit "${cat}"`} className="text-blue-500 hover:text-blue-700">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => onDeleteCategory(cat)} title={`Delete "${cat}"`} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         )
                       )}
@@ -78,7 +109,15 @@ export default function ManageCategoriesModal({
                   ))}
                 </div>
                 <div className="mt-6">
-                  <button type="button" onClick={onClose} className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500 focus-visible:ring-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-blue-500'}`}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                      isDarkMode
+                        ? 'bg-gray-600 text-gray-200 hover:bg-gray-500 focus-visible:ring-gray-500'
+                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-blue-500'
+                    }`}
+                  >
                     Close
                   </button>
                 </div>

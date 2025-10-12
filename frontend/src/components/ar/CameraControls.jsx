@@ -10,6 +10,7 @@ import {
   MonitorIcon
 } from 'lucide-react';
 
+// Defines preset camera views with their properties.
 const VIEWS = [
   { 
     id: 'front', 
@@ -48,13 +49,21 @@ const DEVICE_PRESETS = {
   desktop: { icon: <MonitorIcon className="w-4 h-4" />, label: 'Desktop' },
 };
 
+/**
+ * A memoized component providing camera controls for a 3D viewer.
+ * It includes preset views (front, side, top) and device-specific viewport presets.
+ * @param {object} props - The component props.
+ * @param {string} [props.currentView='front'] - The ID of the currently active view.
+ * @param {function} props.onChangeView - Callback function when a view button is clicked.
+ * @param {function} props.onDeviceChange - Callback function when a device preset is selected.
+ * @param {string} [props.className=''] - Optional additional CSS classes for the container.
+ */
 const CameraControls = React.memo(({ 
   currentView = 'front', 
   onChangeView,
   onDeviceChange,
   className = ''
 }) => {
-  const isMobile = window.innerWidth < 768;
   const deviceType = isMobile ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
   const deviceRef = useRef(deviceType);
   

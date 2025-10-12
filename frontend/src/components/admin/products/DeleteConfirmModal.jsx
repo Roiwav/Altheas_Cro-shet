@@ -2,6 +2,16 @@ import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { AlertTriangle } from 'lucide-react';
 
+/**
+ * A confirmation modal for deleting one or more items.
+ * It displays a warning and requires user confirmation before proceeding.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isOpen - Controls the visibility of the modal.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ * @param {object} props.itemToDelete - An object describing the item(s) to be deleted. Can be for a single item or bulk.
+ * @param {function} props.onCancel - Callback function to close the modal without deleting.
+ * @param {function} props.onConfirm - Callback function to confirm the deletion.
+ */
 export default function DeleteConfirmModal({
   isOpen,
   isDarkMode,
@@ -35,19 +45,38 @@ export default function DeleteConfirmModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <Dialog.Title as="h3" className={`text-lg font-medium leading-6 flex items-center ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+              <Dialog.Panel
+                className={`w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${
+                  isDarkMode ? 'bg-gray-800' : 'bg-white'
+                }`}
+              >
+                <Dialog.Title
+                  as="h3"
+                  className={`text-lg font-medium leading-6 flex items-center ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}
+                >
                   <AlertTriangle className="w-6 h-6 mr-2" />
                   Confirm Deletion
                 </Dialog.Title>
                 <div className="mt-4">
                   <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                    Are you sure you want to delete {itemToDelete?.type === 'bulk' ? `${itemToDelete.count} products` : `"${itemToDelete?.name}"`}? This action cannot be undone.
+                    Are you sure you want to delete{' '}
+                    {itemToDelete?.type === 'bulk' ? `${itemToDelete.count} products` : `"${itemToDelete?.name}"`}? This action
+                    cannot be undone.
                   </p>
                 </div>
                 <div className="flex justify-end mt-6 space-x-2">
-                  <button type="button" onClick={onCancel} className={`px-4 py-2 text-sm font-medium rounded-md ${isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>Cancel</button>
-                  <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Delete</button>
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      isDarkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                    Delete
+                  </button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>

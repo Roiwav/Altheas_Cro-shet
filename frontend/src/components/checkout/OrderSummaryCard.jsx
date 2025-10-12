@@ -2,6 +2,16 @@
 import React from 'react';
 import { CreditCard } from 'lucide-react';
 
+/**
+ * A card component that displays a summary of the order costs.
+ * It shows the subtotal, shipping fee, and the final total cost.
+ * @param {object} props - The component props.
+ * @param {number} props.itemsCount - The total number of items in the order.
+ * @param {number} props.subtotal - The subtotal cost of all items.
+ * @param {number} props.shippingFee - The calculated shipping fee.
+ * @param {number} props.totalCost - The final total cost (subtotal + shipping).
+ * @param {object} props.currencyFormatter - An Intl.NumberFormat instance for formatting currency.
+ */
 export default function OrderSummaryCard({ itemsCount, subtotal, shippingFee, totalCost, currencyFormatter }) {
   return (
     <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">

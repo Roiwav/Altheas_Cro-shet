@@ -8,19 +8,31 @@ import { getWishlist, toggleWishlist } from "../../utils/wishlist";
 import { useWishlistCount } from "../../context/useWishlistCount.js";
 import { getProductImageSrc } from "../../utils/product.js";
 
+/**
+ * Renders the user's wishlist page.
+ * It retrieves wishlist items from localStorage based on the current user's identity
+ * and allows users to remove items or proceed to buy them.
+ */
 export default function WishlistPage() {
   const { user } = useUser();
+  // Create a unique username key for localStorage, falling back to "guest".
   const username = (user?.username || user?.email || user?.fullName || "guest");
   const { syncWishlistCount } = useWishlistCount();
 
   const [items, setItems] = useState([]);
 
+  /**
+   * Effect to load the wishlist from localStorage when the component mounts or the user changes.
+   */
   useEffect(() => {
     const items = getWishlist(username);
     setItems(items);
     syncWishlistCount(username);
   }, [username, syncWishlistCount]);
 
+  /**
+   * Handles adding or removing a product from the wishlist.
+   */
   const handleToggle = (product) => {
     if (!user) {
       toast.warn("Please log in to modify your wishlist.");

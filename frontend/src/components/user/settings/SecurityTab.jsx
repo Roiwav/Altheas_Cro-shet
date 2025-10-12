@@ -6,6 +6,9 @@ import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
 import { SERVER_BASE_URL } from "../../../utils/product.js";
 
+/**
+ * A tab component for managing user security settings, such as changing or setting a password.
+ */
 export default function SecurityTab() {
   const { user, token, updateUser } = useUser();
   const [isGoogleUser, setIsGoogleUser] = useState(false);
@@ -17,7 +20,10 @@ export default function SecurityTab() {
     confirmPassword: "" 
   });
 
-  // Check if user is a Google-authenticated user and if they have a password set
+  /**
+   * Effect to determine if the user is a Google-authenticated user and
+   * whether they have already set a password for the application.
+   */
   useEffect(() => {
     if (user) {
       const googleUser = Boolean(user.googleId);
@@ -26,6 +32,10 @@ export default function SecurityTab() {
     }
   }, [user]);
 
+  /**
+   * Handles input changes for the password fields.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The change event.
+   */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setSecurity(prev => ({
@@ -34,6 +44,10 @@ export default function SecurityTab() {
     }));
   };
 
+  /**
+   * Handles the form submission for changing or setting a new password.
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submission event.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     const showConfirm = !isGoogleUser; // Google users: no confirm field

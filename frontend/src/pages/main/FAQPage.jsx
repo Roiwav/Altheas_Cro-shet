@@ -1,18 +1,30 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, HelpCircle, ShoppingBag, Truck, CreditCard, RefreshCw, Mail, Phone, MessageCircle } from 'lucide-react';
 
+/**
+ * Renders the Frequently Asked Questions (FAQ) page.
+ * It displays questions and answers in a searchable, accordion-style layout.
+ */
 const FAQPage = () => {
+  // State to track which accordion item is currently open.
   const [activeIndex, setActiveIndex] = useState(null);
-  const [search, setSearch] = useState(''); // Add search state
+  // State for the search input value.
+  const [search, setSearch] = useState('');
 
+  // Effect to scroll to the top of the page on component mount.
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  /**
+   * Toggles the accordion item at the given index.
+   * @param {number} index - The index of the accordion item to toggle.
+   */
   const toggleAccordion = (index) => {
     setActiveIndex(activeIndex === index ? null : index);
   };
 
+  // Hardcoded data for FAQ categories and questions.
   const faqCategories = [
     {
       id: 'orders',
@@ -93,7 +105,10 @@ const FAQPage = () => {
     }
   ];
 
-  // Filtered categories based on search
+  /**
+   * Filters the FAQ categories and questions based on the current search query.
+   * It returns only the categories that have at least one matching question or answer.
+   */
   const filteredCategories = faqCategories
     .map((category) => {
       const filteredQuestions = category.questions.filter(
@@ -107,6 +122,7 @@ const FAQPage = () => {
     })
     .filter(Boolean);
 
+  // Hardcoded data for contact methods displayed on the page.
   const contactMethods = [
     {
       icon: <Mail className="w-6 h-6 text-pink-600" />,

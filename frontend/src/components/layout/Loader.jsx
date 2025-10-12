@@ -2,6 +2,9 @@ import React from 'react';
 import { motion as MOTION } from 'framer-motion';
 
 const Loader = () => {
+  /**
+   * A full-screen loading indicator with animated gradients and text.
+   */
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center z-50">
       <div className="relative">

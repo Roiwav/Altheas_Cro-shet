@@ -4,6 +4,11 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Facebook, Instagram, ChevronDown } from "lucide-react";
 import { useUser } from "../../context/useUser";
 
+/**
+ * Renders the site-wide footer.
+ * It adapts its layout for mobile (accordion) and desktop (grid) and adjusts its margin
+ * based on whether a logged-in user's sidebar is present.
+ */
 export default function Footer() {
   const [openAccordion, setOpenAccordion] = useState(null);
   const { user } = useUser();
@@ -13,7 +18,11 @@ export default function Footer() {
   };
 
   return (
-    <footer className={`bg-gray-900 text-gray-300 pt-12 sm:pt-16 pb-8 mt-20 transition-all duration-300 ease-in-out ${user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''}`}>
+    <footer
+      className={`bg-gray-900 text-gray-300 pt-12 sm:pt-16 pb-8 mt-20 transition-all duration-300 ease-in-out ${
+        user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
+      }`}
+    >
       <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         {/* Desktop Grid */}
         <div className="hidden gap-12 text-left sm:grid sm:grid-cols-2 lg:grid-cols-4">
@@ -50,6 +59,11 @@ export default function Footer() {
   );
 }
 
+/**
+ * Displays brand information, including name, tagline, and social media links.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.isMobile=false] - Adjusts styling for mobile layout.
+ */
 const BrandInfo = ({ isMobile = false }) => (
   <div className={isMobile ? 'mb-8' : ''}>
     <h2 className="mb-4 text-2xl font-bold text-white">Althea's Cro-shet</h2>
@@ -77,6 +91,12 @@ const BrandInfo = ({ isMobile = false }) => (
           </div>
 );
 
+/**
+ * Renders a list of quick navigation links.
+ * @param {object} props - The component props.
+ * @param {function} props.onClick - The click handler for links.
+ * @param {boolean} [props.isMobile=false] - Adjusts styling for mobile layout.
+ */
 const QuickLinks = ({ onClick, isMobile = false }) => (
   <div>
     {!isMobile && <h3 className="mb-4 text-xl font-semibold text-white">Quick Links</h3>}
@@ -110,6 +130,12 @@ const QuickLinks = ({ onClick, isMobile = false }) => (
           </div>
 );
 
+/**
+ * Renders a list of customer service-related links.
+ * @param {object} props - The component props.
+ * @param {function} props.onClick - The click handler for links.
+ * @param {boolean} [props.isMobile=false] - Adjusts styling for mobile layout.
+ */
 const CustomerService = ({ onClick, isMobile = false }) => (
   <div>
     {!isMobile && <h3 className="mb-4 text-xl font-semibold text-white">Customer Service</h3>}
@@ -133,6 +159,11 @@ const CustomerService = ({ onClick, isMobile = false }) => (
           </div>
 );
 
+/**
+ * Displays contact information like email, phone, and address.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.isMobile=false] - Adjusts styling for mobile layout.
+ */
 const ContactInfo = ({ isMobile = false }) => (
   <div>
     {!isMobile && <h3 className="mb-4 text-xl font-semibold text-white">Contact Us</h3>}
@@ -169,6 +200,14 @@ const ContactInfo = ({ isMobile = false }) => (
           </div>
 );
 
+/**
+ * A single accordion item for the mobile footer layout.
+ * @param {object} props - The component props.
+ * @param {string} props.title - The title of the accordion item.
+ * @param {boolean} props.isOpen - Whether the accordion item is open.
+ * @param {function} props.onToggle - Callback to toggle the accordion's open state.
+ * @param {React.ReactNode} props.children - The content to display when open.
+ */
 const AccordionItem = ({ title, isOpen, onToggle, children }) => (
   <div className="border-b border-gray-800 last:border-b-0">
     <button

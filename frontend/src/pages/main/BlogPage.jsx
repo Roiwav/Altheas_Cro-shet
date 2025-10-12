@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { ArrowRight, Calendar, Clock, Tag, Youtube } from 'lucide-react';
 
+/**
+ * Renders the blog page, displaying a curated list of articles and video tutorials.
+ * The post data is currently hardcoded within the component.
+ */
 const BlogPage = () => {
+  // Hardcoded list of blog posts. In a real application, this would likely be fetched from a CMS or API.
   const [posts] = useState([
     {
       id: 1,
@@ -45,7 +50,11 @@ const BlogPage = () => {
     
   ]);
 
-  // Function to extract YouTube video ID from URL
+  /**
+   * Extracts the YouTube video ID from a given URL.
+   * @param {string} url - The YouTube URL.
+   * @returns {string|null} The video ID or null if not found.
+   */
   const getYouTubeVideoId = (url) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);

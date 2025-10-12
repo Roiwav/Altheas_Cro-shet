@@ -12,12 +12,22 @@ const COLOR_PRESETS = [
   { hex: '#ffffff', name: 'White' },
 ];
 
+/**
+ * A memoized component that displays a palette of color swatches for selection.
+ * @param {object} props - The component props.
+ * @param {string} [props.selectedColor='#ff69b4'] - The hex code of the currently selected color.
+ * @param {function} props.onSelect - Callback function triggered when a color is selected.
+ * @param {string} [props.className=''] - Optional additional CSS classes for the container.
+ */
 const ColorSelector = React.memo(({ 
   selectedColor = '#ff69b4', 
   onSelect,
   className = ''
 }) => {
-  // Memoize color swatches to prevent unnecessary re-renders
+  /**
+   * Memoizes the color swatch elements to prevent re-rendering when the parent component updates,
+   * unless the `selectedColor` or `onSelect` callback changes.
+   */
   const colorSwatches = useMemo(() => (
     COLOR_PRESETS.map(({ hex, name }) => (
       <button

@@ -2,6 +2,14 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 
+/**
+ * A card component that displays a list of items included in the order.
+ * Each item shows an image, name, quantity, and price.
+ * @param {object} props - The component props.
+ * @param {Array<object>} props.items - An array of item objects to display.
+ * @param {function} props.getProductImageSrc - A utility function to resolve the correct image source URL.
+ * @param {object} props.currencyFormatter - An Intl.NumberFormat instance for formatting currency.
+ */
 export default function OrderItemsCard({ items, getProductImageSrc, currencyFormatter }) {
   return (
     <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
@@ -18,6 +26,7 @@ export default function OrderItemsCard({ items, getProductImageSrc, currencyForm
       </div>
       <div className="divide-y divide-gray-100 dark:divide-gray-700">
         {items.map((item, index) => (
+          // Using index as a key is acceptable here as the list is static during render.
           <div key={index} className="p-6">
             <div className="flex items-start gap-4">
               <div className="relative">
@@ -27,6 +36,7 @@ export default function OrderItemsCard({ items, getProductImageSrc, currencyForm
                   className="object-cover w-20 h-20 border border-gray-200 rounded-xl dark:border-gray-600"
                   loading="lazy"
                   decoding="async"
+                  // Fallback to a placeholder SVG if the image fails to load.
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";

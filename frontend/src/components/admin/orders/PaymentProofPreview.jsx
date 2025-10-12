@@ -2,10 +2,21 @@
 import React from 'react';
 import { Eye } from 'lucide-react';
 
+/**
+ * Renders a preview of the payment proof image.
+ * Clicking the preview triggers the onClick handler, typically to open a full-size modal.
+ * @param {object} props - The component props.
+ * @param {string|null} props.url - The URL of the payment proof image.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {function} props.onClick - Callback function to execute when the preview is clicked.
+ */
 export default function PaymentProofPreview({ url, isDarkMode = false, onClick }) {
   if (!url) return null;
   return (
-    <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+    <div
+      className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+        }`}
+    >
       <h3 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment Proof</h3>
       <div className="relative inline-block cursor-pointer" onClick={onClick}>
         <img

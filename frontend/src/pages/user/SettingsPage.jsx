@@ -7,10 +7,17 @@ import AddressesTab from "../../components/user/settings/AddressesTab.jsx";
 import SecurityTab from "../../components/user/settings/SecurityTab.jsx";
 import PreferencesTab from "../../components/user/settings/PreferencesTab.jsx";
 
+/**
+ * Renders the main "Account Settings" page.
+ * It acts as a container and router for various settings tabs like Profile, Addresses, etc.
+ * The active tab is controlled by the `tab` URL query parameter.
+ */
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
+  // Initialize the active tab from the URL, defaulting to 'profile'.
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "profile");
 
+  // Memoize the tab configuration to prevent re-creation on every render.
   const tabs = useMemo(
     () => [
       { key: "profile", label: "Profile", icon: <UserIcon className="w-4 h-4" /> },
@@ -21,6 +28,9 @@ export default function SettingsPage() {
     []
   );
 
+  /**
+   * Effect to synchronize the active tab state with the URL search parameter.
+   */
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl && tabs.some((t) => t.key === tabFromUrl)) {

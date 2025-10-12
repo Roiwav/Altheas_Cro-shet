@@ -6,6 +6,15 @@ import { useCart } from "../../hooks/useCart";
 import useNotifications from "../../hooks/useNotifications";
 import { ShoppingCart, User, Menu, LayoutDashboard, LogOut, Bell } from "lucide-react";
 
+/**
+ * Renders the top navigation bar.
+ * It handles user authentication status, cart item count, notifications,
+ * and provides navigation links and user menu actions.
+ * @param {object} props - The component props.
+ * @param {boolean} props.sidebarOpen - State for mobile sidebar visibility.
+ * @param {function} props.setSidebarOpen - Function to update mobile sidebar state.
+ * @param {boolean} [props.isAuthPage=false] - Flag to hide certain elements on auth pages (e.g., login/signup).
+ */
 export default function Navbar({
   sidebarOpen,
   setSidebarOpen = () => {},
@@ -13,7 +22,7 @@ export default function Navbar({
 }) {
   const { user, isAuthenticated, logout, isAuthenticating } = useUser();
   
-  // Get cart items for the cart icon counter
+  // Hooks for cart and notification data.
   const { cartItems } = useCart();
   // Notifications
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -26,12 +35,14 @@ export default function Navbar({
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Calculate total quantity in cart
+  // Memoized calculation for the total number of items in the cart.
   const totalQuantity = Array.isArray(cartItems)
     ? cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
     : 0;
 
-  // Close dropdown when clicking outside
+  /**
+   * Effect to handle clicks outside of the user and notification dropdowns to close them.
+   */
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -45,7 +56,9 @@ export default function Navbar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle scroll effect
+  /**
+   * Effect to apply a background and shadow to the navbar when the user scrolls down.
+   */
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
@@ -54,6 +67,9 @@ export default function Navbar({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  /**
+   * Handles the user logout process.
+   */
   const handleLogout = async () => {
     // The cart persists on the backend, so we just need to log out
     // and clear the local state.
@@ -62,6 +78,7 @@ export default function Navbar({
     navigate("/");
   };
 
+  // Navigation links to display for unauthenticated users.
   const navLinks = !isAuthenticated ? [
     { name: "Home", path: "/home" },
     { name: "About Us", path: "/about" },

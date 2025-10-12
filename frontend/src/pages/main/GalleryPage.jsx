@@ -5,7 +5,10 @@ import { useUser } from "../../context/useUser.js";
 import { FaArrowRight } from 'react-icons/fa';
 import { SERVER_BASE_URL, getProductImageSrc } from '../../utils/product.js';
 
-// Product data mapping with titles, descriptions, and prices
+/**
+ * A hardcoded mapping of gallery item titles to their metadata (name, description, price).
+ * This data is merged with product data fetched from the backend.
+ */
 const productData = {
   'Beautiful Handmade 1': {
     name: 'Carnation Love Bouquet',
@@ -69,13 +72,21 @@ const productData = {
   }
 };
 
+/**
+ * Renders a gallery of product images.
+ * It fetches product information from the backend and merges it with local `productData`
+ * to create a rich gallery display. Clicking an image opens a detailed modal view.
+ */
 export default function GalleryPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const { user } = useUser();
   const navigate = useNavigate();
 
-  // Fetch products from backend to map to gallery items (Cloudinary-only)
+  /**
+   * Fetches the list of all products from the backend on component mount.
+   * This is used to link gallery items to actual product data (like IDs and images).
+   */
   useEffect(() => {
     let active = true;
     (async () => {
@@ -91,15 +102,25 @@ export default function GalleryPage() {
     return () => { active = false; };
   }, []);
 
+  /**
+   * Normalizes a string by converting it to lowercase and trimming whitespace.
+   * Used for case-insensitive matching of product names.
+   * @param {string} s - The string to normalize.
+   */
   const normalize = (s) => String(s || '').toLowerCase().trim();
 
+  /**
+   * Memoized map for quick lookup of backend products by their normalized name.
+   */
   const nameToProduct = useMemo(() => {
     const map = new Map();
     products.forEach((p) => map.set(normalize(p.name), p));
     return map;
   }, [products]);
 
-  // Build gallery tiles by matching productData names to backend products
+  /**
+   * Memoized array of gallery images, created by merging `productData` with the fetched `products`.
+   */
   const images = useMemo(() => {
     return Object.entries(productData).map(([alt, meta], idx) => {
       const p = nameToProduct.get(normalize(meta.name || alt));

@@ -5,6 +5,9 @@ import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
 import { SERVER_BASE_URL } from "../../../utils/product.js";
 
+/**
+ * A tab component for managing the user's profile information, including name and avatar.
+ */
 export default function ProfileTab() {
   const { user, token, updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
@@ -18,9 +21,13 @@ export default function ProfileTab() {
   const [profilePassword, setProfilePassword] = useState("");
   const [errors, setErrors] = useState({});
 
+  // A default SVG avatar to use as a placeholder.
   const defaultAvatar =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
+  /**
+   * Effect to initialize the profile form state when the user object is available or changes.
+   */
   useEffect(() => {
     if (user) {
       setProfile({
@@ -32,6 +39,10 @@ export default function ProfileTab() {
     }
   }, [user]);
 
+  /**
+   * Validates the profile form fields before submission.
+   * @returns {boolean} True if the form is valid, false otherwise.
+   */
   const validateForm = () => {
     const newErrors = {};
     if (!profile.fullName.trim()) newErrors.fullName = "Full name is required";
@@ -40,6 +51,10 @@ export default function ProfileTab() {
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Handles the file input change event for avatar uploads.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The change event.
+   */
   const handleAvatarUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -57,6 +72,9 @@ export default function ProfileTab() {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * Saves the updated profile information to the backend.
+   */
   const saveProfile = async () => {
     if (!validateForm()) return;
     if (!user?.id || !token) {
@@ -105,6 +123,9 @@ export default function ProfileTab() {
     }
   };
 
+  /**
+   * Cancels the editing mode and reverts any unsaved changes.
+   */
   const handleCancel = () => {
     if (user) {
       setProfile({

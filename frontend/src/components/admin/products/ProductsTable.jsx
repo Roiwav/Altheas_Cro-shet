@@ -3,6 +3,18 @@ import { Star, Trash2, Edit } from 'lucide-react';
 import { formatPHP } from '../../../utils/currency';
 import { getProductImageSrc } from '../../../utils/product';
 
+/**
+ * A reusable table header cell component with sorting indicators.
+ * @param {object} props - The component props.
+ * @param {React.ReactNode} props.children - The content of the header cell.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ * @param {boolean} [props.sortable=false] - Whether the column is sortable.
+ * @param {function} [props.onClick] - Click handler for sorting.
+ * @param {boolean} [props.active=false] - Whether this column is the active sort column.
+ * @param {'asc'|'desc'} [props.order] - The current sort order.
+ * @param {string} [props.title] - The title attribute for the cell.
+ */
+
 function HeaderCell({ children, isDarkMode, sortable, onClick, active, order, title }) {
   const className = `px-6 py-3 text-left text-xs font-medium ${
     sortable ? 'cursor-pointer select-none' : ''
@@ -15,6 +27,24 @@ function HeaderCell({ children, isDarkMode, sortable, onClick, active, order, ti
   );
 }
 
+/**
+ * Renders a table of products with functionality for selection, sorting, and actions.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ * @param {object[]} props.paginatedProducts - The array of product objects for the current page.
+ * @param {string[]} props.selectedProducts - An array of IDs for the currently selected products.
+ * @param {React.RefObject} props.selectAllRef - Ref for the "select all" checkbox.
+ * @param {function} props.handleSelectAll - Handler for the "select all" checkbox.
+ * @param {function} props.handleSelectOne - Handler for selecting a single product.
+ * @param {string} props.sortBy - The key of the currently sorted column.
+ * @param {'asc'|'desc'} props.sortOrder - The current sort order.
+ * @param {function} props.setSortBy - Function to set the sort column.
+ * @param {function} props.setSortOrder - Function to set the sort order.
+ * @param {function} props.handleEditClick - Callback to open the edit modal for a product.
+ * @param {function} props.handleDeleteClick - Callback to initiate deleting a product.
+ * @param {function} props.handleToggleFeatured - Callback to toggle the featured status of a product.
+ * @param {function} props.getCategoryColorClass - Utility function to get the color class for a category.
+ */
 export default function ProductsTable({
   isDarkMode,
   paginatedProducts,
@@ -31,12 +61,26 @@ export default function ProductsTable({
   handleToggleFeatured,
   getCategoryColorClass,
 }) {
+  // A placeholder SVG for when an image is not available or fails to load.
   const PLACEHOLDER_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='20'>Image not available</text></svg>";
+
+  /**
+   * Checks if a given string is a valid URL (http, data, or blob).
+   * @param {string} u - The string to check.
+   * @returns {boolean}
+   */
   const isValidUrl = React.useCallback((u) => (
     typeof u === 'string' && (
       u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('blob:')
     )
   ), []);
+
+  /**
+   * Transforms a Cloudinary URL to request a small, optimized thumbnail.
+   * Includes a default image fallback (`d_...`) to prevent 404 errors for missing source images.
+   * @param {string} u - The original image URL.
+   * @returns {string} The transformed thumbnail URL.
+   */
   const toCloudinaryThumb = React.useCallback((u) => {
     if (!isValidUrl(u)) return u;
     try {
@@ -59,6 +103,12 @@ export default function ProductsTable({
       return u;
     }
   }, [isValidUrl]);
+
+  /**
+   * Resolves the best available image source for a product.
+   * @param {object} product - The product object.
+   * @returns {string} The resolved image URL or a placeholder SVG.
+   */
   const resolveImage = (product) => {
     const candidate = product?.imagePublicId || product?.image;
     const resolved = getProductImageSrc(candidate);

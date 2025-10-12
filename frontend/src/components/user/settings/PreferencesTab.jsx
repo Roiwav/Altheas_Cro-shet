@@ -7,6 +7,9 @@ import { useDarkMode } from "../../../context/useDarkMode.js";
 import { useUser } from "../../../context/useUser.js";
 import apiRequest from "../../../config/api.js";
 
+/**
+ * A tab component for managing user preferences, such as theme settings.
+ */
 export default function PreferencesTab() {
   const { user, token, updateUser } = useUser();
   const { setDarkMode } = useDarkMode();
@@ -19,6 +22,10 @@ export default function PreferencesTab() {
   const [hasPassword, setHasPassword] = useState(true);
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(initialPrefs);
 
+  /**
+   * Effect to initialize and synchronize local preferences state with the user context.
+   * It also immediately applies the dark mode setting to the application.
+   */
   useEffect(() => {
     if (user) {
       const nextPrefs = { 
@@ -37,6 +44,10 @@ export default function PreferencesTab() {
     }
   }, [user, setDarkMode]);
 
+  /**
+   * Effect to determine if the user is a Google-authenticated user and
+   * whether they have set a password for the application.
+   */
   useEffect(() => {
     if (user) {
       const googleUser = Boolean(user.googleId);
@@ -48,6 +59,9 @@ export default function PreferencesTab() {
     }
   }, [user]);
 
+  /**
+   * Saves the user's updated preferences to the backend.
+   */
   const savePreferences = async () => {
     if (!isDirty) {
       toast.info("No changes to save.");
@@ -84,6 +98,9 @@ export default function PreferencesTab() {
     }
   };
 
+  /**
+   * Resets any unsaved changes to the preferences.
+   */
   const resetPreferences = () => {
     setPrefs(initialPrefs);
     setPrefsPassword("");

@@ -2,6 +2,14 @@
 import React from 'react';
 import { CreditCard } from 'lucide-react';
 
+/**
+ * A card component for selecting the payment method.
+ * Currently hardcoded to support GCash.
+ * @param {object} props - The component props.
+ * @param {string} props.method - The currently selected payment method.
+ * @param {function} props.setMethod - Callback function to update the selected payment method.
+ * @param {string} props.gcashIcon - The source URL for the GCash icon.
+ */
 export default function PaymentMethodCard({ method, setMethod, gcashIcon }) {
   return (
     <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">

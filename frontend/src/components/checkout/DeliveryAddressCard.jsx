@@ -3,6 +3,15 @@ import React from 'react';
 import { MapPin, Truck } from 'lucide-react';
 import { formatPHP } from '../../utils/currency';
 
+/**
+ * A card component that displays the delivery address for an order.
+ * It shows the full address and shipping fee if an address is provided,
+ * or a prompt to add an address if one is not available.
+ * @param {object} props - The component props.
+ * @param {object|null} props.address - The user's shipping address object.
+ * @param {number} props.shippingFee - The calculated shipping fee for the address.
+ * @param {function} props.onChangeAddress - Callback function to trigger the address change/add modal.
+ */
 export default function DeliveryAddressCard({ address, shippingFee, onChangeAddress }) {
   return (
     <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
@@ -18,6 +27,7 @@ export default function DeliveryAddressCard({ address, shippingFee, onChangeAddr
         </div>
       </div>
       <div className="p-6">
+        {/* Renders a prompt to add an address if none is provided */}
         {!address ? (
           <div className="py-8 text-center">
             <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-400" />
@@ -30,6 +40,7 @@ export default function DeliveryAddressCard({ address, shippingFee, onChangeAddr
             </button>
           </div>
         ) : (
+          /* Renders the address details and a button to change it */
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="font-medium text-gray-900 dark:text-white">

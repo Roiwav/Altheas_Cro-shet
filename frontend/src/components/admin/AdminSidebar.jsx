@@ -4,7 +4,17 @@ import { useUser } from '../../context/useUser';
 import { useDarkMode } from '../../context/useDarkMode.js';
 import { LogOut, Sun, Moon } from 'lucide-react';
 
-
+/**
+ * Renders the sidebar navigation for the admin dashboard.
+ * It can be collapsed or expanded and supports dark mode.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isDarkMode - Flag to indicate if dark mode is enabled.
+ * @param {Array<object>} props.tabs - An array of tab objects to be rendered as navigation items. Each object should have an `id`, `label`, and `icon`.
+ * @param {string} props.activeTab - The ID of the currently active tab.
+ * @param {function} props.setActiveTab - Function to set the active tab.
+ * @param {boolean} props.isSidebarCollapsed - Flag indicating if the sidebar is in its collapsed state (icon-only view).
+ * @param {boolean} props.sidebarOpen - Flag indicating if the sidebar is open (used for mobile view).
+ */
 const AdminSidebar = ({
   isDarkMode,
   tabs,
@@ -18,6 +28,7 @@ const AdminSidebar = ({
 
   return (
     <div className={`flex flex-col h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+      {/* Sidebar Header */}
       <div className="flex items-center flex-shrink-0 h-16 px-4 space-x-2">
         <img
           className="w-auto h-8"
@@ -30,6 +41,7 @@ const AdminSidebar = ({
           </span>
         )}
       </div>
+      {/* Main Navigation */}
       <div className={`flex-1 flex flex-col overflow-y-auto border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <nav className="flex-1 px-2 py-4 space-y-1">
           {tabs.map((tab) => {
@@ -40,7 +52,7 @@ const AdminSidebar = ({
                 : isDarkMode ? 'text-gray-300 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-900';
 
             return (
-              <div key={tab.id} className="relative group"> {/* Added group for hover effects */}
+              <div key={tab.id} className="relative group">
                 <button
                   onClick={() => {
                     setActiveTab(tab.id);

@@ -14,10 +14,12 @@ const ARViewer = React.lazy(() => import('../../components/ar/ARViewer'));
  * This page is typically accessed by scanning a QR code or clicking a direct AR link.
  */
 function ARViewerPage() {
-  // Hooks for navigation and accessing URL query parameters.
+  // Ref to access the <model-viewer> component instance directly.
   const modelViewerRef = useRef(null);
+  // State to track if the AR session is currently active.
   const [arSessionStarted, setArSessionStarted] = useState(false);
-  const [searchParams] = useSearchParams();
+  // Hooks for navigation and accessing URL query parameters.
+  const [searchParams] = useSearchParams(); // Reads URL query params like ?type=rose
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,7 +27,7 @@ function ARViewerPage() {
   const flowerType = searchParams.get('type') || 'rose';
   const arrangement = searchParams.get('arrangement') || 'single';
   const color = '#' + (searchParams.get('color') || 'ff69b4');
-  const modelSrc = location.state?.modelSrc; // Get modelSrc from navigation state
+  const modelSrc = location.state?.modelSrc; // Get modelSrc from navigation state if provided
 
   /**
    * Handles exiting the AR view.
@@ -47,12 +49,12 @@ function ARViewerPage() {
     const modelViewer = modelViewerRef.current;
     if (modelViewer && modelViewer.arSession) {
       try {
-        // Exit the current session
+        // Programmatically end the current AR session.
         await modelViewer.arSession.end();
-        // The 'ar-status' event listener below will handle re-activation.
+        // The 'ar-status' event listener below will handle re-activating AR mode.
       } catch (error) {
         console.error("Error ending AR session for reset:", error);
-        // As a fallback, just try activating again.
+        // As a fallback, just try activating AR again directly.
         modelViewer.activateAR();
       }
     }
@@ -63,10 +65,12 @@ function ARViewerPage() {
     const modelViewer = modelViewerRef.current;
     if (!modelViewer) return;
 
+    // Listens for status changes from the <model-viewer> AR session.
     const handleArStatus = (event) => {
       setArSessionStarted(event.detail.status === 'session-started');
-      // If the session ended (e.g., from our reset function), immediately try to start it again.
+      // If the session ends (e.g., from our reset function), immediately try to start it again.
       if (event.detail.status === 'not-presenting') {
+        // This ensures the AR mode reactivates after being programmatically ended.
         // A small delay can help ensure the browser is ready to start a new session.
         setTimeout(() => modelViewer.activateAR(), 100);
       }

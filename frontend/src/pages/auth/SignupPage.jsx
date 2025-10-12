@@ -8,10 +8,16 @@ import { useUser } from "../../context/useUser";
 import useBubbles from "../../hooks/useBubbles";
 
 // Axios defaults
-axios.defaults.withCredentials = true;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
+/**
+ * Renders the user registration (sign-up) page.
+ * It allows new users to create an account with standard credentials or via Google OAuth.
+ * It also handles preserving cart state if the user signs up during a checkout flow.
+ *
+ * @component
+ */
 export default function SignUpPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,6 +42,10 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [agreed, setAgreed] = useState(false);
 
+  /**
+   * Handles changes to form input fields.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -58,7 +68,10 @@ export default function SignUpPage() {
     return true;
   };
 
-  // ✅ NO AUTO-LOGIN: Just create account and redirect to login with preserved state
+  /**
+   * Handles the form submission for creating a new account.
+   * After successful registration, it preserves any existing cart state and redirects to the login page.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -67,7 +80,7 @@ export default function SignUpPage() {
     setError("");
 
     try {
-      // Determine the user's role based on the specific credentials
+      // Special case: Determine if the user is signing up with admin credentials.
       let role = "customer";
       if (
         formData.username === "admin" &&
@@ -77,6 +90,7 @@ export default function SignUpPage() {
         role = "admin";
       }
 
+      // Log context for debugging cart preservation.
       console.log("🔧 Signing up user with cart context:", { 
         fromCart, 
         fromShop, 
@@ -100,7 +114,7 @@ export default function SignUpPage() {
 
       toast.success("Account created successfully! Please sign in to access your cart.");
 
-      // ✅ PRESERVE CART STATE: Store cart data in sessionStorage temporarily
+      // Preserve cart state in sessionStorage to be picked up after login.
       if ((cartData && cartData.length > 0) || productData) {
         const cartStateToPreserve = {
           from: location.state.from,
@@ -115,7 +129,7 @@ export default function SignUpPage() {
         console.log("💾 Cart state preserved in sessionStorage for login");
       }
 
-      // ✅ Redirect to login with preserved state + success message
+      // Redirect to the login page, passing along state to pre-fill email and show a success message.
       navigate("/login", { 
         state: {
           ...location.state, // Preserve original navigation state
@@ -138,8 +152,11 @@ export default function SignUpPage() {
     }
   };
 
+  /**
+   * Initiates the Google OAuth login flow.
+   * It preserves cart state in sessionStorage before redirecting to the Google auth endpoint.
+   */
   const handleOAuthLogin = (provider) => {
-    // ✅ Preserve cart state for OAuth users too
     if ((cartData && cartData.length > 0) || productData) {
       const cartStateToPreserve = {
         from: location.state.from,
@@ -155,13 +172,6 @@ export default function SignUpPage() {
     window.location.href = `${API_BASE_URL}/auth/${provider}`;
   };
 
-  useEffect(() => {
-    // This useEffect was for a redundant OAuth handler. 
-    // It is now removed to allow the dedicated OAuthCallback component to handle all OAuth redirects,
-    // ensuring session data is correctly persisted to sessionStorage.
-  }, []);
-
-  // Bubbles background effect
   useBubbles("signup-container", {
     count: 20,
     sizeRange: [6, 16],
@@ -346,7 +356,17 @@ export default function SignUpPage() {
   );
 }
 
-// Reusable InputField
+/**
+ * A reusable input field component for the sign-up form.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {string} props.placeholder - The placeholder text.
+ * @param {React.ReactNode} props.icon - The icon to display inside the input.
+ * @param {function} props.onChange - The change handler for the input.
+ * @param {string} [props.type="text"] - The input type.
+ */
 function InputField({
   label,
   name,
@@ -378,7 +398,16 @@ function InputField({
   );
 }
 
-// Reusable PasswordField
+/**
+ * A reusable password field component with a show/hide toggle for the sign-up form.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {boolean} props.show - Whether the password is currently visible.
+ * @param {function} props.setShow - Function to toggle password visibility.
+ * @param {function} props.onChange - The change handler for the input.
+ */
 function PasswordField({ label, name, value, show, setShow, onChange }) {
   return (
     <div>

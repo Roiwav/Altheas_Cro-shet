@@ -8,6 +8,11 @@ import { useCart } from "../../context/cart-context.js";
 import { useUser } from "../../context/useUser.js";
 import { getProductImageSrc } from "../../utils/product.js";
 
+/**
+ * Renders the shopping cart page.
+ * It handles different flows: viewing the main cart, a "Buy Now" single product, or a custom AR order.
+ * It also manages UI and logic for both guest and authenticated users.
+ */
 export default function CartPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,10 +31,11 @@ export default function CartPage() {
 
   const { user, isAuthenticated } = useUser();
 
+  // Determine the items to display based on the navigation state.
   const singleProduct = location.state?.product;
   const arOrder = location.state && !location.state.product ? location.state : null;
 
-    // Shipping fees data (memoized)
+  // Memoized shipping fees data.
   const shippingFees = useMemo(() => ({
     "Manila": 25, "Quezon City": 20, "Calamba City": 36, "Batangas City": 30,
     "Baguio": 35, "Dagupan": 32, "Cebu City": 28, "Iloilo City": 30,
@@ -38,8 +44,11 @@ export default function CartPage() {
 
     const [selectedItems, setSelectedItems] = useState(new Set());
 
-    // Use the cartItems from context directly, or the single product if it's a "Buy Now" flow.
-    const checkoutItems = singleProduct 
+  /**
+   * The list of items to be displayed in the cart, derived from different sources
+   * depending on the user's journey (e.g., regular cart, "Buy Now", AR order).
+   */
+  const checkoutItems = singleProduct 
     ? [singleProduct] 
     : arOrder
     ? [{
@@ -58,6 +67,10 @@ export default function CartPage() {
     : cartItems;
 
     useEffect(() => {
+    /**
+     * Effect to set the default shipping address for authenticated users.
+     * It prioritizes the default address, then the first available address.
+     */
         if (isAuthenticated) {
             let addresses = user?.addresses || [];
 
@@ -76,7 +89,7 @@ export default function CartPage() {
         }
     }, [singleProduct, isAuthenticated, user, setShippingAddress, setShippingFee, shippingFees]);
 
-    // Calculate totals only for selected items
+    // Calculate totals based on the items the user has selected in the cart.
     const selectedCheckoutItems = checkoutItems.filter(item => selectedItems.has(getId(item)));
     
     const subtotal = selectedCheckoutItems.reduce(
@@ -91,11 +104,16 @@ export default function CartPage() {
     ? (arOrder.shippingFee || 0) 
     : shippingFee);
 
-    // Effect to scroll to top on component mount
+    // Effect to scroll to the top of the page when the component mounts.
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
 
+  /**
+   * Toggles the selection state of a single item in the cart.
+   * @param {string} itemId - The ID of the item to select/deselect.
+   * @param {boolean} isSelected - The new selection state.
+   */
     const handleSelectItem = (itemId, isSelected) => {
         const newSelectedItems = new Set(selectedItems);
         if (isSelected) {
@@ -106,6 +124,9 @@ export default function CartPage() {
         setSelectedItems(newSelectedItems);
     };
 
+  /**
+   * Toggles the selection of all items in the cart.
+   */
     const handleSelectAll = () => {
         if (selectedItems.size === checkoutItems.length) {
             setSelectedItems(new Set());
@@ -115,6 +136,9 @@ export default function CartPage() {
         }
     };
 
+  /**
+   * Removes all currently selected items from the cart after confirmation.
+   */
     const handleRemoveSelected = async () => {
         if (selectedItems.size === 0) {
             toast.info("No items selected to remove.");
@@ -129,7 +153,11 @@ export default function CartPage() {
         }
     };
 
-    // Navigate to CheckoutPage for authenticated users, signup for guests
+  /**
+   * Proceeds to the checkout page with the selected items.
+   * For guest users, it redirects to the signup page, preserving the cart state.
+   * @param {Array|null} specificItems - An optional array of items to checkout, overriding the selection.
+   */
     const handleProceedToCheckout = useCallback((specificItems = null) => {
         const itemsToOrder = specificItems || selectedCheckoutItems;
         
@@ -143,7 +171,7 @@ export default function CartPage() {
             return;
         }
 
-        // ✅ NEW: Check if user is authenticated for bulk checkout
+    // For guest users, redirect to signup and preserve the cart items in navigation state.
         if (!isAuthenticated) {
             toast.info("Please sign up to checkout your items. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -155,7 +183,7 @@ export default function CartPage() {
             return;
         }
 
-        // Navigate to CheckoutPage with selected items (authenticated users only)
+    // For authenticated users, proceed directly to checkout.
         navigate("/checkout", { 
             state: { 
                 cartItems: itemsToOrder,
@@ -166,11 +194,14 @@ export default function CartPage() {
         });
     }, [isAuthenticated, navigate, selectedCheckoutItems, shippingAddress, shippingFee, singleProduct]);
 
-    // ✅ UPDATED: Buy Now logic - redirect guests to signup
+  /**
+   * Handles the "Buy Now" action for an individual item.
+   * For guest users, it redirects to the signup page, preserving the product state.
+   * @param {object} item - The product item to purchase.
+   */
     const handleBuyNowIndividual = (item) => {
         if (!item) return;
         
-        // ✅ NEW: Check if user is authenticated for individual buy now
         if (!isAuthenticated) {
             toast.info("Please sign up to purchase items directly. Your cart will be saved to your account!");
             navigate("/signup", {
@@ -215,11 +246,14 @@ export default function CartPage() {
         navigate("/checkout", { state: { product: productForCheckout } });
     };
     
+  /**
+   * Decreases the quantity of an item in the cart.
+   * @param {object} item - The cart item to update.
+   */
     const handleDecreaseQuantity = async (item) => {
         const currentQty = item.quantity || 1;
         
-        // Don't allow decrease if quantity is already 1
-        if (currentQty <= 1) {
+    if (currentQty <= 1) {
             return; // Do nothing - button should be disabled at this point
         }
         
@@ -227,19 +261,31 @@ export default function CartPage() {
         await updateQuantity(getId(item), newQty);
     };
 
+  /**
+   * Increases the quantity of an item in the cart, up to a maximum of 50.
+   * @param {object} item - The cart item to update.
+   */
     const handleIncreaseQuantity = async (item) => {
         const newQty = Math.min(50, (item.quantity || 1) + 1);
         await updateQuantity(getId(item), newQty);
     };
 
+  /**
+   * Handles direct input changes for an item's quantity.
+   * @param {object} item - The cart item to update.
+   * @param {string} value - The new quantity value from the input.
+   */
     const handleQuantityInputChange = async (item, value) => {
         const newQty = Math.min(50, Math.max(1, parseInt(value, 10) || 1));
-        // Only update if the value is different to avoid unnecessary re-renders
         if (newQty !== item.quantity) {
             await updateQuantity(getId(item), newQty);
         }
     };
 
+  /**
+   * Removes a single item from the cart.
+   * @param {string} itemId - The ID of the item to remove.
+   */
     const handleRemoveItem = async (itemId) => {
         await removeFromCart(itemId);
         const newSelectedItems = new Set(selectedItems);
@@ -248,6 +294,7 @@ export default function CartPage() {
         toast.success("Item removed from cart.");
     };
 
+  // Memoized currency formatter for performance.
     const currencyFormatter = new Intl.NumberFormat("en-PH", {
         style: "currency",
         currency: "PHP",

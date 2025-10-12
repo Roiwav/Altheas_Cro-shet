@@ -15,6 +15,12 @@ const LOGIN_BLOCK_UNTIL_KEY = 'userLoginBlockUntil';
 const MAX_ATTEMPTS = 5;
 const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Renders the main user login page.
+ * Supports standard email/password login, Google OAuth, and includes
+ * brute-force protection by limiting login attempts.
+ * @component
+ */
 export default function LoginPage() {
   const { login } = useUser();
   const navigate = useNavigate();
@@ -34,7 +40,12 @@ export default function LoginPage() {
   const errorParam = searchParams.get("error");
   const errorMessage = searchParams.get("message");
 
-  // ✅ Handle OAuth success redirects (skip if we already have an error in URL)
+  /**
+   * Handles successful OAuth redirects.
+   * It parses the token and user data from the URL, logs the user in,
+   * cleans the URL, and navigates to the appropriate page.
+   * This is skipped if an error parameter is already present in the URL.
+   */
   const handleOAuthRedirect = useCallback(async () => {
     if (searchParams.get("error")) return; // avoid double-handling
 
@@ -70,7 +81,12 @@ export default function LoginPage() {
       }
     }
   }, [login, navigate, from, searchParams]);
-  // ✅ Handle OAuth error messages (once) and success redirect
+  
+  /**
+   * Effect to handle OAuth redirects on component mount.
+   * It first checks for and displays any error messages from the OAuth provider,
+   * then attempts to handle a successful redirect if no errors are found.
+   */
   useEffect(() => {
     if (errorParam) {
       const errorMessages = {
@@ -101,7 +117,10 @@ export default function LoginPage() {
     handleOAuthRedirect();
   }, [errorParam, errorMessage, handleOAuthRedirect]);
 
-  // Check for login block on component mount
+  /**
+   * Checks for and enforces a login block on component mount if too many
+   * failed attempts have occurred.
+   */
   useEffect(() => {
     const blockUntil = parseInt(localStorage.getItem(LOGIN_BLOCK_UNTIL_KEY), 10);
     if (blockUntil && blockUntil > Date.now()) {
@@ -118,18 +137,27 @@ export default function LoginPage() {
     }
   }, []);
 
+  /**
+   * Calculates and returns the remaining login block time in minutes.
+   * @returns {number} The remaining minutes until the block is lifted.
+   */
   const getRemainingBlockTime = () => {
     return Math.ceil((blockTime - Date.now()) / 60000);
   };
 
-
-  // ✅ Controlled input handler
+  /**
+   * Handles changes to form input fields.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Validation
+  /**
+   * Validates the form data before submission.
+   * @returns {boolean} True if the form is valid, false otherwise.
+   */
   const validateForm = () => {
     if (!formData.identifier.trim())
       return setError("Email or Username is required"), false;
@@ -145,7 +173,9 @@ export default function LoginPage() {
     return true;
   };
 
-  // ✅ Submit handler
+  /**
+   * Handles the form submission for standard email/password login.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -154,7 +184,6 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // ✅ Normal login flow
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
@@ -170,11 +199,10 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Login failed");
 
-      // Save in context + storage
-      // ✅ Use sessionStorage to isolate login state to the current tab
+      // Use sessionStorage to isolate login state to the current tab.
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(data.user));
-      await login(data.user, data.token, { remember: false }); // Update context, explicitly using session storage
+      await login(data.user, data.token, { remember: false });
 
       // On successful login, clear any attempts/blocks
       localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
@@ -221,7 +249,7 @@ export default function LoginPage() {
     opacity: 0.18,
   }), []);
 
-  // ✅ Bubbles background effect
+  // Initialize the background bubble animation.
   useBubbles("login-container", bubbleOptions);
 
   return (
@@ -337,6 +365,19 @@ export default function LoginPage() {
 }
 
 // ================== Reusable components ==================
+/**
+ * A reusable input field component with a label and an icon.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {function} props.onChange - The change handler for the input.
+ * @param {string} props.placeholder - The placeholder text.
+ * @param {React.ReactNode} props.icon - The icon to display inside the input.
+ * @param {string} [props.type="text"] - The input type.
+ * @param {string} props.autoComplete - The autocomplete attribute value.
+ * @param {boolean} props.disabled - Whether the input is disabled.
+ */
 function InputField({ label, name, value, onChange, placeholder, icon, type = "text", autoComplete, disabled }) {
   return (
     <div>
@@ -363,6 +404,17 @@ function InputField({ label, name, value, onChange, placeholder, icon, type = "t
   );
 }
 
+/**
+ * A reusable password field component with a show/hide toggle.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {function} props.onChange - The change handler for the input.
+ * @param {boolean} props.show - Whether the password is currently visible.
+ * @param {function} props.setShow - Function to toggle password visibility.
+ * @param {boolean} props.disabled - Whether the input is disabled.
+ */
 function PasswordField({ label, name, value, onChange, show, setShow, disabled }) {
   return (
     <div>
@@ -396,6 +448,9 @@ function PasswordField({ label, name, value, onChange, show, setShow, disabled }
   );
 }
 
+/**
+ * Renders the "Continue with Google" OAuth button.
+ */
 function OAuthButton() {
   const handleClick = (e) => {
     e.preventDefault();
@@ -435,6 +490,11 @@ function OAuthButton() {
   );
 }
 
+/**
+ * Renders a divider with text in the middle.
+ * @param {object} props - The component props.
+ * @param {string} props.text - The text to display in the divider.
+ */
 function Divider({ text }) {
   return (
     <div className="relative my-6">

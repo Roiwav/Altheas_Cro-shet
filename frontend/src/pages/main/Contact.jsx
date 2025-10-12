@@ -7,10 +7,17 @@ import { useUser } from "../../context/useUser.js";
 // import facebookLogo from "../../assets/images/icons/facebook-Logo.png";
 // import instagramLogo from "../../assets/images/icons/instagram-Logo.png";
 
+/**
+ * Renders the contact page with a contact form and business information.
+ * It uses EmailJS to send form submissions as emails.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.embedded=false] - If true, adjusts layout for embedding in another page.
+ * @param {React.Ref} ref - The forwarded ref to the main div element.
+ */
 const ContactPage = forwardRef(({ embedded = false }, ref) => {
   const { user } = useUser();
   
-  // State para sa form input
+  // State for the contact form inputs.
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,13 +28,19 @@ const ContactPage = forwardRef(({ embedded = false }, ref) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
-  // Para sa bawat pagbabago sa input field
+  /**
+   * Handles changes to the form input fields.
+   * @param {React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>} e - The change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Kapag sinubmit yung form
+  /**
+   * Handles the form submission.
+   * It sends two emails concurrently using EmailJS: one to the admin and one to the customer.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -36,8 +49,7 @@ const ContactPage = forwardRef(({ embedded = false }, ref) => {
     const serviceID = "service_dq2932e";
     // This template is for the email sent to you (the admin)
     const adminTemplateID = "template_yx6apnf";
-    // **ACTION REQUIRED**: Create a new template in EmailJS for the customer
-    // and replace 'YOUR_CUSTOMER_TEMPLATE_ID' with its actual ID.
+    // This template is for the acknowledgement email sent to the customer
     const customerTemplateID = "template_f7lyis3";
 
     // Parameters for the email to the admin
@@ -73,6 +85,9 @@ const ContactPage = forwardRef(({ embedded = false }, ref) => {
     setTimeout(() => setSubmitStatus(null), 3000);
   };
 
+  /**
+   * Effect to initialize the EmailJS service with the public key on component mount.
+   */
   useEffect(() => {
     // Initialize EmailJS with your User ID (Public Key)
     emailjs.init("YXAWeRbfmChLSofYa");

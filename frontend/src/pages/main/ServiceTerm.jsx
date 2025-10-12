@@ -2,6 +2,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Renders the Terms of Service page.
+ * This is a static content page displaying the terms and conditions for using the service.
+ */
 export default function ServiceTerms() {
   const navigate = useNavigate();
 

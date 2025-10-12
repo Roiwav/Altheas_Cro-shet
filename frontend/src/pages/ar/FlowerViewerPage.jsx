@@ -45,6 +45,11 @@ const FLOWER_PRICES = {
   peony: { single: 250, bouquet: 2500 },
 };
 
+/**
+ * The main page for customizing and viewing crochet flowers.
+ * It integrates a 3D/AR viewer with various selection controls, allowing users
+ * to create a custom product, view it in AR, add it to the cart, or place an order directly.
+ */
 const FlowerViewerPage = () => {
   // Hooks for routing and user authentication context.
   const { type: initialType } = useParams();
@@ -59,10 +64,10 @@ const FlowerViewerPage = () => {
   const [flowerCount, setFlowerCount] = useState(3); // bouquet flower count
   const [totalPrice, setTotalPrice] = useState(0);
   const [showQR, setShowQR] = useState(false); // QR code modal
-  const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(false); // To prevent race conditions on screenshot
+  const [quantity, setQuantity] = useState(1); // Quantity of the custom item
+  const [loading, setLoading] = useState(false); // Loading state to prevent race conditions on screenshot capture.
 
-  // Separate refs for desktop and mobile to avoid conflicts
+  // Separate refs for desktop and mobile AR viewers to avoid conflicts.
   const desktopArViewerRef = useRef(null);
   const mobileArViewerRef = useRef(null);
 
@@ -74,14 +79,21 @@ const FlowerViewerPage = () => {
     setShowQR(true);
   }, []);
 
-  // Helper to get the correct AR viewer ref based on screen size
+  /**
+   * Helper to get the correct AR viewer ref based on screen size.
+   * This is crucial because there are two separate ARViewer instances for responsive design.
+   * @returns {React.RefObject} The ref for the currently active AR viewer.
+   */
   const getActiveArViewerRef = useCallback(() => {
     // Check if we're on mobile view (window width < 1024px for lg breakpoint)
     const isMobile = window.innerWidth < 1024;
     return isMobile ? mobileArViewerRef : desktopArViewerRef;
   }, []);
 
-  // ---- DEBUG-ENHANCED SNIPPET: ACTUAL PRODUCT OBJECT (variation: arrangement) ----
+  /**
+   * Creates a product object representing the current customization.
+   * It captures a screenshot from the active 3D viewer to use as the product image.
+   */
   const createProductObject = useCallback(async () => {
     const activeRef = getActiveArViewerRef();
     console.log('Creating product object - activeRef.current:', activeRef.current);
@@ -102,9 +114,11 @@ const FlowerViewerPage = () => {
     console.log('[DEBUG custom product object]', productObj);
     return productObj;
   }, [flowerType, arrangement, color, quantity, getActiveArViewerRef]);
-  // ---------------------------------------------------------------
 
-  // Handle place order
+  /**
+   * Handles placing a direct order for the custom product.
+   * Navigates to the checkout page with the product details.
+   */
   const handlePlaceOrder = useCallback(async () => {
     const product = await createProductObject();
     const productForCheckout = {
@@ -118,7 +132,10 @@ const FlowerViewerPage = () => {
     });
   }, [createProductObject, navigate]);
 
-  // Handle adding the customized item to the cart
+  /**
+   * Handles adding the customized item to the shopping cart.
+   * Uses the `useCart` context to perform the action.
+   */
   const handleAddToCart = useCallback(async () => {
     const activeRef = getActiveArViewerRef();
     console.log('handleAddToCart called - activeRef.current:', activeRef.current);
@@ -139,7 +156,11 @@ const FlowerViewerPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Effect to handle loading state when customization changes, preventing race conditions for screenshots.
+  /**
+   * Effect to manage a brief loading state when customization changes.
+   * This helps prevent race conditions when capturing a screenshot, ensuring the 3D model
+   * has finished updating before the user can add to cart or place an order.
+   */
   useEffect(() => {
     setLoading(true);
     const timer = setTimeout(() => {
@@ -149,7 +170,10 @@ const FlowerViewerPage = () => {
     return () => clearTimeout(timer);
   }, [flowerType, arrangement, color]);
 
-  // Effect to recalculate the total price whenever customization options change.
+  /**
+   * Effect to recalculate the total price whenever the flower type,
+   * arrangement, or quantity changes.
+   */
   useEffect(() => {
     const prices = FLOWER_PRICES[flowerType] || { single: 0, bouquet: 0 };
     let basePrice = arrangement === 'bouquet' ? prices.bouquet : prices.single;
@@ -161,7 +185,7 @@ const FlowerViewerPage = () => {
     setColor(defaultColors[flowerType] || '#FFFFFF');
   }, [flowerType]);
 
-  // Formatter for displaying currency in Philippine Peso.
+  // Memoized formatter for displaying currency in Philippine Peso.
   const currencyFormatter = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
   return (

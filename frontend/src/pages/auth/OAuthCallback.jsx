@@ -5,11 +5,27 @@ import { useUser } from '../../context/useUser';
 import { toast } from 'react-toastify';
 import { Loader2 } from 'lucide-react';
 
-// Helpers for robust user parsing without lint errors
+/**
+ * Safely attempts to parse a JSON string.
+ * @param {string} str - The JSON string to parse.
+ * @returns {object|null} The parsed object or null if parsing fails.
+ */
 const tryJSON = (str) => {
   try { return JSON.parse(str); } catch { return null; }
 };
+
+/**
+ * Safely executes a function and returns its result, or null on error.
+ * @param {function} fn - The function to execute.
+ * @returns {any|null} The result of the function or null.
+ */
 const safe = (fn) => { try { return fn(); } catch { return null; } };
+
+/**
+ * Robustly parses the 'user' URL parameter, trying multiple decoding strategies.
+ * @param {string|null} raw - The raw user data string from the URL.
+ * @returns {object|null} The parsed user object or null.
+ */
 const parseUserParam = (raw) => {
   if (!raw) return null;
   return (
@@ -19,13 +35,19 @@ const parseUserParam = (raw) => {
   );
 };
 
+/**
+ * A component that handles the callback from an OAuth provider (e.g., Google).
+ * It processes the token and user data from the URL, logs the user in,
+ * and redirects them to the appropriate page, handling any potential errors.
+ * @component
+ */
 const OAuthCallback = () => {
   const { login } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
+  // Ref to prevent the effect from running twice in React's Strict Mode.
   const hasRunRef = useRef(false);
   
-  // Get the full URL with the token
   const { search } = location;
   const params = new URLSearchParams(search);
   const token = params.get('token');
@@ -34,7 +56,10 @@ const OAuthCallback = () => {
   const redirect = params.get('redirect') || '/';
 
   useEffect(() => {
-    // Guard for dev StrictMode double-invoke and re-mounts
+    /**
+     * Guard to prevent the OAuth callback logic from running multiple times,
+     * which can happen in React's Strict Mode or due to component re-mounts.
+     */
     const doneKey = token ? `oauth_done_${token}` : null;
     if (hasRunRef.current) return;
     if (doneKey && sessionStorage.getItem(doneKey)) return;
@@ -57,8 +82,10 @@ const OAuthCallback = () => {
           throw new Error('Invalid user data received');
         }
 
-        // ✅ CRITICAL FIX: Persist the session data for this tab.
-        // This isolates the OAuth session and prevents it from being overwritten by other tabs.
+        /**
+         * Persist the session data to `sessionStorage` for this tab.
+         * This isolates the OAuth session and prevents it from being overwritten by other tabs.
+         */
         sessionStorage.setItem('token', token);
         sessionStorage.setItem('user', JSON.stringify(parsed));
 
@@ -74,7 +101,10 @@ const OAuthCallback = () => {
           return;
         }
 
-        // If signup preserved cart state exists, restore flow specific redirect
+        /**
+         * Check for preserved cart state from before the OAuth flow started.
+         * This ensures a seamless experience for users who sign up during checkout.
+         */
         const preserved = sessionStorage.getItem('oauth-cart-state') || sessionStorage.getItem('signup-cart-state');
         if (preserved) {
           try {
@@ -96,7 +126,8 @@ const OAuthCallback = () => {
             return; // prevent falling through to default redirect
           } catch { /* ignore preserved-state parse */ }
         }
-        // Default redirect for non-admins when no preserved state
+
+        // Default redirect if no specific state was preserved.
         navigate(redirect, { replace: true });
       } catch (err) {
         console.error('OAuth callback error:', err);

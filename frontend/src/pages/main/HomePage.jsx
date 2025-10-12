@@ -24,15 +24,21 @@ const currencyFormatter = new Intl.NumberFormat('en-PH', {
   currency: 'PHP',
 });
 
+/**
+ * Renders the main homepage, which serves as the landing page for the application.
+ * It includes a hero section, feature highlights, an AR preview, featured products,
+ * testimonials, and embedded About Us and Contact sections.
+ */
 function HomePage() {
+  // `useOutletContext` is used to receive refs from the parent `Layout` component.
+  // This allows navigation links in the sidebar/navbar to scroll to sections on this page.
   const { aboutRef, contactRef } = useOutletContext() || {};
   const { user } = useUser();
 
   return (
     <div
-      className={`relative z-10 space-y-0 ${
-        user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
-      } transition-all duration-300 ease-in-out`}
+      className={`relative z-10 space-y-0 ${user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
+        } transition-all duration-300 ease-in-out`}
     >
       {/* Hero Section */}
       <section className="relative flex items-center justify-center min-h-screen overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
@@ -230,12 +236,18 @@ function HomePage() {
   );
 }
 
+/**
+ * A section that fetches and displays featured products.
+ */
 const FeaturedProductsSection = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
-  // Try to resolve an image URL from a variety of legacy/new product shapes
+  /**
+   * A robust helper function to resolve the primary image URL from a product object
+   * that might have different or legacy data structures for images.
+   */
   const resolvePrimaryImage = (product) => {
     if (!product) return '';
     const candidates = [];
@@ -280,6 +292,11 @@ const FeaturedProductsSection = () => {
     return '';
   };
 
+  /**
+   * Takes a product object, resolves its primary image, and transforms it into
+   * an optimized Cloudinary URL if applicable.
+   * @param {object} product - The product object.
+   */
   const getOptimizedImageSrc = (product) => {
     const PLACEHOLDER =
       "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='600' height='400' fill='%23f3f4f6'/><text x='50%' y='50%' text-anchor='middle' fill='%239ca3af' font-size='20'>Image not available</text></svg>";
@@ -315,6 +332,9 @@ const FeaturedProductsSection = () => {
     return base || PLACEHOLDER;
   };
 
+  /**
+   * Fetches featured products from the backend on component mount.
+   */
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -441,6 +461,10 @@ const FeaturedProductsSection = () => {
   );
 };
 
+/**
+ * A component that displays customer testimonials in a horizontally scrolling marquee.
+ * It duplicates the testimonials to create a seamless looping effect.
+ */
 function Testimonials() {
   const { testimonials = [] } = useTestimonials() || {};
   const containerRef = useRef(null);

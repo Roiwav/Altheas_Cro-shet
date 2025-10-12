@@ -4,20 +4,36 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useTestimonials } from '../../context/TestimonialsContext';
 import { Star, MessageSquare, Smile, User, Loader2 } from 'lucide-react';
 
+/**
+ * Renders a feedback page where users can submit testimonials and ratings.
+ * It uses the `useTestimonials` context to add new feedback.
+ */
 const FeedbackPage = () => {
   const { addTestimonial } = useTestimonials();
+
+  // State for form data, including the quote, author, and rating.
   const [formData, setFormData] = useState({
     quote: '',
     author: '',
     rating: 0,
   });
-  const [submitted, setSubmitted] = useState(false);
+
+  // State to manage the submission process and UI feedback.
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // State for the star rating hover effect.
   const [hoverRating, setHoverRating] = useState(0);
+
+  // Maximum character length for the feedback quote.
   const MAX_QUOTE_LENGTH = 300;
 
   const { quote, author, rating } = formData;
 
+  /**
+   * Handles changes to form inputs and updates the state.
+   * Prevents typing beyond the maximum quote length.
+   * @param {React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>} e - The change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'quote' && value.length > MAX_QUOTE_LENGTH) {
@@ -26,10 +42,18 @@ const FeedbackPage = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  /**
+   * Sets the rating when a star is clicked.
+   * @param {number} newRating - The new rating value (1-5).
+   */
   const handleRatingClick = (newRating) => {
     setFormData({ ...formData, rating: newRating });
   };
 
+  /**
+   * Handles the form submission, sends the testimonial to the context,
+   * and clears the form on success.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -41,7 +65,6 @@ const FeedbackPage = () => {
     });
 
     if (result.success) {
-      // Clear form on successful submission
       setFormData({ quote: '', author: '', rating: 0 });
     }
     setIsSubmitting(false);

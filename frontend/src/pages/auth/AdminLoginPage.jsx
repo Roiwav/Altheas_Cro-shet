@@ -5,12 +5,21 @@ import { useUser } from "../../context/useUser";
 import { toast } from "react-toastify";
 import useBubbles from "../../hooks/useBubbles";
 
+// --- Constants ---
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
+
+// Constants for login attempt limiting
 const LOGIN_ATTEMPTS_KEY = "adminLoginAttempts";
 const LOGIN_BLOCK_UNTIL_KEY = "adminLoginBlockUntil";
 const MAX_ATTEMPTS = 5;
 const BLOCK_DURATION_MS = 5 * 60 * 1000;
 
+/**
+ * Renders the administrator login page with credentials validation and brute-force protection.
+ * It provides a secure entry point to the admin portal.
+ *
+ * @component
+ */
 export default function AdminLoginPage() {
   const { login } = useUser();
   const navigate = useNavigate();
@@ -27,10 +36,16 @@ export default function AdminLoginPage() {
   const from = location.state?.from?.pathname || "/admin";
   const errorParam = searchParams.get("error");
   const errorMessage = searchParams.get("message");
-
-  // OAuth handler is unchanged from before...
+  
+  /**
+   * Handles OAuth redirects, which are not intended for the admin page.
+   * This function will effectively deny access if an OAuth login attempts to access an admin route.
+   * The primary login method for admins is credentials-based.
+   */
   const handleOAuthRedirect = useCallback(async () => {
-    // ... leave this unchanged unless you have OAuth login issues
+    // This is intentionally left simple. If an OAuth user lands here,
+    // the `handleSubmit` logic will deny them based on role, which is the
+    // desired behavior for a separate admin portal.
   }, [login, navigate, searchParams]);
 
   useEffect(() => {
@@ -47,6 +62,10 @@ export default function AdminLoginPage() {
     handleOAuthRedirect();
   }, [errorParam, errorMessage, handleOAuthRedirect]);
 
+  /**
+   * Checks for and enforces a login block on component mount if too many
+   * failed attempts have occurred.
+   */
   useEffect(() => {
     const blockUntil = parseInt(localStorage.getItem(LOGIN_BLOCK_UNTIL_KEY), 10);
     if (blockUntil && blockUntil > Date.now()) {
@@ -61,15 +80,27 @@ export default function AdminLoginPage() {
     }
   }, []);
 
+  /**
+   * Calculates and returns the remaining login block time in minutes.
+   * @returns {number} The remaining minutes until the block is lifted.
+   */
   const getRemainingBlockTime = () => {
     return Math.ceil((blockTime - Date.now()) / 60000);
   };
 
+  /**
+   * Handles changes to form input fields.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * Validates the form data before submission.
+   * @returns {boolean} True if the form is valid, false otherwise.
+   */
   const validateForm = () => {
     if (!formData.identifier.trim()) return setError("Email or Username is required"), false;
     if (!formData.password) return setError("Password is required"), false;
@@ -77,7 +108,9 @@ export default function AdminLoginPage() {
     return true;
   };
 
-  // AGGRESSIVE STEP-BY-STEP LOGGING:
+  /**
+   * Handles the form submission for admin login.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("1. Form submitted, starting login process");
@@ -89,8 +122,7 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      console.log("3. About to make API request to:", `${API_URL}/auth/login`);
-
+      // 3. Make API request to the login endpoint.
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -99,32 +131,29 @@ export default function AdminLoginPage() {
           password: formData.password,
         }),
       });
-
-      console.log("4. Got response, status:", res.status);
-
+      
+      // 4. Parse response data.
       const data = await res.json().catch(() => ({}));
-      console.log("5. Response data:", data);
-
+      
+      // 5. Handle non-successful responses.
       if (!res.ok) throw new Error(data.message || "Login failed");
 
+      // 6. Security Check: Ensure the user has the 'admin' role.
       if (data?.user?.role !== "admin") {
-        console.log("6. User role check failed:", data?.user?.role);
         throw new Error("Access Denied. You do not have administrator privileges.");
       }
 
-      console.log("7. About to save token to localStorage");
+      // 7. Store token and user data in sessionStorage for this tab.
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(data.user));
-      console.log("8. Token saved. Checking localStorage now...");
-
+      
+      // 8. Verify token was written.
       const testToken = sessionStorage.getItem("token");
-      console.log("9. localStorage.getItem('token') result:", testToken);
-
       if (!testToken) {
         throw new Error("Could not write auth token to sessionStorage!");
       }
 
-      console.log("10. Success! About to call login() and navigate");
+      // 9. Clear any previous login attempt blocks.
       localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
       localStorage.removeItem(LOGIN_BLOCK_UNTIL_KEY);
 
@@ -132,12 +161,14 @@ export default function AdminLoginPage() {
       await login(data.user, data.token, { remember: false });
 
       toast.success("Admin login successful!");
+      // 10. Navigate to the intended admin page or the admin dashboard.
       navigate(from, { replace: true });
     } catch (err) {
       console.error("❌ Error at step:", err);
       setError(err.message || "Login failed. Please check your credentials.");
       toast.error(err.message || "Login failed. Please check your credentials.");
 
+      // Handle failed login attempt and update block counter.
       let attempts = parseInt(localStorage.getItem(LOGIN_ATTEMPTS_KEY), 10) || 0;
       attempts++;
       if (attempts >= MAX_ATTEMPTS) {
@@ -154,6 +185,7 @@ export default function AdminLoginPage() {
     }
   };
 
+  // Configuration for the background bubble animation.
   const bubbleOptions = useMemo(
     () => ({
       count: 20,
@@ -257,6 +289,17 @@ export default function AdminLoginPage() {
   );
 }
 
+/**
+ * A reusable input field component with a label and an icon.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {function} props.onChange - The change handler for the input.
+ * @param {string} props.placeholder - The placeholder text.
+ * @param {React.ReactNode} props.icon - The icon to display inside the input.
+ * @param {boolean} props.disabled - Whether the input is disabled.
+ */
 function InputField({ label, name, value, onChange, placeholder, icon, disabled }) {
   return (
     <div>
@@ -278,6 +321,17 @@ function InputField({ label, name, value, onChange, placeholder, icon, disabled 
   );
 }
 
+/**
+ * A reusable password field component with a show/hide toggle.
+ * @param {object} props - The component props.
+ * @param {string} props.label - The label for the input field.
+ * @param {string} props.name - The name attribute for the input.
+ * @param {string} props.value - The current value of the input.
+ * @param {function} props.onChange - The change handler for the input.
+ * @param {boolean} props.show - Whether the password is currently visible.
+ * @param {function} props.setShow - Function to toggle password visibility.
+ * @param {boolean} props.disabled - Whether the input is disabled.
+ */
 function PasswordField({ label, name, value, onChange, show, setShow, disabled }) {
   return (
     <div>

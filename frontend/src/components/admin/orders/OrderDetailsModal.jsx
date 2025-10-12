@@ -6,6 +6,11 @@ import StatusBadge from './StatusBadge.jsx';
 import PaymentProofPreview from './PaymentProofPreview.jsx';
 import { getMediaUrl, getProductImageSrc } from '../../../utils/product.js';
 
+/**
+ * Formats a date string into a more readable format.
+ * @param {string} dateString - The date string to format.
+ * @returns {string} The formatted date string.
+ */
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -16,6 +21,15 @@ function formatDate(dateString) {
   });
 }
 
+/**
+ * A modal component to display detailed information about a specific order.
+ * @param {object} props - The component props.
+ * @param {boolean} props.open - Whether the modal is open.
+ * @param {function} props.onClose - Function to call when the modal should be closed.
+ * @param {object} props.order - The order object to display details for.
+ * @param {boolean} [props.isDarkMode=false] - Flag to enable dark mode styling.
+ * @param {function} props.onOpenProof - Function to call when the payment proof is clicked.
+ */
 export default function OrderDetailsModal({ open, onClose, order, isDarkMode = false, onOpenProof }) {
   if (!open || !order) return null;
 
@@ -29,7 +43,12 @@ export default function OrderDetailsModal({ open, onClose, order, isDarkMode = f
               <Dialog.Title className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 Order Details - #{order.orderNumber || order._id?.substring(0, 8)}
               </Dialog.Title>
-              <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

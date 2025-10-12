@@ -10,16 +10,31 @@ import PaymentProofModal from "../../components/admin/orders/PaymentProofModal.j
 import OrderDetailsModal from "../../components/admin/orders/OrderDetailsModal.jsx";
 import RejectionModal from "../../components/admin/orders/RejectionModal.jsx";
 
+/**
+ * OrdersTab component for managing all customer orders in the admin dashboard.
+ * It includes features for searching, sorting, filtering, paginating, and updating orders.
+ * It uses an optimistic UI approach for status updates to provide a responsive user experience.
+ *
+ * @param {object} props - The component props.
+ * @param {boolean} props.isDarkMode - Flag to indicate if dark mode is enabled.
+ * @param {Array<object>} props.orders - The list of all orders fetched from the backend.
+ * @param {function} props.refreshOrders - A function to re-fetch the orders list.
+ */
 const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
-  // ======= LOCAL STATE FOR OPTIMISTIC UPDATES =======
+  /**
+   * Local state for orders to enable optimistic UI updates.
+   * When an order status is changed, this state is updated immediately
+   * before waiting for the API call to complete.
+   */
   const [localOrders, setLocalOrders] = useState(orders);
 
-  // keep in sync with prop
+  // Effect to synchronize local state when the `orders` prop changes.
   useEffect(() => {
     setLocalOrders(orders);
   }, [orders]);
 
   // ======= LOCAL STATES AND ADMIN LOGIC =======
+  // State for UI controls and modals
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -70,6 +85,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     );
 
     setUpdatingOrders(prev => new Set(prev).add(orderId));
+
     try {
       const response = await fetch(`http://localhost:5001/api/v1/orders/${orderId}/status`, {
         method: "PATCH",
@@ -101,12 +117,19 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     }
   };
 
+  /**
+   * Opens the rejection modal for a specific order.
+   * @param {object} order - The order object to be rejected.
+   */
   const handleRejectOrder = (order) => {
     setRejectionOrder(order);
     setRejectionReason("");
     setShowRejectionModal(true);
   };
 
+  /**
+   * Confirms and processes the rejection of an order.
+   */
   const confirmRejection = async () => {
     const token = getAuthToken();
     if (!token) {
@@ -119,7 +142,6 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     }
     const orderId = rejectionOrder._id;
 
-    // Optimistically set status to rejected
     setLocalOrders(prev =>
       prev.map(order =>
         order._id === orderId ? { ...order, status: "rejected", statusMessage: `Order rejected: ${rejectionReason}` } : order
@@ -165,9 +187,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     }
   };
 
-  // ...other action handlers (for brevity, keep those as before, but swap orders for localOrders where needed)
-
-  // ======= SEARCH, FILTER, SORT (use localOrders!) =======
+  // Memoized derivation of orders based on search, filter, and sort configurations.
   const searchedOrders = useMemo(() => {
     if (!localOrders) return [];
     const trimmedQuery = searchQuery.trim();
@@ -191,11 +211,13 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     });
   }, [localOrders, searchQuery]);
 
+  // Filters orders by status.
   const filteredOrders = useMemo(() => {
     if (!statusFilter) return searchedOrders;
     return searchedOrders.filter((order) => order.status?.toLowerCase() === statusFilter.toLowerCase());
   }, [searchedOrders, statusFilter]);
 
+  // Sorts the filtered orders.
   const sortedAndFilteredOrders = useMemo(() => {
     if (!sortConfig.key) return filteredOrders;
     return [...filteredOrders].sort((a, b) => {
@@ -217,12 +239,14 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     });
   }, [filteredOrders, sortConfig]);
 
+  // Paginates the sorted and filtered orders.
   const paginatedOrders = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return sortedAndFilteredOrders.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedAndFilteredOrders, currentPage, itemsPerPage]);
   const totalPages = Math.ceil(sortedAndFilteredOrders.length / itemsPerPage);
 
+  // Effect to update the selected order details in the modal if the order data changes.
   useEffect(() => {
     if (selectedOrder) {
       const updated = localOrders.find((o) => o._id === selectedOrder._id);
@@ -230,6 +254,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     }
   }, [localOrders, selectedOrder]);
 
+  // Configuration for the columns in the orders table.
   const columns = [
     { key: "select", label: "", width: "w-6" },
     { key: "orderNumber", label: "Order ID", width: "w-24" },
@@ -242,7 +267,6 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     { key: null, label: "Actions", width: "w-32" },
   ];
 
-  // -- The rest of your component rendering...
   return (
     <div className="space-y-8">
       <OrdersToolbar

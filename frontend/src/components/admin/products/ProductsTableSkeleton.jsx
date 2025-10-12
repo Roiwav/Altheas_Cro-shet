@@ -1,5 +1,11 @@
 import React from 'react';
 
+/**
+ * Renders a skeleton loading state for the products table.
+ * This provides a visual placeholder while product data is being fetched.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ */
 export default function ProductsTableSkeleton({ isDarkMode }) {
   const row = (
     <tr className={isDarkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}>

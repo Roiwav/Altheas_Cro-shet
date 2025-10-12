@@ -8,11 +8,23 @@ import { useUser } from "../../context/useUser.js";
 import MapImg from "../../assets/images/aboutPage/map.png";
 import HomeBg1 from "../../assets/images/homeBg/HomeBg1.png";
 
-// AboutPage component using forwardRef for scroll behavior
+/**
+ * Renders the "About Us" page, which tells the story and mission of Althea's Cro-shet.
+ * It uses `forwardRef` to allow a parent component to scroll to it.
+ * @param {object} props - The component props.
+ * @param {boolean} [props.noNavbar=false] - If true, the Navbar will not be rendered.
+ * @param {boolean} [props.embedded=false] - If true, adjusts the layout to be embedded within another page.
+ * @param {React.Ref} ref - The forwarded ref to the main div element.
+ */
 const AboutPage = forwardRef(({ noNavbar = false, embedded = false }, ref) => {
   const { user } = useUser();
   return (
-    <div ref={ref} className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 ${embedded ? '' : (user ? 'lg:ml-[var(--sidebar-width,5rem)]' : '')} transition-all duration-300 ease-in-out`}>
+    <div
+      ref={ref}
+      className={`relative z-10 bg-gradient-to-b from-white to-pink-50 dark:from-gray-900 dark:to-gray-800 ${
+        embedded ? '' : user ? 'lg:ml-[var(--sidebar-width,5rem)]' : ''
+      } transition-all duration-300 ease-in-out`}
+    >
       {/* Optional Navbar */}
       {!noNavbar && <Navbar />}
 

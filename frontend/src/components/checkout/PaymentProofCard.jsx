@@ -2,6 +2,14 @@
 import React from 'react';
 import { Camera, Upload, Shield, X } from 'lucide-react';
 
+/**
+ * A card component for uploading and displaying proof of payment during checkout.
+ * @param {object} props - The component props.
+ * @param {string|null} props.paymentProofPreview - The URL or data URI for the payment proof image preview.
+ * @param {File|null} props.paymentProof - The File object of the uploaded payment proof.
+ * @param {function} props.onUpload - Callback function triggered when a file is selected for upload.
+ * @param {function} props.onRemove - Callback function to remove the currently uploaded payment proof.
+ */
 export default function PaymentProofCard({ paymentProofPreview, paymentProof, onUpload, onRemove }) {
   return (
     <div className="overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
@@ -19,6 +27,7 @@ export default function PaymentProofCard({ paymentProofPreview, paymentProof, on
         </div>
       </div>
       <div className="p-6">
+        {/* Renders the upload prompt if no payment proof has been selected yet */}
         {!paymentProofPreview ? (
           <div className="p-8 text-center transition-colors border-2 border-gray-300 border-dashed dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500">
             <input
@@ -48,6 +57,7 @@ export default function PaymentProofCard({ paymentProofPreview, paymentProof, on
             </p>
           </div>
         ) : (
+          /* Renders a preview of the uploaded image */
           <div className="relative">
             <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl">
               <div className="flex items-start gap-4">

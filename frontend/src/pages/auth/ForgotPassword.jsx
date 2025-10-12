@@ -3,11 +3,17 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import useBubbles from '../../hooks/useBubbles';
 import axios from 'axios';
-import emailjs from 'emailjs-com';
+import emailjs from '@emailjs/browser';
 
+// --- Constants ---
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_URL = `${API_BASE_URL}/api/v1/auth`;
 
+/**
+ * Renders the "Forgot Password" page.
+ * This component allows users to enter their email to receive a password reset link.
+ * It communicates with the backend to generate a token and then uses EmailJS to send the email.
+ */
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -19,6 +25,10 @@ const ForgotPassword = () => {
   // Background bubbles effect
   useBubbles('forgot-container', { count: 16, sizeRange: [6, 14], durationRange: [10, 18], opacity: 0.18 });
 
+  /**
+   * Handles the form submission to request a password reset link.
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submission event.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -33,7 +43,7 @@ const ForgotPassword = () => {
     }
 
     try {
-      // Step 1: Request backend to generate reset token
+      // Step 1: Request the backend to generate a secure, short-lived reset token.
       const { data } = await axios.post(`${API_URL}/forgot-password`, { email });
       console.log("Forgot Password API Response:", data);
 
@@ -41,12 +51,12 @@ const ForgotPassword = () => {
         throw new Error(data.message || "Failed to generate reset link.");
       }
 
-      // Append 'from=admin' to the reset link if applicable
+      // Step 2: Construct the full reset link, appending 'from=admin' if the request originated from the admin portal.
       const resetLink = fromAdmin
         ? `${window.location.origin}/reset-password?token=${data.token}&from=admin`
         : `${window.location.origin}/reset-password?token=${data.token}`;
 
-      // Step 2: Prepare EmailJS template parameters
+      // Step 3: Prepare the parameters for the EmailJS template.
       const templateParams = {
         to_email: email.trim(),         // FIX: must match EmailJS recipient variable
         user_name: data.name || "User",
@@ -55,7 +65,7 @@ const ForgotPassword = () => {
 
       console.log("EmailJS Template Params:", templateParams); // Debug
 
-      // Step 3: Send email via EmailJS
+      // Step 4: Send the email using the EmailJS service.
       await emailjs.send(
         import.meta.env.VITE_EMAILJS_SERVICE_ID,
         import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
