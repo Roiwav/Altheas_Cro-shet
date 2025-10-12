@@ -351,6 +351,27 @@ const updateOrderStatus = async (req, res) => {
     console.error("❌ Error updating order:", error);
     res.status(500).json({ message: "Failed to update order" });
   }
+  console.log('🔔 Creating notification for user:', order.userId);
+console.log('📧 Notification data:', {
+  userId: order.userId,
+  title: `Order Status Updated: ${status}`,
+  message: order.statusMessage,
+  type: 'order',
+  orderId: order._id.toString(),
+});
+
+try {
+  const notification = await Notification.create({
+    userId: order.userId,
+    title: `Order Status Updated: ${status}`,
+    message: order.statusMessage || `Your order #${order.orderNumber || order._id.toString().substring(0, 8)} is now ${status}.`,
+    type: 'order',
+    orderId: order._id.toString(),
+  });
+  console.log('✅ Notification created successfully:', notification);
+} catch (notificationError) {
+  console.error('❌ Failed to create notification:', notificationError);
+}
 };
 
 // ✅ Admin: confirm a cancelled product and notify customer - WITH PAYMENT LOGGING
