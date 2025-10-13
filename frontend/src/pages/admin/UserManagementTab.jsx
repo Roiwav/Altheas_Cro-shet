@@ -23,7 +23,7 @@ const StatusBadge = ({ status }) => {
   return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status]}`}>{status}</span>;
 };
 
-export default function UserManagementTab({ isDarkMode }) {
+export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,12 +33,11 @@ export default function UserManagementTab({ isDarkMode }) {
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
-  // ---- MODIFIED: Fetch from real backend ----
+  // Fetch users from backend
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      console.log("UserManagementTab token value:", token);
       if (!token) {
         toast.error('Authentication required');
         setLoading(false);
@@ -73,7 +72,130 @@ export default function UserManagementTab({ isDarkMode }) {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-  // ---- END MODIFIED ---
+
+  // ✅ CALCULATE ORDERS & ITEMS FOR EACH USER
+  useEffect(() => {
+    if (users.length > 0 && orders && orders.length > 0) {
+      setUsers(current =>
+        current.map(user => {
+          if (user.role !== 'Customer') return user;
+          const userOrders = orders.filter(o => o.userId === user.id);
+          const totalOrders = userOrders.length;
+          const itemsBought = userOrders.reduce((sum, o) => {
+            if (!o.products || !Array.isArray(o.products)) return sum;
+            return sum + o.products.reduce((inner, p) => inner + (p.quantity || 1), 0);
+          }, 0);
+          return { ...user, totalOrders, itemsBought };
+        })
+      );
+    }
+  }, [users, orders]);
+
+  // USER MANAGEMENT FUNCTIONS
+  const handleChangeUserRole = async (userId, currentRole) => {
+    const newRole = currentRole === 'Customer' ? 'admin' : 'customer';
+    
+    if (!confirm(`Change user role to ${newRole}?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to change user role');
+      }
+
+      toast.success(`User role changed to ${newRole} successfully`);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Change user role error:', error);
+      toast.error(error.message);
+    }
+  };
+
+  const handleSuspendUser = async (userId, currentStatus) => {
+    const suspend = currentStatus !== 'Suspended';
+    const action = suspend ? 'suspend' : 'unsuspend';
+    
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/suspend`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          suspend, 
+          reason: suspend ? 'Account suspended by admin for policy violation' : null 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to ${action} user`);
+      }
+
+      const responseData = await response.json();
+      toast.success(responseData.message || `User ${action}ed successfully`);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Suspend user error:', error);
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete user');
+      }
+
+      const responseData = await response.json();
+      toast.success(responseData.message || 'User deleted successfully');
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Delete user error:', error);
+      toast.error(error.message);
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
@@ -107,7 +229,7 @@ export default function UserManagementTab({ isDarkMode }) {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedUsers(users.map(user => user.id));
+      setSelectedUsers(users.map(user => user._id));
     } else {
       setSelectedUsers([]);
     }
@@ -136,19 +258,19 @@ export default function UserManagementTab({ isDarkMode }) {
   };
 
   const renderUserCard = (user) => (
-    <div key={user.id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+    <div key={user._id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
         <div className="flex items-start">
           <input
-            id={`checkbox-mobile-${user.id}`}
+            id={`checkbox-mobile-${user._id}`}
             type="checkbox"
-            checked={selectedUsers.includes(user.id)}
-            onChange={() => handleSelectOne(user.id)}
+            checked={selectedUsers.includes(user._id)}
+            onChange={() => handleSelectOne(user._id)}
             className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-          <img className="w-12 h-12 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
+          <img className="w-12 h-12 rounded-full" src={user.avatar || 'https://via.placeholder.com/48'} alt={`${user.name} avatar`} />
           <div className="ml-3">
-            <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name}</p>
+            <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name || user.fullName}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
           </div>
         </div>
@@ -167,13 +289,37 @@ export default function UserManagementTab({ isDarkMode }) {
             <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
               <div className="py-1">
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}> <Shield className="w-4 h-4 mr-3" /> Change Role </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleChangeUserRole(user._id, user.role)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
+                    >
+                      <Shield className="w-4 h-4 mr-3" />
+                      Change to {user.role === "Customer" ? "Admin" : "Customer"}
+                    </button>
+                  )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}> <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleSuspendUser(user._id, user.status)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
+                    >
+                      <ShieldOff className="w-4 h-4 mr-3" />
+                      {user.status === "Suspended" ? "Unsuspend" : "Suspend"} Account
+                    </button>
+                  )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}> <Trash2 className="w-4 h-4 mr-3" /> Delete Account </a> )}
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleDeleteUser(user._id)}
+                      className={`${active ? "bg-gray-100 dark:bg-gray-700" : ""} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-3" />
+                      Delete Account
+                    </button>
+                  )}
                 </Menu.Item>
               </div>
             </Menu.Items>
@@ -200,7 +346,7 @@ export default function UserManagementTab({ isDarkMode }) {
             <Calendar className="w-4 h-4 mr-2 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Joined</p>
-              <p className="font-medium">{new Date(user.joinedDate).toLocaleDateString()}</p>
+              <p className="font-medium">{new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</p>
             </div>
           </div>
         </div>
@@ -212,14 +358,14 @@ export default function UserManagementTab({ isDarkMode }) {
                 <ShoppingBag className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Items Bought</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.itemsBought}</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.itemsBought || 0}</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <Package className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Total Orders</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.totalOrders}</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.totalOrders || 0}</p>
                 </div>
               </div>
             </div>
@@ -314,15 +460,15 @@ export default function UserManagementTab({ isDarkMode }) {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => (
-                <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                <tr key={user._id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                   <td className="w-4 p-4">
                     <div className="flex items-center">
-                      <input id={`checkbox-${user.id}`} type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => handleSelectOne(user.id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
-                      <label htmlFor={`checkbox-${user.id}`} className="sr-only">checkbox</label>
+                      <input id={`checkbox-${user._id}`} type="checkbox" checked={selectedUsers.includes(user._id)} onChange={() => handleSelectOne(user._id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                      <label htmlFor={`checkbox-${user._id}`} className="sr-only">checkbox</label>
                     </div>
                   </td>
                   <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                    <img className="w-10 h-10 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
+                    <img className="w-10 h-10 rounded-full" src={user.avatar || 'https://via.placeholder.com/40'} alt={`${user.name} avatar`} />
                     <div className="pl-3">
                       <div className="text-base font-semibold">{user.name || user.fullName}</div>
                       <div className="font-normal text-gray-500">{user.email}</div>
@@ -330,11 +476,11 @@ export default function UserManagementTab({ isDarkMode }) {
                         <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center">
                             <ShoppingBag className="w-3 h-3 mr-1.5" />
-                            <span>{user.itemsBought} items</span>
+                            <span>{user.itemsBought || 0} items</span>
                           </div>
                           <div className="flex items-center">
                             <Package className="w-3 h-3 mr-1.5" />
-                            <span>{user.totalOrders} orders</span>
+                            <span>{user.totalOrders || 0} orders</span>
                           </div>
                         </div>
                       )}
@@ -342,7 +488,7 @@ export default function UserManagementTab({ isDarkMode }) {
                   </th>
                   <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
                   <td className="px-6 py-4"><StatusBadge status={user.status} /></td>
-                  <td className="px-6 py-4">{new Date(user.joinedDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">{new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right">
                     <Menu as="div" className="relative inline-block text-left">
                       <Menu.Button className="inline-flex justify-center w-full p-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
@@ -360,23 +506,35 @@ export default function UserManagementTab({ isDarkMode }) {
                           <div className="py-1">
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}>
-                                  <Shield className="w-4 h-4 mr-3" /> Change Role
-                                </a>
+                                <button 
+                                  onClick={() => handleChangeUserRole(user._id, user.role)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 w-full text-left`}
+                                >
+                                  <Shield className="w-4 h-4 mr-3" /> 
+                                  Change to {user.role === 'Customer' ? 'Admin' : 'Customer'}
+                                </button>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
-                                  <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
-                                </a>
+                                <button 
+                                  onClick={() => handleSuspendUser(user._id, user.status)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 w-full text-left`}
+                                >
+                                  <ShieldOff className="w-4 h-4 mr-3" /> 
+                                  {user.status === 'Suspended' ? 'Unsuspend' : 'Suspend'} Account
+                                </button>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
-                                  <Trash2 className="w-4 h-4 mr-3" /> Delete Account
-                                </a>
+                                <button 
+                                  onClick={() => handleDeleteUser(user._id)}
+                                  className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 w-full text-left`}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-3" /> 
+                                  Delete Account
+                                </button>
                               )}
                             </Menu.Item>
                           </div>

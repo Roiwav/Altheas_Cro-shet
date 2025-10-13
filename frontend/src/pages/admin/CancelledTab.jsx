@@ -18,7 +18,7 @@ function formatDate(date) {
   }
 }
 
-export default function CancelledTab({ isDarkMode }) {
+export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Added refreshOrders prop
   const { user, authToken } = useUser();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,6 +135,10 @@ export default function CancelledTab({ isDarkMode }) {
       if (!res.ok) throw new Error(data.message || 'Failed to mark as done');
       toast.success('Marked as done');
       await refetch();
+      // ✅ REFRESH PARENT ORDERS for live metrics update
+      if (refreshOrders) {
+        await refreshOrders();
+      }
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Failed to mark as done');
@@ -186,6 +190,10 @@ export default function CancelledTab({ isDarkMode }) {
       setConfirmOpen(false);
       setConfirmItem(null);
       await refetch();
+      // ✅ REFRESH PARENT ORDERS for live metrics update
+      if (refreshOrders) {
+        await refreshOrders();
+      }
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Failed to confirm cancellation');

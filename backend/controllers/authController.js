@@ -38,18 +38,19 @@ exports.registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role: "customer",
+      status: "Active"
     });
 
     // LOG USER ACTION: User registered an account
     await createLog(
-      'User Action',
+      "User Action",
       user.username || user.email || user._id.toString(),
       user._id.toString(),
-      'User registered an account',
-      'Success'
+      "User registered an account",
+      "Success"
     );
 
-    // Create JWT with role and user info
+    // Create JWT
     const token = jwt.sign(
       {
         id: user._id,
@@ -69,8 +70,9 @@ exports.registerUser = async (req, res) => {
         fullName: user.fullName,
         username: user.username,
         email: user.email,
-        role: user.role
-      },
+        role: user.role,
+        status: user.status
+      }
     });
   } catch (error) {
     console.error("❌ Registration error:", error);
@@ -78,9 +80,8 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-
 // =======================
-// Login User
+// Login User - FIXED
 // =======================
 exports.loginUser = async (req, res) => {
   try {
@@ -91,10 +92,30 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Find user
+    // FIXED: Find user but don't filter by deletedAt in the query
+    // We want to find the user first, then check their status
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // FIXED: Check if user is deleted FIRST
+    if (user.deletedAt) {
+      console.log(`🚫 Deleted user attempted login: ${user.email} (deleted at: ${user.deletedAt})`);
+      return res.status(403).json({
+        message: "Your account has been deleted. Please contact support if you believe this is an error.",
+        deleted: true
+      });
+    }
+
+    // FIXED: Check if user is suspended SECOND
+    if (user.status === "Suspended") {
+      console.log(`🚫 Suspended user attempted login: ${user.email} (status: ${user.status})`);
+      return res.status(403).json({
+        message: `Your account is suspended. ${user.suspensionReason || "Contact support for more information."}`,
+        suspended: true,
+        suspensionReason: user.suspensionReason
+      });
     }
 
     // Check password
@@ -104,15 +125,19 @@ exports.loginUser = async (req, res) => {
     }
 
     // LOG USER ACTION: User logged in
-    await createLog(
-      'User Action',
-      user.username || user.email || user._id.toString(),
-      user._id.toString(),
-      'User logged in',
-      'Success'
-    );
+    try {
+      await createLog(
+        "User Action",
+        user.username || user.email || user._id.toString(),
+        user._id.toString(),
+        "User logged in successfully",
+        "Success"
+      );
+    } catch (logError) {
+      console.error("Failed to log user login:", logError);
+    }
 
-    // Create JWT with role and user info
+    // Create JWT
     const token = jwt.sign(
       {
         id: user._id,
@@ -124,6 +149,8 @@ exports.loginUser = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    console.log(`✅ User logged in successfully: ${user.email}`);
+
     return res.json({
       message: "Login successful",
       token,
@@ -132,8 +159,9 @@ exports.loginUser = async (req, res) => {
         fullName: user.fullName,
         username: user.username,
         email: user.email,
-        role: user.role
-      },
+        role: user.role,
+        status: user.status
+      }
     });
   } catch (error) {
     console.error("❌ Login error:", error);
@@ -142,10 +170,8 @@ exports.loginUser = async (req, res) => {
 };
 
 // =======================
-// (Other auth functions...)
+// Logout User
 // =======================
-
-
 exports.logoutUser = (req, res) => {
   return res.json({ message: "Logout successful" });
 };
