@@ -1,15 +1,30 @@
 // server.js
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv"); 
 const path = require("path");
 const logRoutes = require("./routes/logRoutes");
+const session = require('express-session');
+const passport = require('passport');
+const MongoStore = require('connect-mongo');
+const connectDB = require('./config/db'); // Import the DB connection function
 
 // 🟢 Load environment variables
 dotenv.config();
-const session = require('express-session');
-const passport = require('passport');
+
+// 🟢 Check for all required environment variables on startup
+const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'FRONTEND_URL'];
+const missingEnv = requiredEnv.filter(envVar => !process.env[envVar]);
+if (missingEnv.length > 0) {
+  console.error(`❌ FATAL ERROR: Missing required environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
+
+// 🟢 Connect to Database right away
+connectDB().then(async () => {
+  console.log("✅ MongoDB Connected");
+  await ensureAdmin();
+});
 
 // 🟢 Import routes
 const cartRoutes = require("./routes/cartRoutes.js");
@@ -20,7 +35,6 @@ const notificationRoutes = require("./routes/notificationRoutes.js");
 const testimonialRoutes = require("./testimonialRoutes.js");
 const productRoutes = require("./routes/productRoutes.js");
 const User = require("./models/User");
-
 const app = express();
 
 // Seeder: ensure a default admin account exists
@@ -77,7 +91,10 @@ app.use(express.json({ limit: "10mb" }));
 
 // 3️⃣ Session configuration
 app.use(session({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.SESSION_SECRET, // Use a dedicated session secret
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI 
+  }),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -176,29 +193,18 @@ app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/testimonials", testimonialRoutes);
 
-// 🟢 Serve uploaded images (proof of payment, etc.)
+// 🟢 Serve all uploaded images from a single static path
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/uploads/products", express.static(path.join(__dirname, "uploads", "products")));
-app.use("/uploads/proofs", express.static(path.join(__dirname, "uploads", "proofs")));
-app.use('/uploads', express.static('uploads'));
 
-// 🟢 Check for MongoDB URI
-if (!process.env.MONGO_URI) {
-  console.error("❌ FATAL ERROR: MONGO_URI is not defined in .env file");
-  process.exit(1);
-}
-
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useUnifiedTopology: true,
-  })
-  .then(async () => {
-    console.log("✅ MongoDB Connected");
-    await ensureAdmin();
-  })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+// 🟢 Basic Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
 
 // 🟢 Start the server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+// Export the app for Vercel
+module.exports = app;
