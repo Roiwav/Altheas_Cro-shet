@@ -60,6 +60,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
   const [cartCounts, setCartCounts] = useState({});
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const getUserStatus = useCallback((user) => {
     if (user && user.suspendedUntil) {
@@ -129,11 +130,17 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   
 
   const filteredUsers = useMemo(() => {
-    return users.filter(user =>
-      (user.name || user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    const q = searchQuery.toLowerCase();
+    const list = users.filter(user =>
+      (user.name || user.fullName || '').toLowerCase().includes(q) ||
+      user.email.toLowerCase().includes(q)
     );
-  }, [users, searchQuery]);
+    if (statusFilter === 'all') return list;
+    return list.filter((u) => {
+      const s = getUserStatus(u);
+      return statusFilter === 'active' ? s === 'Active' : s === 'Suspended';
+    });
+  }, [users, searchQuery, statusFilter, getUserStatus]);
 
   const sortedUsers = useMemo(() => {
     const sortableUsers = [...filteredUsers];
@@ -427,10 +434,18 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         </div>
         <div className="flex flex-col items-stretch justify-end flex-shrink-0 w-full space-y-2 md:w-auto md:flex-row md:space-y-0 md:items-center md:space-x-3">
           <div className="flex items-center w-full space-x-3 md:w-auto">
-            <button className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg md:w-auto focus:outline-none hover:bg-gray-100 hover:text-pink-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </button>
+            <div className="relative w-full md:w-auto">
+              <Filter className="w-4 h-4 absolute left-3 top-2.5 text-gray-500 dark:text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                className="block w-full md:w-48 pl-9 pr-8 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-pink-500 dark:focus:border-pink-500"
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
             {selectedUsers.length > 0 && (
               <button className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-700 bg-white border border-gray-200 rounded-lg md:w-auto focus:outline-none hover:bg-gray-100 hover:text-red-900 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-red-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
                 <Trash2 className="w-4 h-4 mr-2" />
