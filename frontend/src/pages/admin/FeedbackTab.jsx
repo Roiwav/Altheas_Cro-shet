@@ -38,7 +38,7 @@ const FeedbackTab = ({ isDarkMode }) => {
   const handleApprovalToggle = async (feedbackId, currentStatus) => {
     const newStatus = !currentStatus;
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/testimonials/${feedbackId}/approve`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/testimonials/${feedbackId}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isApproved: newStatus }),
@@ -66,7 +66,7 @@ const FeedbackTab = ({ isDarkMode }) => {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/testimonials/${feedbackId}`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/testimonials/${feedbackId}`, {
         method: 'DELETE',
       });
 
@@ -112,7 +112,7 @@ const FeedbackTab = ({ isDarkMode }) => {
     }
 
     const approvalPromises = feedbacksToApprove.map(f =>
-      fetch(`http://localhost:5001/api/v1/testimonials/${f._id}/approve`, {
+      fetch(`https://altheascroshetbackend.vercel.app/api/v1/testimonials/${f._id}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isApproved: true }),
