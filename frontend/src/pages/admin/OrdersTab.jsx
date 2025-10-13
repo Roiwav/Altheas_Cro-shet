@@ -90,7 +90,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     setUpdatingOrders(prev => new Set(prev).add(orderId));
 
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/orders/${orderId}/status`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -154,7 +154,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     setUpdatingOrders(prev => new Set(prev).add(orderId));
 
     try {
-      const response = await fetch(`http://localhost:5001/api/v1/orders/${orderId}/status`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/orders/${orderId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -365,7 +365,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
               </button>
             </div>
             {pendingOrdersTop.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No pending orders</div>
+              <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">No pending orders</div>
             ) : (
               <div className="overflow-x-hidden">
                 <table className="w-full text-xs">
@@ -428,7 +428,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
               </button>
             </div>
             {processingOrdersTop.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No processing orders</div>
+              <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">No processing orders</div>
             ) : (
               <div className="overflow-x-hidden">
                 <table className="w-full text-xs">
@@ -485,7 +485,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
               </button>
             </div>
             {shippedOrdersTop.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No shipped orders</div>
+              <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">No shipped orders</div>
             ) : (
               <div className="overflow-x-hidden">
                 <table className="w-full text-xs">
@@ -542,7 +542,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
               </button>
             </div>
             {deliveredOrdersTop.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No delivered orders</div>
+              <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">No delivered orders</div>
             ) : (
               <div className="overflow-x-hidden">
                 <table className="w-full text-xs">
@@ -643,7 +643,7 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
                   <option value={50}>50</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1 self-end md:self-auto">
+              <div className="flex items-center self-end gap-1 md:self-auto">
                 <button
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}

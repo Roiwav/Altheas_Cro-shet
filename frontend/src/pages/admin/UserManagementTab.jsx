@@ -80,7 +80,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         setLoading(false);
         return;
       }
-      const response = await fetch(`${SERVER_BASE_URL}/api/v1/users`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -258,7 +258,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       if (input === null) return; // cancelled
       const days = parseInt(input, 10);
       if (Number.isNaN(days) || days < 0) return toast.error('Please enter a valid non-negative number');
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}/suspend`, {
+      const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}/suspend`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -439,7 +439,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
               <select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                className="block w-full md:w-48 pl-9 pr-8 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-pink-500 dark:focus:border-pink-500"
+                className="block w-full py-2 pr-8 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg md:w-48 pl-9 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-pink-500 dark:focus:border-pink-500"
               >
                 <option value="all">All statuses</option>
                 <option value="active">Active</option>
