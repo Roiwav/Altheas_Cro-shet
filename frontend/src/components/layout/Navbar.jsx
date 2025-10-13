@@ -158,7 +158,7 @@ export default function Navbar({
                   )}
                 </button>
                 {isNotifOpen && (
-                  <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] bg-white rounded-md shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                  <div className="absolute right-0 sm:right-0 z-50 mt-2 w-screen sm:w-80 max-w-[95vw] sm:max-w-sm bg-white rounded-md shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                     <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Notifications</span>
                       <div className="flex items-center gap-3">
@@ -173,12 +173,12 @@ export default function Navbar({
                         )}
                       </div>
                     </div>
-                    <div className="max-h-80 overflow-y-auto">
+                    <div className="overflow-y-auto max-h-80">
                       {(notifications || []).slice(0, 10).map((n) => (
-                        <div key={n._id} className="px-3 py-2 flex items-start gap-2 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <div key={n._id} className="flex items-start gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <div className={`mt-1 w-2 h-2 rounded-full ${n.read ? 'bg-gray-300 dark:bg-gray-600' : 'bg-pink-500'}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{n.title}</p>
+                            <p className="text-xs font-semibold text-gray-900 truncate dark:text-gray-100">{n.title}</p>
                             <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{n.message}</p>
                             <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
                           </div>
@@ -188,7 +188,7 @@ export default function Navbar({
                         </div>
                       ))}
                       {(!notifications || notifications.length === 0) && (
-                        <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No notifications</div>
+                        <div className="px-3 py-4 text-sm text-center text-gray-500 dark:text-gray-400">No notifications</div>
                       )}
                     </div>
                   </div>
