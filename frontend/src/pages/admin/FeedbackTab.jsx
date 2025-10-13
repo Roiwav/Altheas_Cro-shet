@@ -18,7 +18,7 @@ const FeedbackTab = ({ isDarkMode }) => {
     try {
       setLoading(true);
       // Fetch all feedbacks, including unapproved ones
-      const response = await fetch('http://localhost:5001/api/v1/testimonials/all');
+      const response = await fetch('https://altheascroshetbackend.vercel.app/api/v1/testimonials/all');
       if (!response.ok) {
         throw new Error('Failed to fetch feedback');
       }
@@ -344,7 +344,7 @@ const FeedbackTab = ({ isDarkMode }) => {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Customer Feedback</h2>
         {selectedFeedbacks.length > 0 && (
           <button

@@ -60,7 +60,7 @@ const LogsTab = () => {
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
       params.append('limit', 100); // allow plenty
 
-      const response = await fetch(`http://localhost:5001/api/v1/logs/all?${params}`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/logs/all?${params}`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       if (!response.ok) throw new Error('Failed to fetch activity logs');
