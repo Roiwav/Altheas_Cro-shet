@@ -1,17 +1,15 @@
+// vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-// Get the directory name in ES module
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    alias: { '@': path.resolve(__dirname, './src') },
     extensions: ['.js', '.jsx', '.json'],
   },
   server: {
@@ -23,9 +21,9 @@ export default defineConfig({
         target: 'http://localhost:5001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
+        rewrite: (p) => p.replace(/^\/api/, ''),
+      },
+    },
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'three', '@react-three/fiber', '@react-three/drei'],
@@ -34,6 +32,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true
-  }
+    sourcemap: true,
+  },
 });
