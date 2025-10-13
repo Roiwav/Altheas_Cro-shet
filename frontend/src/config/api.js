@@ -1,5 +1,5 @@
 // Base URL for API requests
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://altheascroshetbackend.vercel.app/api/v1';
 
   // Helper function to make API requests
   export const apiRequest = async (endpoint, options = {}) => {
