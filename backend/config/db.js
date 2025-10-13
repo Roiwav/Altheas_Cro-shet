@@ -1,21 +1,21 @@
+// config/db.js
 const mongoose = require('mongoose');
 
-const connectDB = async () => {
-  try {
-    if (!process.env.MONGO_URI) {
-      console.error('❌ FATAL ERROR: MONGO_URI is not defined in .env file');
-      process.exit(1);
-    }
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+let cached = global.__mongoose;
+if (!cached) {
+  cached = global.__mongoose = { conn: null, promise: null };
+}
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+  if (!process.env.MONGO_URI) {
+    throw new Error('MONGO_URI is not defined');
   }
-};
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.MONGO_URI).then((m) => m);
+  }
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
 
 module.exports = connectDB;
