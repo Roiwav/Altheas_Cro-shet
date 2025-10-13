@@ -31,6 +31,19 @@ export const getProductImageSrc = (image) => {
     if (val.startsWith('/uploads')) return `${SERVER_BASE_URL}${val}`;
     if (val.startsWith('uploads/')) return `${SERVER_BASE_URL}/${val}`;
 
+    // Ignore local dev asset paths (not resolvable at runtime)
+    const lower = val.toLowerCase();
+    if (
+      lower.startsWith('src/') ||
+      lower.includes('/src/') ||
+      lower.startsWith('assets/') ||
+      lower.includes('/assets/') ||
+      lower.startsWith('public/') ||
+      lower.includes('/public/')
+    ) {
+      return PLACEHOLDER_PRODUCT;
+    }
+
     // Treat as Cloudinary public_id if cloud name is available
     if (CLOUDINARY_CLOUD_NAME) {
       const publicId = val.replace(/^\//, '');

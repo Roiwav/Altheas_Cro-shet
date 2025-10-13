@@ -42,7 +42,7 @@ const parseUserParam = (raw) => {
  * @component
  */
 const OAuthCallback = () => {
-  const { login } = useUser();
+  const { login, fetchUserData } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   // Ref to prevent the effect from running twice in React's Strict Mode.
@@ -91,6 +91,8 @@ const OAuthCallback = () => {
 
         // Update the auth context
         await login(parsed, token, { isOAuth: true });
+        // Immediately hydrate from API to ensure avatar/name are complete
+        await fetchUserData(token);
         
         // Show success message once
         toast.success('Successfully logged in with Google!', { toastId: 'oauth-success' });
@@ -140,7 +142,7 @@ const OAuthCallback = () => {
     };
 
     handleOAuthCallback();
-  }, [location.search, error, login, navigate, redirect, token, userData]);
+  }, [location.search, error, login, fetchUserData, navigate, redirect, token, userData]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">

@@ -1,10 +1,9 @@
 // src/pages/auth/SignupPage.jsx (ALTERNATIVE - no auto-login, redirect to login with preserved state)
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Loader2, User, Mail, Lock, X } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { useUser } from "../../context/useUser";
 import useBubbles from "../../hooks/useBubbles";
 
 // Axios defaults
@@ -21,9 +20,8 @@ const API_URL = `${API_BASE_URL}/api/v1/auth`;
 export default function SignUpPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useUser();
 
-  // ✅ Get navigation state (cart info from shop/cart pages)
+  // Get navigation state (cart info from shop/cart pages)
   const fromCart = location.state?.from?.includes('cart') || false;
   const fromShop = location.state?.from?.includes('shop') || false;
   const cartData = location.state?.cartItems || null;
@@ -91,7 +89,7 @@ export default function SignUpPage() {
       }
 
       // Log context for debugging cart preservation.
-      console.log("🔧 Signing up user with cart context:", { 
+      console.log(" Signing up user with cart context:", { 
         fromCart, 
         fromShop, 
         hasCartData: !!cartData, 
@@ -126,7 +124,7 @@ export default function SignUpPage() {
         };
         
         sessionStorage.setItem('signup-cart-state', JSON.stringify(cartStateToPreserve));
-        console.log("💾 Cart state preserved in sessionStorage for login");
+        console.log(" Cart state preserved in sessionStorage for login");
       }
 
       // Redirect to the login page, passing along state to pre-fill email and show a success message.
@@ -172,12 +170,14 @@ export default function SignUpPage() {
     window.location.href = `${API_BASE_URL}/auth/${provider}`;
   };
 
-  useBubbles("signup-container", {
+  const bubbleOptions = useMemo(() => ({
     count: 20,
     sizeRange: [6, 16],
     durationRange: [10, 20],
     opacity: 0.18,
-  });
+  }), []);
+
+  useBubbles("signup-container", bubbleOptions);
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

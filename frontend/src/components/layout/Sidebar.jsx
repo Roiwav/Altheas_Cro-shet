@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -19,6 +19,28 @@ import {
 } from "lucide-react";
 import { useDarkMode } from "../../context/useDarkMode.js";
 import { useUser } from "../../context/useUser.js";
+
+function getInitialsFromUser(user) {
+  const raw = (user?.fullName || user?.name || user?.displayName || user?.username || user?.email || "").trim();
+  if (!raw) return "?";
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  const token = parts[0];
+  if (token.includes("@")) return token.split("@")[0].slice(0, 2).toUpperCase();
+  return token.slice(0, 2).toUpperCase();
+}
+
+function bgClassForKey(key) {
+  const palette = [
+    "bg-pink-600","bg-blue-600","bg-green-600","bg-indigo-600","bg-orange-600",
+    "bg-purple-600","bg-teal-600","bg-rose-600","bg-amber-600","bg-sky-600"
+  ];
+  const s = String(key || "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+  const idx = Math.abs(hash) % palette.length;
+  return palette[idx];
+}
 
 /**
  * Renders the main application sidebar.
@@ -65,11 +87,7 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     }
   }, [isHovered]);
 
-  const [avatar, setAvatar] = useState(user?.avatar || null);
-
-  useEffect(() => {
-    setAvatar(user?.avatar || null);
-  }, [user]);
+  
 
   /**
    * Navigates to the settings page or prompts login if not authenticated.
@@ -93,7 +111,6 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
-      setAvatar(reader.result);
       updateUser({ avatar: reader.result });
     };
     reader.readAsDataURL(file);
@@ -176,12 +193,31 @@ export default function Sidebar({ isOpen, setIsOpen, isHovered, setIsHovered, sc
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             {user ? (
               <div className="flex items-center space-x-3">
-                <img
-                  src={avatar || defaultAvatar}
-                  alt="User Avatar"
-                  className="object-cover w-10 h-10 rounded-full cursor-pointer"
-                  onClick={handleAvatarClick}
-                />
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="User Avatar"
+                    className="object-cover w-10 h-10 rounded-full cursor-pointer"
+                    onClick={handleAvatarClick}
+                  />
+                ) : (
+                  getInitialsFromUser(user) === '?' ? (
+                    <img
+                      src={defaultAvatar}
+                      alt="User Avatar"
+                      className="object-cover w-10 h-10 rounded-full cursor-pointer"
+                      onClick={handleAvatarClick}
+                    />
+                  ) : (
+                    <div
+                      onClick={handleAvatarClick}
+                      className={`${bgClassForKey(user?.email || user?.username || user?.fullName)} w-10 h-10 rounded-full cursor-pointer flex items-center justify-center text-white font-semibold`}
+                      aria-label="User Avatar"
+                    >
+                      {getInitialsFromUser(user)}
+                    </div>
+                  )
+                )}
                 <span
                   className={`text-lg font-semibold text-gray-800 dark:text-gray-200 ${(isHovered || sidebarOpen) ? "block" : "hidden"}`}
                 >

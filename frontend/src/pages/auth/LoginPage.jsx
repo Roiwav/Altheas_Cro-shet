@@ -22,7 +22,7 @@ const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
  * @component
  */
 export default function LoginPage() {
-  const { login } = useUser();
+  const { login, fetchUserData } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -63,6 +63,7 @@ export default function LoginPage() {
 
         // Call the login function from UserContext with isOAuth flag
         await login(parsedUser, token, { isOAuth: true });
+        await fetchUserData(token);
 
         // Clean up the URL by removing the token and user data
         const cleanUrl = window.location.origin + window.location.pathname;
@@ -80,7 +81,7 @@ export default function LoginPage() {
         toast.error("Failed to process login. Please try again.", { toastId: "oauth-error" });
       }
     }
-  }, [login, navigate, from, searchParams]);
+  }, [login, fetchUserData, navigate, from, searchParams]);
   
   /**
    * Effect to handle OAuth redirects on component mount.

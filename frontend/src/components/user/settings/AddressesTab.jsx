@@ -7,7 +7,7 @@ import {
 import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
 import { SERVER_BASE_URL } from "../../../utils/product.js";
- 
+
 // Shipping cities/regions list
 const regions = {
   "Inside Calamba": ["Calamba", "Calamba City"],
@@ -22,13 +22,6 @@ const cityToRegionMap = {};
 Object.entries(regions).forEach(([region, arr]) => arr.forEach(c => { cityToRegionMap[c] = region; }));
 
 export default function AddressesTab({ onSelectAddress, isSelectMode = false }) {
-  /**
-   * A tab component for managing user shipping addresses.
-   * It allows adding, editing, deleting, and setting a default address.
-   * @param {object} props - The component props.
-   * @param {function} [props.onSelectAddress] - Callback when an address is selected (in select mode).
-   * @param {boolean} [props.isSelectMode=false] - Enables a selection mode, often used in a checkout process.
-   */
   const { user, token, updateUser } = useUser();
   const [addresses, setAddresses] = useState([]);
   const [addressesPassword, setAddressesPassword] = useState("");
@@ -54,9 +47,6 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
     }
   }, [user]);
 
-  /**
-   * Adds a new, empty address object to the state to be edited.
-   */
   const addAddress = () => {
     try {
       const id = crypto.randomUUID?.() || String(Date.now());
@@ -80,28 +70,17 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
     }
   };
 
-  /**
-   * Updates a specific field of an address in the local state.
-   * @param {string} id - The ID of the address to update.
-   * @param {string} field - The field to update (e.g., 'line1', 'city').
-   * @param {string} value - The new value for the field.
-   */
   const updateAddress = (id, field, value) => {
     setAddresses((arr) => arr.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
   };
 
-  /**
-   * Handles changes to the city dropdown, automatically updating the state/province.
-   * @param {string} addressId - The ID of the address being changed.
-   * @param {string} newCity - The new city selected.
-   */
   const handleCityChange = (addressId, newCity) => {
     const newRegion = cityToRegionMap[newCity] || "";
     setAddresses((arr) =>
       arr.map((a) => (a.id === addressId ? { ...a, city: newCity, state: newRegion } : a))
     );
   };
-  
+
   const removeAddress = (id) => {
     let newAddresses = addresses.filter((a) => a.id !== id);
     if (newAddresses.length > 0) {
@@ -121,17 +100,10 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
     toast.info('Address removed. Click "Save addresses" to make it permanent.');
   };
 
-  /**
-   * Sets a specific address as the default address.
-   * @param {string} id - The ID of the address to set as default.
-   */
   const setDefaultAddress = (id) => {
     setAddresses((arr) => arr.map((a) => ({ ...a, isDefault: a.id === id })));
   };
 
-  /**
-   * Validates and saves all current addresses to the backend.
-   */
   const saveAddresses = async () => {
     if (!addressesPassword) {
       toast.error("Please enter your account password to save changes.");
@@ -203,9 +175,6 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
     }
   };
 
-  /**
-   * Memoized and sorted list of addresses, with the default address always first.
-   */
   const sortedAddresses = useMemo(() => {
     if (!Array.isArray(addresses)) return [];
     return [...addresses].sort((a, b) => {
