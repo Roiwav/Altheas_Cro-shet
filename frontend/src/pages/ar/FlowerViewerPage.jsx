@@ -144,7 +144,6 @@ const FlowerViewerPage = () => {
     console.log('[DEBUG handleAddToCart productToAdd]', productToAdd);
     try {
       await addToCart(productToAdd);
-      toast.success("Added to cart!");
     } catch (error) {
       toast.error("Failed to add item to cart.");
       console.error("Add to cart error:", error);

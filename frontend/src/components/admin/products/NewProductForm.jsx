@@ -45,7 +45,7 @@ export default function NewProductForm({
     <div className={`relative p-6 mb-8 rounded-xl shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
       {submitting && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-xl">
-          <div className="flex items-center px-4 py-2 text-white bg-gray-900/80 rounded-md shadow">
+          <div className="flex items-center px-4 py-2 text-white rounded-md shadow bg-gray-900/80">
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
             Saving...
           </div>
@@ -207,7 +207,7 @@ export default function NewProductForm({
           </div>
           <div>
             <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Badges</label>
-            <div className="mt-2 flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 mt-2">
               <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -264,22 +264,6 @@ export default function NewProductForm({
                 required
                 min="0"
                 step="0.01"
-                className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label htmlFor="quantity" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Quantity Available
-              </label>
-              <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={addProductFormData.quantity || ''}
-                onChange={onAddFormChange}
-                onKeyDown={blockInvalidNumberInput}
-                required
-                min="0"
                 className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
               />
             </div>

@@ -45,9 +45,16 @@ export default function SignUpPage() {
    * @param {React.ChangeEvent<HTMLInputElement>} e - The input change event.
    */
   const handleChange = (e) => {
-    const { name, value } = e.target;
+  const { name, value } = e.target;
+
+  if (name === "fullName") {
+    // Allow only letters and spaces
+    const filtered = value.replace(/[^A-Za-z ]+/g, "");
+    setFormData((prev) => ({ ...prev, fullName: filtered }));
+  } else {
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }
+};
 
   const validateForm = () => {
     const { fullName, username, email, password, confirmPassword } = formData;
