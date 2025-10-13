@@ -160,7 +160,7 @@ const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
     formData.append("image", newImage);
 
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`, {
+      const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/products`, {
     method: 'POST',
         body: formData,
       });
@@ -227,7 +227,7 @@ const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
     }
 
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products/${editingProduct._id}`, {
+      const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/products/${editingProduct._id}`, {
         method: 'PUT',
         body: formData,
       });
@@ -299,7 +299,7 @@ const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Manage Products</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-2">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>Total: {totalCount}</span>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`}>Featured: {featuredCount}</span>
           </div>
@@ -393,7 +393,7 @@ const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
                 <Dialog.Panel className={`relative w-full max-w-2xl transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                   {isEditingSubmitting && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30">
-                      <div className="flex items-center px-4 py-2 text-white bg-gray-900/80 rounded-md shadow">
+                      <div className="flex items-center px-4 py-2 text-white rounded-md shadow bg-gray-900/80">
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         Saving...
                       </div>
@@ -437,7 +437,7 @@ const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Badges</label>
-                      <div className="mt-2 flex flex-wrap gap-4">
+                      <div className="flex flex-wrap gap-4 mt-2">
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"

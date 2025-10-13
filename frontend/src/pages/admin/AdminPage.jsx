@@ -91,7 +91,7 @@ export default function AdminPage() {
   const refreshOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
+      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/orders`, {
         method: "GET",
         credentials: "include",
         headers: {
@@ -254,7 +254,7 @@ export default function AdminPage() {
         </div>
 
         
-        <div className="p-6 bg-white shadow rounded-xl dark:bg-gray-800 mt-8">
+        <div className="p-6 mt-8 bg-white shadow rounded-xl dark:bg-gray-800">
           <h3 className={`mb-2 text-lg font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-900"}`}>Revenue Per Day</h3>
           <table className="min-w-full">
             <thead>

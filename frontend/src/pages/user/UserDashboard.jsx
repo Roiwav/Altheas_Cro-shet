@@ -45,7 +45,7 @@ function UserDashboard() {
         return;
       }
       try {
-        const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders/myorders`, {
+        const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/orders/myorders`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -105,8 +105,8 @@ function UserDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-        <Loader2 className="w-12 h-12 text-pink-600 dark:text-pink-400 animate-spin mb-4" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="w-12 h-12 mb-4 text-pink-600 dark:text-pink-400 animate-spin" />
         <p className="text-gray-600 dark:text-gray-400">Loading your dashboard...</p>
       </div>
     );
@@ -114,9 +114,9 @@ function UserDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <XCircle className="w-12 h-12 mx-auto text-red-500" />
           <h3 className="mt-4 text-lg font-medium text-red-800 dark:text-red-200">
             Could not load dashboard data
           </h3>
@@ -124,7 +124,7 @@ function UserDashboard() {
           <div className="mt-4">
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               Try Again
             </button>
@@ -136,9 +136,9 @@ function UserDashboard() {
 
   return (
     <div className="min-h-screen pt-20 sm:pt-24 p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 lg:pl-[calc(var(--sidebar-width,5rem)+1.5rem)] transition-[padding-left] duration-300 ease-in-out">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-800 dark:text-gray-200">
             Welcome Back!
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -147,18 +147,18 @@ function UserDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 dark:border-gray-700"
+              className="p-5 transition-shadow duration-300 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-xl hover:shadow-md dark:border-gray-700"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     {stat.title}
                   </p>
-                  <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
+                  <p className="mt-1 text-2xl font-bold text-gray-800 dark:text-white">
                     {stat.value}
                   </p>
                 </div>
@@ -208,9 +208,9 @@ function UserDashboard() {
         </div>
 
         {/* Recent Orders */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+        <div className="overflow-hidden transition-shadow duration-300 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-xl hover:shadow-md dark:border-gray-700">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+            <h2 className="flex items-center text-lg font-semibold text-gray-800 dark:text-gray-200">
               <Bell className="w-5 h-5 mr-2 text-pink-600 dark:text-pink-400" />
               Notifications
             </h2>
@@ -231,7 +231,7 @@ function UserDashboard() {
                     <div className="flex items-start gap-3">
                       <div className={`${n.read ? 'bg-gray-300 dark:bg-gray-600' : 'bg-pink-500'} mt-1 w-2 h-2 rounded-full`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{n.title}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate dark:text-gray-100">{n.title}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{n.message}</p>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatDate(n.createdAt)}</p>
                       </div>
@@ -245,7 +245,7 @@ function UserDashboard() {
             </ul>
           ) : (
             <div className="p-8 text-center">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No notifications</h3>
+              <h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">No notifications</h3>
               <p className="text-gray-500 dark:text-gray-400">You're all caught up.</p>
             </div>
           )}

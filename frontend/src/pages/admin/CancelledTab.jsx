@@ -118,7 +118,7 @@ export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Add
       if (!cleanToken) throw new Error('Not authenticated. Please log in again.');
 
       const res = await fetch(
-        `${SERVER_BASE_URL}/api/v1/orders/${row.orderId}/product/${row.productId}/mark-done`,
+        `https://altheascroshetbackend.vercel.app/api/v1/orders/${row.orderId}/product/${row.productId}/mark-done`,
         {
           method: 'POST',
           headers: {
@@ -166,7 +166,7 @@ export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Add
       }
 
       const res = await fetch(
-        `${SERVER_BASE_URL}/api/v1/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
+        `https://altheascroshetbackend.vercel.app/api/v1/orders/${confirmItem.orderId}/product/${confirmItem.productId}/confirm-cancel`,
         {
           method: 'POST',
           headers: {
@@ -235,15 +235,15 @@ export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Add
           <table className="w-full text-sm">
             <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium">Order ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Product</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Refund</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Reason</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Cancelled At</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Order Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Actions</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Order ID</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Customer</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Product</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Qty</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Refund</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Reason</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Cancelled At</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Order Status</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Actions</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
@@ -355,14 +355,14 @@ export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Add
           <table className="w-full text-sm">
             <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium">Order ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Product</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Refund</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Reason</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Cancelled At</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Order Status</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Order ID</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Customer</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Product</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Qty</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Refund</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Reason</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Cancelled At</th>
+                <th className="px-4 py-3 text-xs font-medium text-left">Order Status</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
@@ -408,25 +408,25 @@ export default function CancelledTab({ isDarkMode, refreshOrders }) { // ✅ Add
 
       {/* Confirm Refund Modal */}
       {confirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmOpen(false)}>
           <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} w-full max-w-md rounded-lg p-5`} onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-2">Confirm Refund</h3>
-            <p className="text-sm mb-4">Send a refund confirmation to the customer for <strong>{confirmItem?.productName}</strong>.</p>
+            <h3 className="mb-2 text-lg font-semibold">Confirm Refund</h3>
+            <p className="mb-4 text-sm">Send a refund confirmation to the customer for <strong>{confirmItem?.productName}</strong>.</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm mb-1">ETA (hours)</label>
+                <label className="block mb-1 text-sm">ETA (hours)</label>
                 <input type="number" value={etaHours} onChange={(e) => setEtaHours(e.target.value)} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} min={1} />
               </div>
               <div>
-                <label className="block text-sm mb-1">Refund Amount (PHP)</label>
+                <label className="block mb-1 text-sm">Refund Amount (PHP)</label>
                 <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} />
               </div>
               <div>
-                <label className="block text-sm mb-1">Message to customer</label>
+                <label className="block mb-1 text-sm">Message to customer</label>
                 <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className={`w-full rounded-md border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`} />
               </div>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setConfirmOpen(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Cancel</button>
               <button onClick={submitConfirm} className="px-3 py-1.5 text-sm rounded-md bg-pink-600 text-white hover:bg-pink-700">Confirm & Notify</button>
             </div>

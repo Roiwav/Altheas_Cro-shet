@@ -191,7 +191,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         const results = await Promise.all(
           paginatedUsers.map(async (u) => {
             try {
-              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u._id}`, {
+              const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/cart?userId=${u._id}`, {
                 headers: { 'Content-Type': 'application/json' }
               });
               const data = await res.json();
@@ -281,7 +281,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       if (!token) return toast.error('Authentication required');
       const ok = window.confirm('Are you sure you want to delete this account? This action cannot be undone.');
       if (!ok) return;
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}`, {
+      const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
