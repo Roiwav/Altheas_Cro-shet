@@ -320,6 +320,21 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
     setShowOrderModal(true);
   };
 
+  // FIXED: Handle payment proof modal with proper z-index
+  const handleOpenPaymentProof = (url) => {
+    // Close order modal first to prevent z-index conflicts
+    setShowOrderModal(false);
+    setSelectedPaymentProof(url);
+  };
+
+  const handleClosePaymentProof = () => {
+    setSelectedPaymentProof(null);
+    // Reopen order modal if there was a selected order
+    if (selectedOrder) {
+      setShowOrderModal(true);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <OrdersToolbar
@@ -699,8 +714,23 @@ const OrdersTab = ({ isDarkMode, orders, refreshOrders }) => {
           </div>
         )}
       </div>
-      <OrderDetailsModal open={showOrderModal} onClose={() => setShowOrderModal(false)} order={selectedOrder} isDarkMode={isDarkMode} onOpenProof={(url) => setSelectedPaymentProof(url)} onConfirmCancellation={() => {}} />
-      <PaymentProofModal imageUrl={selectedPaymentProof} onClose={() => setSelectedPaymentProof(null)} />
+      
+      {/* FIXED: Order Details Modal with proper onOpenProof handler */}
+      <OrderDetailsModal 
+        open={showOrderModal} 
+        onClose={() => setShowOrderModal(false)} 
+        order={selectedOrder} 
+        isDarkMode={isDarkMode} 
+        onOpenProof={handleOpenPaymentProof}
+        onConfirmCancellation={() => {}} 
+      />
+      
+      {/* FIXED: Payment Proof Modal with higher z-index */}
+      <PaymentProofModal 
+        imageUrl={selectedPaymentProof} 
+        onClose={handleClosePaymentProof}
+      />
+      
       <RejectionModal
         open={showRejectionModal}
         onClose={() => setShowRejectionModal(false)}

@@ -6,12 +6,11 @@ import {
 } from "lucide-react";
 import Field from "../../common/Field.jsx";
 import { useUser } from "../../../context/useUser.js";
-import { SERVER_BASE_URL } from "../../../utils/product.js";
- 
+import axios from "axios"; // Use axios instead of fetch to match your UserContext
+
 // Shipping cities/regions list
 const regions = {
-  "Inside Calamba": ["Calamba", "Calamba City"],
-  "Inside Laguna": ["Los Baños", "Cabuyao", "San Pablo", "Biñan", "Sta. Rosa"],
+  "Inside Laguna": ["Los Baños", "Cabuyao", "San Pablo", "Biñan", "Sta. Rosa", "Calamba"],
   "Outside Laguna": ["Cavite", "Batangas", "Rizal"],
   "Metro Manila": ["Manila", "Quezon City", "Pasig", "Makati", "Taguig", "Mandaluyong", "Pasay"],
   "Rest of Luzon": ["Baguio", "Dagupan", "La Union", "Tarlac", "Pampanga", "Bulacan", "Nueva Ecija"],
@@ -20,6 +19,19 @@ const regions = {
 const cities = Object.values(regions).flat();
 const cityToRegionMap = {};
 Object.entries(regions).forEach(([region, arr]) => arr.forEach(c => { cityToRegionMap[c] = region; }));
+
+// Improved UUID generation function that works across all browsers
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback UUID generation for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 export default function AddressesTab({ onSelectAddress, isSelectMode = false }) {
   /**
@@ -36,44 +48,107 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   useEffect(() => {
+    console.log('AddressesTab useEffect triggered, user:', user);
+
     if (user) {
       let userAddresses = [];
-      if (Array.isArray(user.addresses) && user.addresses.length > 0) {
-        userAddresses = user.addresses.map((addr) => ({
-          ...addr,
-          id: addr._id || addr.id || crypto.randomUUID(),
-        }));
+
+      try {
+        if (Array.isArray(user.addresses) && user.addresses.length > 0) {
+          console.log('Processing user addresses:', user.addresses);
+
+          userAddresses = user.addresses.map((addr, index) => {
+            // Ensure each address has a valid ID
+            const addressId = addr._id || addr.id || generateId();
+
+            const processedAddress = {
+              ...addr,
+              id: addressId,
+              // Ensure all required fields have default values
+              label: addr.label || '',
+              line1: addr.line1 || '',
+              line2: addr.line2 || '',
+              city: addr.city || '',  
+              state: addr.state || '',
+              postalCode: addr.postalCode || '',
+              country: addr.country || 'Philippines',
+              isDefault: addr.isDefault || false
+            };
+
+            console.log(`Processed address ${index}:`, processedAddress);
+            return processedAddress;
+          });
+
+          // Ensure at least one address is default if none is set
+          const hasDefault = userAddresses.some(addr => addr.isDefault);
+          if (!hasDefault && userAddresses.length > 0) {
+            userAddresses[0].isDefault = true;
+            console.log('Set first address as default');
+          }
+        } else {
+          console.log('No addresses found in user object');
+        }
+
+        console.log('Final userAddresses:', userAddresses);
+        setAddresses(userAddresses);
+
+        // Set active address
+        const defaultAddress = userAddresses.find((a) => a.isDefault) || userAddresses[0];
+        const newActiveId = defaultAddress ? defaultAddress.id : null;
+        console.log('Setting active address ID:', newActiveId);
+        setActiveAddressId(newActiveId);
+
+      } catch (error) {
+        console.error('Error processing user addresses:', error);
+        setAddresses([]);
+        setActiveAddressId(null);
       }
-      setAddresses(userAddresses);
-      const def = userAddresses.find((a) => a.isDefault) || userAddresses[0];
-      setActiveAddressId(def ? def.id : null);
     } else {
+      console.log('No user found, clearing addresses');
       setAddresses([]);
       setActiveAddressId(null);
       setIsEditingAddress(false);
     }
   }, [user]);
 
+  // Debug log when addresses state changes
+  useEffect(() => {
+    console.log('Addresses state updated:', addresses);
+  }, [addresses]);
+
   /**
    * Adds a new, empty address object to the state to be edited.
    */
   const addAddress = () => {
     try {
-      const id = crypto.randomUUID?.() || String(Date.now());
+      console.log('Adding new address...');
+      const id = generateId();
       const newAddress = {
         id,
         label: "",
         line1: "",
-        line2: "",
+        line2: "", 
         city: "",
         state: "",
         postalCode: "",
         country: "Philippines",
-        isDefault: addresses.length === 0,
+        isDefault: addresses.length === 0, // First address is default
       };
-      setAddresses(prev => [...prev, newAddress]);
+
+      console.log('New address created:', newAddress);
+
+      setAddresses(prev => {
+        const updated = [...prev, newAddress];
+        console.log('Updated addresses array:', updated);
+        return updated;
+      });
+
       setActiveAddressId(id);
       setIsEditingAddress(true);
+
+      console.log('Set active address ID to:', id);
+      console.log('Set editing mode to true');
+
     } catch (error) {
       console.error('Error adding address:', error);
       toast.error('Failed to add new address');
@@ -87,7 +162,20 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
    * @param {string} value - The new value for the field.
    */
   const updateAddress = (id, field, value) => {
-    setAddresses((arr) => arr.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
+    console.log(`Updating address ${id}, field: ${field}, value: ${value}`);
+
+    setAddresses((arr) => {
+      const updated = arr.map((a) => {
+        if (a.id === id) {
+          const updatedAddress = { ...a, [field]: value };
+          console.log('Address updated:', updatedAddress);
+          return updatedAddress;
+        }
+        return a;
+      });
+      console.log('All addresses after update:', updated);
+      return updated;
+    });
   };
 
   /**
@@ -97,28 +185,88 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
    */
   const handleCityChange = (addressId, newCity) => {
     const newRegion = cityToRegionMap[newCity] || "";
+    console.log(`City change for address ${addressId}: ${newCity} -> region: ${newRegion}`);
+
     setAddresses((arr) =>
       arr.map((a) => (a.id === addressId ? { ...a, city: newCity, state: newRegion } : a))
     );
   };
-  
-  const removeAddress = (id) => {
-    let newAddresses = addresses.filter((a) => a.id !== id);
-    if (newAddresses.length > 0) {
-      if (activeAddressId === id) {
-        setActiveAddressId(newAddresses[0].id);
+
+  /**
+   * UPDATED: Immediately removes address and saves to database
+   * No longer shows "Click Save addresses" toast - deletion is immediate
+   */
+  const removeAddress = async (id) => {
+    if (!user?.id || !token) {
+      toast.error("You must be logged in to delete addresses.");
+      return;
+    }
+
+    try {
+      console.log('Immediately removing address:', id);
+
+      // Find the address being removed for confirmation
+      const addressToRemove = addresses.find(a => a.id === id);
+      if (!addressToRemove) {
+        toast.error("Address not found.");
+        return;
+      }
+
+      // Remove from local state first (optimistic update)
+      let newAddresses = addresses.filter((a) => a.id !== id);
+
+      // Handle active address and default logic
+      if (newAddresses.length > 0) {
+        if (activeAddressId === id) {
+          setActiveAddressId(newAddresses[0].id);
+          setIsEditingAddress(false);
+        }
+        const defaultExists = newAddresses.some((addr) => addr.isDefault);
+        if (!defaultExists) {
+          newAddresses = newAddresses.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
+        }
+      } else {
+        setActiveAddressId(null);
         setIsEditingAddress(false);
       }
-      const defaultExists = newAddresses.some((addr) => addr.isDefault);
-      if (!defaultExists) {
-        newAddresses = newAddresses.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
+
+      // Update local state immediately
+      setAddresses(newAddresses);
+
+      // Save to database immediately
+      console.log('Saving updated addresses to backend:', newAddresses);
+
+      const response = await axios.patch(`/users/${user.id}`, {
+        addresses: newAddresses,
+        password: user.tempPassword || "" // You might need to handle password requirement
+      });
+
+      console.log('Address deletion save response:', response.data);
+
+      if (response.data?.user) {
+        updateUser(response.data.user);
+        toast.success(`Address "${addressToRemove.label || 'Address'}" deleted successfully!`);
+      } else {
+        throw new Error("Invalid response from server");
       }
-    } else {
-      setActiveAddressId(null);
-      setIsEditingAddress(false);
+
+    } catch (error) {
+      console.error('Error deleting address:', error);
+
+      // Revert local state on error
+      setAddresses(addresses);
+
+      let errorMessage = "Failed to delete address";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication failed. Please log in again.";
+      } else if (error.response?.status === 403) {
+        errorMessage = "Password required. Please edit and save manually to delete this address.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast.error(errorMessage);
     }
-    setAddresses(newAddresses);
-    toast.info('Address removed. Click "Save addresses" to make it permanent.');
   };
 
   /**
@@ -126,6 +274,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
    * @param {string} id - The ID of the address to set as default.
    */
   const setDefaultAddress = (id) => {
+    console.log('Setting default address:', id);
     setAddresses((arr) => arr.map((a) => ({ ...a, isDefault: a.id === id })));
   };
 
@@ -137,6 +286,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       toast.error("Please enter your account password to save changes.");
       return;
     }
+
     let foundMissing = false;
     for (const addr of addresses) {
       const missing = [];
@@ -151,7 +301,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       if (missing.length > 0) {
         foundMissing = true;
         toast.error(
-          `Please complete all required fields for address "${addr.label || 'New Address'}":\n${missing.join(", ")}`
+          `Please complete all required fields for address "${addr.label || 'New Address'}": ${missing.join(", ")}`
         );
         setActiveAddressId(addr.id);
 
@@ -179,27 +329,40 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
       toast.error("You must be logged in to save changes.");
       return;
     }
+
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${user.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ addresses, password: addressesPassword }),
+      console.log('Saving addresses to backend:', addresses);
+
+      // Use axios instead of fetch to match your UserContext setup
+      const response = await axios.patch(`/users/${user.id}`, {
+        addresses,
+        password: addressesPassword
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to save addresses");
+
+      console.log('Save response:', response.data);
+
+      if (response.data?.user) {
+        updateUser(response.data.user);
+        setAddressesPassword("");
+        setIsEditingAddress(false);
+        toast.success("Addresses saved successfully");
+      } else {
+        throw new Error("Invalid response from server");
       }
-      const data = await res.json();
-      updateUser(data.user);
-      setAddressesPassword("");
-      setIsEditingAddress(false);
-      toast.success("Addresses saved successfully");
+
     } catch (err) {
       console.error("Save addresses error:", err);
-      toast.error(err.message || "Failed to save addresses");
+
+      let errorMessage = "Failed to save addresses";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.status === 401) {
+        errorMessage = "Authentication failed. Please log in again.";
+      } else if (err.response?.status === 403) {
+        errorMessage = "Invalid password. Please try again.";
+      }
+
+      toast.error(errorMessage);
     }
   };
 
@@ -207,14 +370,30 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
    * Memoized and sorted list of addresses, with the default address always first.
    */
   const sortedAddresses = useMemo(() => {
-    if (!Array.isArray(addresses)) return [];
-    return [...addresses].sort((a, b) => {
+    if (!Array.isArray(addresses)) {
+      console.log('Addresses is not an array:', addresses);
+      return [];
+    }
+
+    const sorted = [...addresses].sort((a, b) => {
       if (!a || !b) return 0;
       if (a.isDefault) return -1;
       if (b.isDefault) return 1;
       return (a.label || '').localeCompare(b.label || '');
     });
+
+    console.log('Sorted addresses:', sorted);
+    return sorted;
   }, [addresses]);
+
+  // Debug render
+  console.log('Rendering AddressesTab with:', {
+    addresses,
+    sortedAddresses,
+    activeAddressId,  
+    isEditingAddress,
+    user: user ? { id: user.id, addresses: user.addresses } : null
+  });
 
   return (
     <div className="space-y-6">
@@ -253,6 +432,9 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
         <div className="grid gap-4 md:grid-cols-2 items-start">
           {sortedAddresses.map((address) => {
             const isEditingThis = isEditingAddress && activeAddressId === address.id;
+
+            console.log(`Rendering address ${address.id}:`, { address, isEditingThis, activeAddressId });
+
             return (
               <div
                 key={address.id}
@@ -271,7 +453,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                     Default
                   </div>
                 )}
-                
+
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <div className="p-2 text-pink-600 rounded-full bg-pink-50 dark:bg-pink-900/30">
@@ -287,7 +469,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                       {address.label || 'Address'}
                     </h3>
                   </div>
-                  
+
                   {isEditingThis ? (
                     <div className="flex gap-2">
                       <button
@@ -311,9 +493,12 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => removeAddress(address.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent any parent click events
+                          removeAddress(address.id);
+                        }}
                         className="p-1.5 text-red-400 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30"
-                        title="Delete"
+                        title="Delete Address Immediately"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -324,7 +509,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                 {isEditingThis ? (
                   <div className="mt-4 space-y-4">
                     {/* Editable/free label here */}
-                    <Field label="Label (e.g. Home, Work, Grandma’s...)">
+                    <Field label="Label (e.g. Home, Work, Grandma's...)">
                       <div className="relative">
                         <Tag className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                         <input
@@ -359,6 +544,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         />
                       </div>
                     </Field>
+
                     <Field label="Address Line 2 (Optional)">
                       <div className="relative">
                         <Building className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
@@ -371,8 +557,8 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         />
                       </div>
                     </Field>
-                    <div className="grid grid-cols-2 gap-4">
 
+                    <div className="grid grid-cols-2 gap-4">
                       <Field label="City">
                         <div className="relative">
                           <Map className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
@@ -432,6 +618,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         </div>
                       </Field>
                     </div>
+
                     <div className="flex items-center justify-between pt-2">
                       <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer dark:text-gray-300">
                         <input
@@ -444,6 +631,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         <span>Set as default</span>
                       </label>
                     </div>
+
                     <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                       <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                         Confirm password to save changes
@@ -489,7 +677,7 @@ export default function AddressesTab({ onSelectAddress, isSelectMode = false }) 
                         onClick={() => setDefaultAddress(address.id)}
                         className="mt-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
                       >
-                        {/* Set as default */}
+                        Set as default
                       </button>
                     )}
                   </div>
