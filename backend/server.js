@@ -28,7 +28,7 @@ async function ensureAdmin() {
   try {
     const email = process.env.ADMIN_EMAIL || 'altheascroshet@gmail.com';
     const username = process.env.ADMIN_USERNAME || 'admin';
-    const password = process.env.ADMIN_PASSWORD || 'admin123';
+    const password = process.env.ADMIN_PASSWORD || 'admin123456';
 
     let user = await User.findOne({ email });
     if (!user) {
@@ -46,7 +46,6 @@ async function ensureAdmin() {
         user.role = 'admin';
         updated = true;
       }
-      // If account was created via OAuth and has no password, set one
       if (!user.password && password) {
         user.password = password; // will be hashed by pre-save hook
         updated = true;
@@ -61,7 +60,22 @@ async function ensureAdmin() {
   }
 }
 
-// Session configuration
+// ✅ Proper middleware order:
+
+// 1️⃣ Enable CORS for all routes
+app.use(cors({
+  origin: [
+    "https://altheas-cro-shet.vercel.app"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// 2️⃣ Middleware to parse JSON payloads
+app.use(express.json({ limit: "10mb" }));
+
+// 3️⃣ Session configuration
 app.use(session({
   secret: process.env.JWT_SECRET,
   resave: false,
@@ -74,26 +88,14 @@ app.use(session({
   }
 }));
 
-// 🟢 Middleware to parse JSON payloads
-app.use(express.json({ limit: "10mb" }));
-
-// Initialize Passport
+// 4️⃣ Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Import Passport config
 require('./config/passport');
 
-// 🟢 Enable CORS for all routes
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://altheas-crochet-project.vercel.app"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+// 5️⃣ Routes start here
 
 // Google OAuth Routes
 app.get('/auth/google',
@@ -109,17 +111,16 @@ app.get('/auth/google',
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { 
-    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=google_auth_failed`,
+    failureRedirect: `${process.env.FRONTEND_URL || 'https://altheas-cro-shet.vercel.app'}/login?error=google_auth_failed`,
     session: true
   }),
   (req, res) => {
     try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const frontendUrl = process.env.FRONTEND_URL || 'https://altheas-cro-shet.vercel.app';
       const now = new Date();
       if (req.user && req.user.suspendedUntil && req.user.suspendedUntil > now) {
         return res.redirect(`${frontendUrl}/login?error=oauth_error&message=${encodeURIComponent('Your account is suspended. Please try again later.')}`);
       }
-      // Generate JWT token
       const jwt = require('jsonwebtoken');
       const token = jwt.sign(
         { 
@@ -130,8 +131,6 @@ app.get('/auth/google/callback',
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
-      
-      // Prepare user data to send to frontend
       const userData = {
         id: req.user._id,
         email: req.user.email,
@@ -140,8 +139,6 @@ app.get('/auth/google/callback',
         googleId: req.user.googleId,
         hasPassword: Boolean(req.user.password)
       };
-      
-      // Redirect to frontend OAuth callback with token and user data
       res.redirect(
         `${frontendUrl}/auth/success?` +
         `token=${encodeURIComponent(token)}&` +
@@ -149,7 +146,7 @@ app.get('/auth/google/callback',
       );
     } catch (error) {
       console.error('OAuth callback error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=auth_error`);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://altheas-cro-shet.vercel.app'}/login?error=auth_error`);
     }
   }
 );
@@ -157,7 +154,7 @@ app.get('/auth/google/callback',
 // Logout route
 app.get('/auth/logout', (req, res) => {
   req.logout();
-  res.redirect(process.env.FRONTEND_URL || 'http://localhost:5173');
+  res.redirect(process.env.FRONTEND_URL || 'https://altheas-cro-shet.vercel.app');
 });
 
 // Simple route to check if user is authenticated
@@ -170,24 +167,20 @@ app.get('/auth/check', (req, res) => {
 });
 
 // API routes
-  app.use("/api/v1/cart", cartRoutes);
-  app.use("/api/v1/auth", authRoutes);
-  app.use("/api/v1/users", userRoutes);
-  app.use("/api/v1/orders", orderRoutes);
-  app.use("/api/v1/logs", logRoutes);
-  app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/cart", cartRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/logs", logRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/testimonials", testimonialRoutes);
 
-  // 🟢 Serve uploaded images (proof of payment, etc.)
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-  app.use("/uploads/products", express.static(path.join(__dirname, "uploads", "products")));
-  app.use("/uploads/proofs", express.static(path.join(__dirname, "uploads", "proofs")));
-
-  app.use("/api/v1/products", productRoutes);
-  // Testimonials routes (CommonJS)
-  app.use("/api/v1/testimonials", testimonialRoutes);
-
-  app.use('/uploads', express.static('uploads'));
-
+// 🟢 Serve uploaded images (proof of payment, etc.)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads/products", express.static(path.join(__dirname, "uploads", "products")));
+app.use("/uploads/proofs", express.static(path.join(__dirname, "uploads", "proofs")));
+app.use('/uploads', express.static('uploads'));
 
 // 🟢 Check for MongoDB URI
 if (!process.env.MONGO_URI) {
@@ -197,12 +190,11 @@ if (!process.env.MONGO_URI) {
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, { // This should be your Atlas connection string
+  .connect(process.env.MONGO_URI, {
     useUnifiedTopology: true,
   })
   .then(async () => {
     console.log("✅ MongoDB Connected");
-    // Ensure admin exists before starting streams/routes that might rely on it
     await ensureAdmin();
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));

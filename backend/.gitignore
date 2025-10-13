@@ -8,6 +8,7 @@
 # Environment Variables
 # This file contains sensitive information like API keys and database credentials.
 # It should not be committed to version control.
+env
 .env
 .env.local
 .env.development.local
