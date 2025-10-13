@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { RotateCcw, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { RotateCcw, Trash2, ArrowLeft, ArrowRight, ShoppingCart } from 'lucide-react';
+
 import { SERVER_BASE_URL } from '../../../utils/product';
 import ProductsTableSkeleton from './ProductsTableSkeleton';
 
@@ -9,8 +10,11 @@ import ProductsTableSkeleton from './ProductsTableSkeleton';
  * Allows for bulk restoration or permanent deletion of items from the trash.
  * @param {object} props - The component props.
  * @param {boolean} props.isDarkMode - Flag to enable dark mode styling.
+ * @param {Function} [props.onBackToProducts] - Handler to navigate back to Products tab.
+ * @param {Function} [props.onGoToOrders] - Handler to navigate to Orders tab.
  */
-const TrashTab = ({ isDarkMode }) => {
+const TrashTab = ({ isDarkMode, onBackToProducts, onGoToOrders }) => {
+
   const [deletedProducts, setDeletedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -112,11 +116,30 @@ const TrashTab = ({ isDarkMode }) => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Deleted Products</h2>
-        <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Products here will be permanently deleted after 3 days.
-        </p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Deleted Products</h2>
+          <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            Products here will be permanently deleted after 3 days.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBackToProducts}
+            disabled={!onBackToProducts}
+            className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 ${isDarkMode ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-pink-600 text-white hover:bg-pink-700'} disabled:opacity-50`}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Products
+          </button>
+          <button
+            onClick={onGoToOrders}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            View all orders
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -124,6 +147,21 @@ const TrashTab = ({ isDarkMode }) => {
       ) : deletedProducts.length === 0 ? (
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow p-10 text-center`}>
           <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>The trash is empty.</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <button
+              onClick={onBackToProducts}
+              disabled={!onBackToProducts}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 ${isDarkMode ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-pink-600 text-white hover:bg-pink-700'} disabled:opacity-50`}
+            >
+              Back to Products
+            </button>
+            <button
+              onClick={onGoToOrders}
+              className={`px-3 py-1.5 rounded-md border text-sm font-medium ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            >
+              View all orders
+            </button>
+          </div>
         </div>
       ) : (
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow`}>

@@ -1,5 +1,5 @@
 // src/context/CartContext.jsx
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useUser } from "./useUser";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
@@ -7,6 +7,10 @@ import Cookies from 'js-cookie';
 import { CartContext } from "./cart-context";
 import { GUEST_CART_ID_COOKIE } from "../utils/constants";
 import { SERVER_BASE_URL } from "../utils/product";
+
+// Debug logger (disabled unless VITE_DEBUG_LOGS === 'true')
+const DEBUG_LOGS = (import.meta.env && import.meta.env.VITE_DEBUG_LOGS === 'true') || false;
+const dlog = (...args) => { if (DEBUG_LOGS) console.log(...args); };
 
 export const CartProvider = ({ children }) => {
     const { user, token, isAuthenticated, isLoading: _isUserLoading } = useUser?.() || { 
@@ -16,14 +20,13 @@ export const CartProvider = ({ children }) => {
         isLoading: true 
     };
 
-    console.log(" CartContext user:", user, "isAuthenticated:", isAuthenticated);
-
     const [cartItems, setCartItems] = useState([]);
     const [shippingAddress, setShippingAddress] = useState(null);
     const [shippingFee, setShippingFee] = useState(0);
     const [isCartLoading, setIsCartLoading] = useState(true);
-
+    const lastAuthKeyRef = useRef(null);
     const API_BASE = `${SERVER_BASE_URL}/api/v1`;
+
 
     // Helper to consistently derive product id
     const getId = useCallback((product) => (
@@ -35,7 +38,7 @@ export const CartProvider = ({ children }) => {
         setIsCartLoading(true);
         const userId = user?.id;
 
-        console.log("💾 Saving cart:", { 
+        dlog("💾 Saving cart:", { 
             itemCount: items.length, 
             userId: userId ? `${String(userId).substring(0,8)}...` : null,
             isAuthenticated 
@@ -53,11 +56,11 @@ export const CartProvider = ({ children }) => {
         if (isAuthenticated && userId) {
             // Save to user-specific localStorage key
             localStorage.setItem(`user-cart-${userId}`, JSON.stringify(cartData));
-            console.log("✅ Cart saved to user localStorage");
+            dlog("✅ Cart saved to user localStorage");
         } else {
             // Save to guest localStorage key
             localStorage.setItem('guest-cart', JSON.stringify(cartData));
-            console.log("✅ Cart saved to guest localStorage");
+            dlog("✅ Cart saved to guest localStorage");
         }
 
         // Update React state
@@ -86,14 +89,14 @@ export const CartProvider = ({ children }) => {
                 });
 
                 if (res.ok) {
-                    console.log("✅ Cart also backed up to backend");
+                    dlog("✅ Cart also backed up to backend");
                 } else if (res.status === 404) {
-                    console.log("ℹ️ Backend cart endpoints not implemented yet - using localStorage only");
+                    dlog("ℹ️ Backend cart endpoints not implemented yet - using localStorage only");
                 } else {
                     console.warn("⚠️ Backend cart save failed:", res.status);
                 }
             } catch (err) {
-                console.log("ℹ️ Backend cart save skipped:", err.message);
+                dlog("ℹ️ Backend cart save skipped:", err.message);
             }
         }
 
@@ -106,7 +109,7 @@ export const CartProvider = ({ children }) => {
         setIsCartLoading(true);
         const userId = user?.id || user?._id || user?.userId || null;
 
-        console.log("📂 Loading cart:", { 
+        dlog("📂 Loading cart:", { 
             userId: userId ? `${String(userId).substring(0,8)}...` : null,
             isAuthenticated 
         });
@@ -120,14 +123,14 @@ export const CartProvider = ({ children }) => {
                 const userCartJson = localStorage.getItem(`user-cart-${userId}`);
                 if (userCartJson) {
                     cartData = JSON.parse(userCartJson);
-                    console.log("📱 Loaded user cart from localStorage:", cartData.items?.length || 0, "items");
+                    dlog("📱 Loaded user cart from localStorage:", cartData.items?.length || 0, "items");
                 }
             } else {
                 // Load guest cart
                 const guestCartJson = localStorage.getItem('guest-cart');
                 if (guestCartJson) {
                     cartData = JSON.parse(guestCartJson);
-                    console.log("📱 Loaded guest cart from localStorage:", cartData.items?.length || 0, "items");
+                    dlog("📱 Loaded guest cart from localStorage:", cartData.items?.length || 0, "items");
                 }
             }
         } catch (e) {
@@ -144,16 +147,16 @@ export const CartProvider = ({ children }) => {
 
                 if (res.ok) {
                     cartData = await res.json();
-                    console.log("📱 Loaded cart from backend:", cartData.items?.length || 0, "items");
+                    dlog("📱 Loaded cart from backend:", cartData.items?.length || 0, "items");
                     // Save to localStorage for future use
                     localStorage.setItem(`user-cart-${userId}`, JSON.stringify(cartData));
                 } else if (res.status === 404) {
-                    console.log("ℹ️ Backend cart endpoints not implemented yet");
+                    dlog("ℹ️ Backend cart endpoints not implemented yet");
                 } else {
                     console.warn("⚠️ Backend cart load failed:", res.status);
                 }
             } catch (err) {
-                console.log("ℹ️ Backend cart load skipped:", err.message);
+                dlog("ℹ️ Backend cart load skipped:", err.message);
             }
         }
 
@@ -175,7 +178,7 @@ export const CartProvider = ({ children }) => {
     const manualMergeGuestCart = useCallback(async (rawUserId) => {
         const userId = rawUserId || user?.id || user?._id || user?.userId || null;
         const uidLog = userId ? String(userId).substring(0,8) + '...' : 'unknown';
-        console.log("🔄 Starting localStorage cart merge for user:", uidLog);
+        dlog("🔄 Starting localStorage cart merge for user:", uidLog);
         
         const guestCartJson = localStorage.getItem('guest-cart');
         const userCartJson = userId ? localStorage.getItem(`user-cart-${userId}`) : null;
@@ -192,7 +195,7 @@ export const CartProvider = ({ children }) => {
                 guestItems = guestCart.items || [];
                 mergedShippingAddress = guestCart.shippingAddress ?? mergedShippingAddress;
                 mergedShippingFee = guestCart.shippingFee ?? mergedShippingFee;
-                console.log("👻 Found guest cart:", guestItems.length, "items");
+                dlog("👻 Found guest cart:", guestItems.length, "items");
             } catch (e) {
                 console.error("Failed to parse guest cart:", e);
             }
@@ -208,14 +211,14 @@ export const CartProvider = ({ children }) => {
                     mergedShippingAddress = userCart.shippingAddress;
                     mergedShippingFee = userCart.shippingFee || 0;
                 }
-                console.log("👤 Found user cart:", userItems.length, "items");
+                dlog("👤 Found user cart:", userItems.length, "items");
             } catch (e) {
                 console.error("Failed to parse user cart:", e);
             }
         }
 
         if (guestItems.length === 0 && userItems.length === 0) {
-            console.log("ℹ️ No cart items to merge");
+            dlog("ℹ️ No cart items to merge");
             return [];
         }
 
@@ -226,10 +229,10 @@ export const CartProvider = ({ children }) => {
             const existingIndex = mergedItems.findIndex(item => getId(item) === guestItemId);
             if (existingIndex >= 0) {
                 mergedItems[existingIndex].quantity = (mergedItems[existingIndex].quantity || 1) + (guestItem.quantity || 1);
-                console.log(`🔄 Combined quantities for: ${guestItem.name}`);
+                dlog(`🔄 Combined quantities for: ${guestItem.name}`);
             } else {
                 mergedItems.push(guestItem);
-                console.log(`➕ Added new item: ${guestItem.name}`);
+                dlog(`➕ Added new item: ${guestItem.name}`);
             }
         }
 
@@ -240,7 +243,7 @@ export const CartProvider = ({ children }) => {
         localStorage.removeItem('guest-cart');
         Cookies.remove(GUEST_CART_ID_COOKIE);
 
-        console.log("✅ Cart merge completed:", mergedItems.length, "total items");
+        dlog("✅ Cart merge completed:", mergedItems.length, "total items");
         
         const totalGuestItems = guestItems.length;
         if (totalGuestItems > 0) {
@@ -254,7 +257,7 @@ export const CartProvider = ({ children }) => {
     const mergeCartOnLogin = useCallback(async (rawUserId) => {
         const userId = rawUserId || user?.id || user?._id || user?.userId || null;
         const uidLog = userId ? String(userId).substring(0,8) : 'unknown';
-        console.log(`🔄 Starting cart merge for user: ${uidLog}...`);
+        dlog(`🔄 Starting cart merge for user: ${uidLog}...`);
         if (!userId) {
             await loadCart();
             return;
@@ -271,7 +274,7 @@ export const CartProvider = ({ children }) => {
 
     // Enhanced Add item to cart
     const addToCart = useCallback(async (product, quantity = 1) => {
-        console.log("🛒 Adding to cart:", product?.name, "x", product?.quantity || quantity);
+        dlog("🛒 Adding to cart:", product?.name, "x", product?.quantity || quantity);
 
         const id = getId(product);
         const existingItem = cartItems.find(item => getId(item) === id);
@@ -337,15 +340,22 @@ export const CartProvider = ({ children }) => {
 
     // Load cart when user state changes
     useEffect(() => {
-        if (!_isUserLoading) {
-            if (user && isAuthenticated && token) {
-                mergeCartOnLogin(user?.id || user?._id || user?.userId);
-            } else {
-                console.log("👻 Guest user or logged out, loading guest cart...");
-                loadCart();
-            }
+        if (_isUserLoading) return;
+        const uid = user?.id || user?._id || user?.userId || 'guest';
+        const key = `${uid}|${isAuthenticated}|${Boolean(token)}`;
+        if (lastAuthKeyRef.current === key) return;
+        lastAuthKeyRef.current = key;
+
+        const uidLog = uid !== 'guest' ? `${String(uid).substring(0,8)}...` : 'guest';
+        dlog("🔑 Auth state changed:", { uid: uidLog, isAuthenticated });
+
+        if (user && isAuthenticated && token) {
+            mergeCartOnLogin(user?.id || user?._id || user?.userId);
+        } else {
+            dlog("👻 Guest user or logged out, loading guest cart...");
+            loadCart();
         }
-    }, [isAuthenticated, user, token, _isUserLoading, loadCart, mergeCartOnLogin]);
+    }, [_isUserLoading, isAuthenticated, user, token, loadCart, mergeCartOnLogin]);
 
     const contextValue = useMemo(() => ({
         getId,
