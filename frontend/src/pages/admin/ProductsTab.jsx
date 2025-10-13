@@ -9,7 +9,7 @@ import ProductsTableSkeleton from '../../components/admin/products/ProductsTable
 import DeleteConfirmModal from '../../components/admin/products/DeleteConfirmModal';
 import useAdminProductsList from '../../hooks/useAdminProductsList';
 
-const ProductsTab = ({ isDarkMode }) => {
+const ProductsTab = ({ isDarkMode, onViewDeleted }) => {
   const baseCategories = React.useMemo(() => ["Bouquet", "Single Stem", "Arrangement", "Custom"], []);
   const [categories, setCategories] = useState(baseCategories);
   const {
@@ -332,6 +332,13 @@ const ProductsTab = ({ isDarkMode }) => {
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Product
+          </button>
+          <button
+            onClick={() => { if (onViewDeleted) onViewDeleted(); }}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            <Trash2 className="w-5 h-5 mr-2" />
+            Deleted products
           </button>
           </div>
         </div>

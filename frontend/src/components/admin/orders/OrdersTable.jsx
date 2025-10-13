@@ -1,5 +1,5 @@
 // src/components/admin/orders/OrdersTable.jsx
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import OrderActionsMenu from './OrderActionsMenu.jsx';
@@ -37,15 +37,25 @@ export default function OrdersTable({
   updateOrderStatus,
   handleRejectOrder,
 }) {
+  const headerCheckboxRef = useRef(null);
+  const allSelected = selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0;
+  const someSelected = selectedOrders.length > 0 && selectedOrders.length < paginatedOrders.length;
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected, allSelected]);
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-hidden">
+      <table className="w-full text-sm table-fixed">
         <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
           <tr>
-            <th className="px-4 py-3">
+            <th className="px-4 py-3 w-10">
               <input
+                ref={headerCheckboxRef}
                 type="checkbox"
-                checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
+                checked={allSelected}
                 onChange={(e) => {
                   if (e.target.checked) {
                     setSelectedOrders(paginatedOrders.map((o) => o._id));
@@ -53,7 +63,8 @@ export default function OrdersTable({
                     setSelectedOrders([]);
                   }
                 }}
-                className="border-gray-300 rounded focus:ring-pink-500"
+                aria-label="Select all orders on page"
+                className={`w-4 h-4 text-pink-600 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'} rounded focus:ring-pink-500`}
               />
             </th>
 
@@ -102,7 +113,7 @@ export default function OrdersTable({
           ) : (
             paginatedOrders.map((order) => (
               <tr key={order._id} className={`transition-colors ${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 w-10">
                   <input
                     type="checkbox"
                     checked={selectedOrders.includes(order._id)}
@@ -110,7 +121,8 @@ export default function OrdersTable({
                       if (e.target.checked) setSelectedOrders((prev) => [...prev, order._id]);
                       else setSelectedOrders((prev) => prev.filter((id) => id !== order._id));
                     }}
-                    className="border-gray-300 rounded focus:ring-pink-500"
+                    aria-label={`Select order ${order.orderNumber || order._id}`}
+                    className={`w-4 h-4 text-pink-600 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'} rounded focus:ring-pink-500`}
                   />
                 </td>
 

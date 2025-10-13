@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState, useMemo, Fragment } from "react";
+import React, { useEffect, useState, useMemo, useCallback, Fragment } from "react";
 import { Navigate } from "react-router-dom";
 import { useUser } from "../../context/useUser";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
@@ -23,7 +23,6 @@ import {
   Truck,
   CheckCircle,
   XCircle,
-  Trash2,
   LayoutDashboard,
   ShoppingCart,
   Box,
@@ -84,13 +83,12 @@ export default function AdminPage() {
     { id: "products", label: "Products", icon: Box },
     { id: "usermanagement", label: "User Management", icon: Users },
     { id: "logs", label: "Logs", icon: ClipboardList },
-    { id: "trash", label: "Trash", icon: Trash2 },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
   // Refresh Orders Utility
-  const refreshOrders = async () => {
+  const refreshOrders = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`${SERVER_BASE_URL}/api/v1/orders`, {
@@ -115,11 +113,11 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     refreshOrders();
-  }, []);
+  }, [refreshOrders]);
 
   // Live Metrics & Revenue By Day Calculation
   useEffect(() => {
@@ -485,10 +483,16 @@ export default function AdminPage() {
               {activeTab === "dashboard" && renderDashboard()}
               {activeTab === "orders" && <OrdersTab isDarkMode={isDarkMode} orders={orders} refreshOrders={refreshOrders} />}
               {activeTab === "cancelled" && <CancelledTab isDarkMode={isDarkMode} refreshOrders={refreshOrders} />}
-              {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} />}
-              {activeTab === "usermanagement" && <UserManagementTab isDarkMode={isDarkMode} />}
+              {activeTab === "products" && <ProductsTab isDarkMode={isDarkMode} onViewDeleted={() => setActiveTab('trash')} />}
+              {activeTab === "usermanagement" && <UserManagementTab isDarkMode={isDarkMode} orders={orders} />}
               {activeTab === "logs" && <LogsTab isDarkMode={isDarkMode} />}
-              {activeTab === "trash" && <TrashTab isDarkMode={isDarkMode} />}
+              {activeTab === "trash" && (
+                <TrashTab
+                  isDarkMode={isDarkMode}
+                  onBackToProducts={() => setActiveTab('products')}
+                  onGoToOrders={() => setActiveTab('orders')}
+                />
+              )}
               {activeTab === "feedback" && <FeedbackTab isDarkMode={isDarkMode} />}
               {activeTab === "settings" && <SettingsTab isDarkMode={isDarkMode} />}
             </div>

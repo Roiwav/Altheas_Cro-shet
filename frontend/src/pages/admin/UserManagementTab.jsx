@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingBag, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
@@ -9,11 +9,13 @@ const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/
 
 const RoleBadge = ({ role }) => {
   const roleClasses = {
-    Admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-    Customer: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    Moderator: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+    admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+    customer: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    moderator: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
   };
-  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClasses[role] || 'bg-gray-100 text-gray-800'}`}>{role}</span>;
+  const key = String(role || '').toLowerCase();
+  const label = key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Unknown';
+  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClasses[key] || 'bg-gray-100 text-gray-800'}`}>{label}</span>;
 };
 
 const StatusBadge = ({ status }) => {
@@ -35,6 +37,15 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
+  const [cartCounts, setCartCounts] = useState({});
+
+  const getUserStatus = useCallback((user) => {
+    if (user && user.suspendedUntil) {
+      const until = new Date(user.suspendedUntil);
+      if (!Number.isNaN(until.getTime()) && until > new Date()) return 'Suspended';
+    }
+    return 'Active';
+  }, []);
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -76,129 +87,24 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     fetchUsers();
   }, [fetchUsers]);
 
-  // ✅ CALCULATE ORDERS & ITEMS FOR EACH USER
-  useEffect(() => {
-    if (users.length > 0 && orders && orders.length > 0) {
-      setUsers(current =>
-        current.map(user => {
-          if (user.role !== 'Customer') return user;
-          const userOrders = orders.filter(o => o.userId === user.id);
-          const totalOrders = userOrders.length;
-          const itemsBought = userOrders.reduce((sum, o) => {
-            if (!o.products || !Array.isArray(o.products)) return sum;
-            return sum + o.products.reduce((inner, p) => inner + (p.quantity || 1), 0);
-          }, 0);
-          return { ...user, totalOrders, itemsBought };
-        })
-      );
-    }
-  }, [users, orders]);
-
-  // USER MANAGEMENT FUNCTIONS
-  const handleChangeUserRole = async (userId, currentRole) => {
-    const newRole = currentRole === 'Customer' ? 'admin' : 'customer';
-    
-    if (!confirm(`Change user role to ${newRole}?`)) return;
-    
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ role: newRole })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to change user role');
-      }
-
-      toast.success(`User role changed to ${newRole} successfully`);
-      fetchUsers(); // Refresh the user list
-    } catch (error) {
-      console.error('Change user role error:', error);
-      toast.error(error.message);
-    }
-  };
-
-  const handleSuspendUser = async (userId, currentStatus) => {
-    const suspend = currentStatus !== 'Suspended';
-    const action = suspend ? 'suspend' : 'unsuspend';
-    
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-    
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}/suspend`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          suspend, 
-          reason: suspend ? 'Account suspended by admin for policy violation' : null 
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to ${action} user`);
-      }
-
-      const responseData = await response.json();
-      toast.success(responseData.message || `User ${action}ed successfully`);
-      fetchUsers(); // Refresh the user list
-    } catch (error) {
-      console.error('Suspend user error:', error);
-      toast.error(error.message);
-    }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-    
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:5001/api/v1/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+  // ✅ Map of delivered orders per user (derived, no state updates)
+  const deliveredCountByUser = useMemo(() => {
+    const map = {};
+    if (Array.isArray(orders)) {
+      orders.forEach(o => {
+        if (String(o?.status || '').toLowerCase() === 'delivered') {
+          const uid = (o && typeof o.userId === 'object' && o.userId?._id) ? o.userId._id : o?.userId;
+          if (!uid) return;
+          map[uid] = (map[uid] || 0) + 1;
         }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
-      }
-
-      const responseData = await response.json();
-      toast.success(responseData.message || 'User deleted successfully');
-      fetchUsers(); // Refresh the user list
-    } catch (error) {
-      console.error('Delete user error:', error);
-      toast.error(error.message);
     }
-  };
+    return map;
+  }, [orders]);
+
+  // USER MANAGEMENT FUNCTIONS
+
+  
 
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
@@ -208,20 +114,37 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   }, [users, searchQuery]);
 
   const sortedUsers = useMemo(() => {
-    let sortableUsers = [...filteredUsers];
+    const sortableUsers = [...filteredUsers];
     if (sortConfig.key) {
+      const dir = sortConfig.direction === 'ascending' ? 1 : -1;
       sortableUsers.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
+        const key = sortConfig.key;
+        let av;
+        let bv;
+        switch (key) {
+          case 'name':
+            av = String(a.name || a.fullName || '').toLowerCase();
+            bv = String(b.name || b.fullName || '').toLowerCase();
+            break;
+          case 'status':
+            av = getUserStatus(a);
+            bv = getUserStatus(b);
+            break;
+          case 'joinedDate':
+            av = new Date(a.joinedDate || a.createdAt).getTime() || 0;
+            bv = new Date(b.joinedDate || b.createdAt).getTime() || 0;
+            break;
+          default:
+            av = a[key];
+            bv = b[key];
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
         return 0;
       });
     }
     return sortableUsers;
-  }, [filteredUsers, sortConfig]);
+  }, [filteredUsers, sortConfig, getUserStatus]);
 
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -229,6 +152,44 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   }, [sortedUsers, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+
+  // ✅ FETCH CART ITEMS COUNT PER USER FOR CURRENT PAGE ONLY (stores in cartCounts, not users)
+  useEffect(() => {
+    if (!paginatedUsers || paginatedUsers.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          paginatedUsers.map(async (u) => {
+            try {
+              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u._id}`, {
+                headers: { 'Content-Type': 'application/json' }
+              });
+              const data = await res.json();
+              const items = Array.isArray(data?.items) ? data.items : [];
+              const cartItems = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
+              return { id: u._id, cartItems };
+            } catch {
+              return { id: u._id, cartItems: 0 };
+            }
+          })
+        );
+        if (cancelled) return;
+        setCartCounts(prev => {
+          let changed = false;
+          const next = { ...prev };
+          for (const { id, cartItems } of results) {
+            if (next[id] !== cartItems) {
+              next[id] = cartItems;
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
+      } catch (e) { void e; }
+    })();
+    return () => { cancelled = true; };
+  }, [paginatedUsers]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -318,7 +279,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             onChange={() => handleSelectOne(user._id)}
             className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-          <img className="w-12 h-12 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
+          <img className="w-12 h-12 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
           <div className="ml-3">
             <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name || user.fullName}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
@@ -339,13 +300,18 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
               <div className="py-1">
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}> <Shield className="w-4 h-4 mr-3" /> Change Role </a> )}
+                  {({ active }) => (
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                      <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
+                    </a>
+                  )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}> <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account </a> )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => ( <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}> <Trash2 className="w-4 h-4 mr-3" /> Delete Account </a> )}
+                  {({ active }) => (
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                      <Trash2 className="w-4 h-4 mr-3" /> Delete Account
+                    </a>
+                  )}
                 </Menu.Item>
               </div>
             </Menu.Items>
@@ -365,7 +331,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             <UserCheck className="w-4 h-4 mr-2 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
-              <StatusBadge status={user.status} />
+              <StatusBadge status={getUserStatus(user)} />
             </div>
           </div>
           <div className="flex items-center text-gray-600 dark:text-gray-300">
@@ -376,22 +342,22 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             </div>
           </div>
         </div>
-        {user.role === 'Customer' && (
+        {String(user.role || '').toLowerCase() === 'customer' && (
           <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-            <h4 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Customer Activity</h4>
+            <h4 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Activity</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center">
-                <ShoppingBag className="w-4 h-4 mr-2 text-gray-400" />
+                <ShoppingCart className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Items Bought</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.itemsBought || 0}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Cart Items</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{cartCounts[user._id] || 0}</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <Package className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Total Orders</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.totalOrders || 0}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Delivered Orders</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{deliveredCountByUser[user.id || user._id] || 0}</p>
                 </div>
               </div>
             </div>
@@ -494,26 +460,26 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                     </div>
                   </td>
                   <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                    <img className="w-10 h-10 rounded-full" src={user.avatar} alt={`${user.name} avatar`} />
+                    <img className="w-10 h-10 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
                     <div className="pl-3">
                       <div className="text-base font-semibold">{user.name || user.fullName}</div>
                       <div className="font-normal text-gray-500">{user.email}</div>
-                      {user.role === 'Customer' && (
+                      {String(user.role || '').toLowerCase() === 'customer' && (
                         <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center">
-                            <ShoppingBag className="w-3 h-3 mr-1.5" />
-                            <span>{user.itemsBought || 0} items</span>
+                            <ShoppingCart className="w-3 h-3 mr-1.5" />
+                            <span>{cartCounts[user._id] || 0} items</span>
                           </div>
                           <div className="flex items-center">
                             <Package className="w-3 h-3 mr-1.5" />
-                            <span>{user.totalOrders || 0} orders</span>
+                            <span>{deliveredCountByUser[user.id || user._id] || 0} orders</span>
                           </div>
                         </div>
                       )}
                     </div>
                   </th>
                   <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
-                  <td className="px-6 py-4"><StatusBadge status={user.status} /></td>
+                  <td className="px-6 py-4"><StatusBadge status={getUserStatus(user)} /></td>
                   <td className="px-6 py-4">{new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right">
                     <Menu as="div" className="relative inline-block text-left">
@@ -532,21 +498,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                           <div className="py-1">
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200`}>
-                                  <Shield className="w-4 h-4 mr-3" /> Change Role
-                                </a>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
                                   <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
                                 </a>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
                                   <Trash2 className="w-4 h-4 mr-3" /> Delete Account
                                 </a>
                               )}

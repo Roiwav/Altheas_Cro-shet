@@ -35,7 +35,7 @@ const StatusBadge = ({ status }) => {
   return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status]}`}>{status}</span>;
 };
 
-const LogsTab = ({ isDarkMode }) => {
+const LogsTab = () => {
   const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +104,7 @@ const LogsTab = ({ isDarkMode }) => {
     const iconColorClass = `text-${color}-500 dark:text-${color}-400`;
 
     return (
-      <div key={log.id} className="p-4 mb-3 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+      <div key={log._id || log.id || log.resourceId || log.timestamp} className="p-4 mb-3 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
         <div className="flex items-start">
           <div className={`p-2 mr-4 rounded-full bg-${color}-100 dark:bg-gray-700`}>
             <Icon className={`w-5 h-5 ${iconColorClass}`} />
@@ -224,7 +224,7 @@ const LogsTab = ({ isDarkMode }) => {
                       const iconColorClass = `text-${color}-500 dark:text-${color}-400`;
 
                       return (
-                        <tr key={log.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <tr key={log._id || log.id || log.resourceId || log.timestamp} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                           <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
                             <div className={`p-2 mr-3 rounded-full bg-${color}-100 dark:bg-gray-700`}>
                               <Icon className={`w-5 h-5 ${iconColorClass}`} />
