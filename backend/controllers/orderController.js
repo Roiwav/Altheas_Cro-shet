@@ -33,6 +33,9 @@ const createOrder = async (req, res) => {
               {
                 folder: 'payment_proofs',
                 resource_type: 'image',
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
               },
               (error, result) => {
                 if (error) return reject(error);
