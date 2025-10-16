@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle, Users } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
-import { SERVER_BASE_URL } from '../../utils/product.js';
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
@@ -80,14 +79,12 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         setLoading(false);
         return;
       }
-
       const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
         if (response.status === 403) {
           toast.error('Access denied. Admin privileges required.');
@@ -98,11 +95,9 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         setLoading(false);
         return;
       }
-
       const data = await response.json();
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Fetch users error:', error);
       toast.error(error.message);
       setUsers([]);
     } finally {
@@ -114,7 +109,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     fetchUsers();
   }, [fetchUsers]);
 
-  // ✅ Map of delivered orders per user (derived, no state updates)
+  // Map of delivered orders per user
   const deliveredCountByUser = useMemo(() => {
     const map = {};
     if (Array.isArray(orders)) {
@@ -129,7 +124,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return map;
   }, [orders]);
 
-  // USER MANAGEMENT FUNCTIONS
+  // User management functions
   const filteredUsers = useMemo(() => {
     const q = searchQuery.toLowerCase();
     const list = users.filter(user =>
@@ -183,44 +178,35 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
 
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
 
-  // ✅ FETCH CART ITEMS COUNT PER USER FOR CURRENT PAGE ONLY (stores in cartCounts, not users)
+  // Fetch cart items count per user for current page only
   useEffect(() => {
     if (!paginatedUsers || paginatedUsers.length === 0) return;
     let cancelled = false;
-
     (async () => {
       try {
         const results = await Promise.all(
           paginatedUsers.map(async (u) => {
             try {
-              // ✅ FIXED: Add null check and validation for user ID
               if (!u || !u._id) {
                 console.warn('User without _id found:', u);
                 return { id: null, cartItems: 0 };
               }
-
               const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/cart?userId=${u._id}`, {
                 headers: { 'Content-Type': 'application/json' }
               });
-
               if (!res.ok) {
-                console.warn(`Cart fetch failed for user ${u._id}:`, res.status);
                 return { id: u._id, cartItems: 0 };
               }
-
               const data = await res.json();
               const items = Array.isArray(data?.items) ? data.items : [];
               const cartItems = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
               return { id: u._id, cartItems };
             } catch (error) {
-              console.error(`Error fetching cart for user ${u._id}:`, error);
               return { id: u._id, cartItems: 0 };
             }
           })
         );
-
         if (cancelled) return;
-
         setCartCounts(prev => {
           let changed = false;
           const next = { ...prev };
@@ -232,11 +218,8 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           }
           return changed ? next : prev;
         });
-      } catch (e) {
-        console.error('Error in cart fetching effect:', e);
-      }
+      } catch (e) { void e; }
     })();
-
     return () => { cancelled = true; };
   }, [paginatedUsers]);
 
@@ -270,22 +253,18 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return <ArrowDown className="w-4 h-4 inline ml-1" />;
   };
 
-  // ✅ FIXED: Suspend user function with proper validation
+  // Suspend user
   const handleSuspendUser = async (userId) => {
-    // ✅ Add validation for userId
     if (!userId || userId === 'undefined') {
-      console.error('Invalid userId for suspension:', userId);
       toast.error('Cannot suspend user: Invalid user ID');
       return;
     }
-
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) {
         toast.error('Authentication required');
         return;
       }
-
       const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}/suspend`, {
         method: 'PATCH',
         headers: {
@@ -293,39 +272,31 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          suspendedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days suspension
+          suspendedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
         })
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to suspend user`);
+        throw new Error('Failed to suspend user');
       }
-
       toast.success('User suspended successfully');
-      fetchUsers(); // Refresh the user list
+      fetchUsers();
     } catch (error) {
-      console.error('Error suspending user:', error);
       toast.error(`Failed to suspend user: ${error.message}`);
     }
   };
 
-  // ✅ FIXED: Unsuspend user function with proper validation  
+  // Unsuspend user
   const handleUnsuspendUser = async (userId) => {
-    // ✅ Add validation for userId
     if (!userId || userId === 'undefined') {
-      console.error('Invalid userId for unsuspension:', userId);
       toast.error('Cannot unsuspend user: Invalid user ID');
       return;
     }
-
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) {
         toast.error('Authentication required');
         return;
       }
-
       const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}/unsuspend`, {
         method: 'PATCH',
         headers: {
@@ -333,40 +304,31 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to unsuspend user`);
+        throw new Error('Failed to unsuspend user');
       }
-
       toast.success('User unsuspended successfully');
-      fetchUsers(); // Refresh the user list
+      fetchUsers();
     } catch (error) {
-      console.error('Error unsuspending user:', error);
       toast.error(`Failed to unsuspend user: ${error.message}`);
     }
   };
 
-  // ✅ FIXED: Delete user function with proper validation
+  // Delete user
   const handleDeleteUser = async (userId) => {
-    // ✅ Add validation for userId
     if (!userId || userId === 'undefined') {
-      console.error('Invalid userId for deletion:', userId);
       toast.error('Cannot delete user: Invalid user ID');
       return;
     }
-
     if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
-
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) {
         toast.error('Authentication required');
         return;
       }
-
       const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
@@ -374,16 +336,12 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to delete user`);
+        throw new Error('Failed to delete user');
       }
-
       toast.success('User deleted successfully');
-      fetchUsers(); // Refresh the user list
+      fetchUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
       toast.error(`Failed to delete user: ${error.message}`);
     }
   };
@@ -541,7 +499,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                     <td className="px-4 py-4">
                       <div className="flex items-center">
                         <Package className="w-4 h-4 text-green-600 mr-2" />
-                        <span className="text-sm font-medium">{deliveredCountByUser[user.id || user._id] || 0}</span>
+                        <span className="text-sm font-medium">{deliveredCountByUser[user._id] || 0}</span>
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -551,7 +509,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                             <MoreVertical className="w-4 h-4" />
                           </Menu.Button>
                         </div>
-
                         <Transition
                           as={React.Fragment}
                           enter="transition ease-out duration-100"
@@ -568,9 +525,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                                   {({ active }) => (
                                     <button
                                       onClick={() => handleSuspendUser(user._id)}
-                                      className={`${
-                                        active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                                      } flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
+                                      className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
                                     >
                                       <ShieldOff className="w-4 h-4 mr-3 text-yellow-600" />
                                       Suspend User
@@ -582,9 +537,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                                   {({ active }) => (
                                     <button
                                       onClick={() => handleUnsuspendUser(user._id)}
-                                      className={`${
-                                        active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                                      } flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
+                                      className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
                                     >
                                       <UserCheck className="w-4 h-4 mr-3 text-green-600" />
                                       Unsuspend User
@@ -596,9 +549,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                                 {({ active }) => (
                                   <button
                                     onClick={() => handleDeleteUser(user._id)}
-                                    className={`${
-                                      active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                                    } flex items-center px-4 py-2 text-sm text-red-600 w-full text-left`}
+                                    className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-red-600 w-full text-left`}
                                   >
                                     <Trash2 className="w-4 h-4 mr-3" />
                                     Delete User
@@ -615,8 +566,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center">
@@ -633,7 +582,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Previous
                 </button>
-                
                 <div className="flex items-center space-x-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     const page = i + 1;
@@ -652,7 +600,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                     );
                   })}
                 </div>
-
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
