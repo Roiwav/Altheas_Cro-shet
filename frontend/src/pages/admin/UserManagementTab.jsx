@@ -80,7 +80,13 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         return;
       }
       const data = await response.json();
-      setUsers(Array.isArray(data) ? data : []);
+      
+      // ✅ NORMALIZE IDs: Ensure all users have _id (for both localhost and deployment)
+      const normalized = Array.isArray(data)
+        ? data.map(u => ({ ...u, _id: u._id || u.id }))
+        : [];
+      
+      setUsers(normalized);
     } catch (error) {
       toast.error(error.message);
       setUsers([]);
@@ -101,7 +107,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     if (Array.isArray(orders)) {
       orders.forEach(o => {
         if (String(o?.status || '').toLowerCase() === 'delivered') {
-          const uid = (o && typeof o.userId === 'object' && o.userId?.id) ? o.userId.id : o?.userId;
+          const uid = (o && typeof o.userId === 'object' && o.userId?._id) ? o.userId._id : o?.userId;
           if (!uid) return;
           map[uid] = (map[uid] || 0) + 1;
         }
@@ -171,15 +177,15 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         const results = await Promise.all(
           paginatedUsers.map(async (u) => {
             try {
-              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u.id}`, {
+              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u._id}`, {
                 headers: { 'Content-Type': 'application/json' }
               });
               const data = await res.json();
               const items = Array.isArray(data?.items) ? data.items : [];
               const cartItems = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
-              return { id: u.id, cartItems };
+              return { id: u._id, cartItems };
             } catch {
-              return { id: u.id, cartItems: 0 };
+              return { id: u._id, cartItems: 0 };
             }
           })
         );
@@ -203,7 +209,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedUsers(users.map(user => user.id));
+      setSelectedUsers(users.map(user => user._id));
     } else {
       setSelectedUsers([]);
     }
@@ -297,14 +303,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
 
 
   const renderUserCard = (user) => (
-    <div key={user.id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+    <div key={user._id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
         <div className="flex items-start">
           <input
-            id={`checkbox-mobile-${user.id}`}
+            id={`checkbox-mobile-${user._id}`}
             type="checkbox"
-            checked={selectedUsers.includes(user.id)}
-            onChange={() => handleSelectOne(user.id)}
+            checked={selectedUsers.includes(user._id)}
+            onChange={() => handleSelectOne(user._id)}
             className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
           <img className="w-12 h-12 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
@@ -329,14 +335,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
               <div className="py-1">
                 <Menu.Item>
                   {({ active }) => (
-                    <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user.id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
                       <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
                     </a>
                   )}
                 </Menu.Item>
                 <Menu.Item>
                   {({ active }) => (
-                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user.id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
                       <Trash2 className="w-4 h-4 mr-3" /> Delete Account
                     </a>
                   )}
@@ -378,14 +384,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                 <ShoppingCart className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Cart Items</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{cartCounts[user.id] || 0}</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{cartCounts[user._id] || 0}</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <Package className="w-4 h-4 mr-2 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Delivered Orders</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{deliveredCountByUser[user.id] || 0}</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{deliveredCountByUser[user._id] || 0}</p>
                 </div>
               </div>
             </div>
@@ -483,11 +489,11 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => (
-                <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                <tr key={user._id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                   <td className="w-4 p-4">
                     <div className="flex items-center">
-                      <input id={`checkbox-${user.id}`} type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => handleSelectOne(user.id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
-                      <label htmlFor={`checkbox-${user.id}`} className="sr-only">checkbox</label>
+                      <input id={`checkbox-${user._id}`} type="checkbox" checked={selectedUsers.includes(user._id)} onChange={() => handleSelectOne(user._id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                      <label htmlFor={`checkbox-${user._id}`} className="sr-only">checkbox</label>
                     </div>
                   </td>
                   <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
@@ -499,11 +505,11 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                         <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center">
                             <ShoppingCart className="w-3 h-3 mr-1.5" />
-                            <span>{cartCounts[user.id] || 0} items</span>
+                            <span>{cartCounts[user._id] || 0} items</span>
                           </div>
                           <div className="flex items-center">
                             <Package className="w-3 h-3 mr-1.5" />
-                            <span>{deliveredCountByUser[user.id] || 0} orders</span>
+                            <span>{deliveredCountByUser[user._id] || 0} orders</span>
                           </div>
                         </div>
                       )}
@@ -529,14 +535,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
                           <div className="py-1">
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user.id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
                                   <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
                                 </a>
                               )}
                             </Menu.Item>
                             <Menu.Item>
                               {({ active }) => (
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user.id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
                                   <Trash2 className="w-4 h-4 mr-3" /> Delete Account
                                 </a>
                               )}
