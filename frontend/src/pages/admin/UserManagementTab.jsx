@@ -1,32 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle, Users } from 'lucide-react';
+import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
+import { SERVER_BASE_URL } from '../../utils/product.js';
+
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
-function getInitialsFromUser(user) {
-  const raw = (user?.fullName || user?.name || user?.displayName || user?.username || user?.email || "").trim();
-  if (!raw) return "?";
-  const parts = raw.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  const token = parts[0];
-  if (token.includes("@")) return token.split("@")[0].slice(0, 2).toUpperCase();
-  return token.slice(0, 2).toUpperCase();
-}
-
-function bgClassForKey(key) {
-  const palette = [
-    "bg-pink-600","bg-blue-600","bg-green-600","bg-indigo-600","bg-orange-600",
-    "bg-purple-600","bg-teal-600","bg-rose-600","bg-amber-600","bg-sky-600"
-  ];
-  const s = String(key || "");
-  let hash = 0;
-  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
-  const idx = Math.abs(hash) % palette.length;
-  return palette[idx];
-}
 
 const RoleBadge = ({ role }) => {
   const roleClasses = {
@@ -36,8 +17,9 @@ const RoleBadge = ({ role }) => {
   };
   const key = String(role || '').toLowerCase();
   const label = key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Unknown';
-  return <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleClasses[key] || 'bg-gray-100 text-gray-800'}`}>{label}</span>;
+  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClasses[key] || 'bg-gray-100 text-gray-800'}`}>{label}</span>;
 };
+
 
 const StatusBadge = ({ status }) => {
   const statusClasses = {
@@ -46,8 +28,9 @@ const StatusBadge = ({ status }) => {
     Pending: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
     Inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
   };
-  return <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusClasses[status] || 'bg-gray-100 text-gray-800'}`}>{status}</span>;
+  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status]}`}>{status}</span>;
 };
+
 
 export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const [users, setUsers] = useState([]);
@@ -59,7 +42,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const itemsPerPage = 5;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
   const [cartCounts, setCartCounts] = useState({});
-  const [statusFilter, setStatusFilter] = useState('all');
+
 
   const getUserStatus = useCallback((user) => {
     if (user && user.suspendedUntil) {
@@ -68,6 +51,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
     return 'Active';
   }, []);
+
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -79,7 +63,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         setLoading(false);
         return;
       }
-      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/v1/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -105,11 +89,13 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
   }, []);
 
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Map of delivered orders per user
+
+  // ✅ Map of delivered orders per user (derived, no state updates)
   const deliveredCountByUser = useMemo(() => {
     const map = {};
     if (Array.isArray(orders)) {
@@ -124,19 +110,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return map;
   }, [orders]);
 
-  // User management functions
+
   const filteredUsers = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    const list = users.filter(user =>
-      (user.name || user.fullName || '').toLowerCase().includes(q) ||
-      user.email.toLowerCase().includes(q)
+    return users.filter(user =>
+      (user.name || user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    if (statusFilter === 'all') return list;
-    return list.filter((u) => {
-      const s = getUserStatus(u);
-      return statusFilter === 'active' ? s === 'Active' : s === 'Suspended';
-    });
-  }, [users, searchQuery, statusFilter, getUserStatus]);
+  }, [users, searchQuery]);
+
 
   const sortedUsers = useMemo(() => {
     const sortableUsers = [...filteredUsers];
@@ -171,14 +152,17 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return sortableUsers;
   }, [filteredUsers, sortConfig, getUserStatus]);
 
+
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return sortedUsers.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedUsers, currentPage, itemsPerPage]);
 
+
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
 
-  // Fetch cart items count per user for current page only
+
+  // ✅ FETCH CART ITEMS COUNT PER USER FOR CURRENT PAGE ONLY (stores in cartCounts, not users)
   useEffect(() => {
     if (!paginatedUsers || paginatedUsers.length === 0) return;
     let cancelled = false;
@@ -187,21 +171,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         const results = await Promise.all(
           paginatedUsers.map(async (u) => {
             try {
-              if (!u || !u._id) {
-                console.warn('User without _id found:', u);
-                return { id: null, cartItems: 0 };
-              }
-              const res = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/cart?userId=${u._id}`, {
+              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u._id}`, {
                 headers: { 'Content-Type': 'application/json' }
               });
-              if (!res.ok) {
-                return { id: u._id, cartItems: 0 };
-              }
               const data = await res.json();
               const items = Array.isArray(data?.items) ? data.items : [];
               const cartItems = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
               return { id: u._id, cartItems };
-            } catch (error) {
+            } catch {
               return { id: u._id, cartItems: 0 };
             }
           })
@@ -211,7 +188,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           let changed = false;
           const next = { ...prev };
           for (const { id, cartItems } of results) {
-            if (id && next[id] !== cartItems) {
+            if (next[id] !== cartItems) {
               next[id] = cartItems;
               changed = true;
             }
@@ -223,6 +200,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return () => { cancelled = true; };
   }, [paginatedUsers]);
 
+
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedUsers(users.map(user => user._id));
@@ -230,6 +208,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       setSelectedUsers([]);
     }
   };
+
 
   const handleSelectOne = (id) => {
     if (selectedUsers.includes(id)) {
@@ -239,6 +218,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
   };
 
+
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -247,371 +227,358 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     setSortConfig({ key, direction });
   };
 
+
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return null;
-    if (sortConfig.direction === 'ascending') return <ArrowUp className="w-4 h-4 inline ml-1" />;
-    return <ArrowDown className="w-4 h-4 inline ml-1" />;
+    if (sortConfig.direction === 'ascending') return <ArrowUp className="w-4 h-4 ml-1" />;
+    return <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
-  // Suspend user
-  const handleSuspendUser = async (userId) => {
+
+  const handleSuspend = async (userId) => {
+    // ✅ FIX: Add validation for userId
     if (!userId || userId === 'undefined') {
+      console.error('Invalid userId for suspension:', userId);
       toast.error('Cannot suspend user: Invalid user ID');
       return;
     }
+
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}/suspend`, {
+      if (!token) return toast.error('Authentication required');
+      const input = window.prompt('Enter number of days to suspend (0 to unsuspend):', '7');
+      if (input === null) return; // cancelled
+      const days = parseInt(input, 10);
+      if (Number.isNaN(days) || days < 0) return toast.error('Please enter a valid non-negative number');
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}/suspend`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          suspendedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-        })
+        body: JSON.stringify({ days })
       });
-      if (!response.ok) {
-        throw new Error('Failed to suspend user');
-      }
-      toast.success('User suspended successfully');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update suspension');
+      toast.success(data.message || 'Updated');
       fetchUsers();
-    } catch (error) {
-      toast.error(`Failed to suspend user: ${error.message}`);
+    } catch (e) {
+      toast.error(e.message || 'Action failed');
     }
   };
 
-  // Unsuspend user
-  const handleUnsuspendUser = async (userId) => {
-    if (!userId || userId === 'undefined') {
-      toast.error('Cannot unsuspend user: Invalid user ID');
-      return;
-    }
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}/unsuspend`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to unsuspend user');
-      }
-      toast.success('User unsuspended successfully');
-      fetchUsers();
-    } catch (error) {
-      toast.error(`Failed to unsuspend user: ${error.message}`);
-    }
-  };
 
-  // Delete user
-  const handleDeleteUser = async (userId) => {
+  const handleDelete = async (userId) => {
+    // ✅ FIX: Add validation for userId
     if (!userId || userId === 'undefined') {
+      console.error('Invalid userId for deletion:', userId);
       toast.error('Cannot delete user: Invalid user ID');
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
+
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
-      const response = await fetch(`https://altheascroshetbackend.vercel.app/api/v1/users/${userId}`, {
+      if (!token) return toast.error('Authentication required');
+      const ok = window.confirm('Are you sure you want to delete this account? This action cannot be undone.');
+      if (!ok) return;
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      if (!response.ok) {
-        throw new Error('Failed to delete user');
-      }
-      toast.success('User deleted successfully');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to delete user');
+      toast.success('User deleted');
       fetchUsers();
-    } catch (error) {
-      toast.error(`Failed to delete user: ${error.message}`);
+    } catch (e) {
+      toast.error(e.message || 'Delete failed');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
-        <span className="ml-2 text-lg">Loading users...</span>
-      </div>
-    );
-  }
 
-  return (
-    <div className={`p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">User Management</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage and monitor all user accounts.</p>
-      </div>
-
-      {/* Search and Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+  const renderUserCard = (user) => (
+    <div key={user._id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start">
           <input
-            type="text"
-            placeholder="Search users..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600"
+            id={`checkbox-mobile-${user._id}`}
+            type="checkbox"
+            checked={selectedUsers.includes(user._id)}
+            onChange={() => handleSelectOne(user._id)}
+            className="w-4 h-4 mt-1 mr-3 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-        </div>
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Users Table */}
-      {filteredUsers.length === 0 ? (
-        <div className="text-center py-12">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Users Found</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {searchQuery ? 'No users match your search criteria.' : 'There are no users in the system yet.'}
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-auto">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800">
-                  <th className="px-4 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.length === users.length && users.length > 0}
-                      onChange={handleSelectAll}
-                      className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-left cursor-pointer" onClick={() => requestSort('name')}>
-                    User {getSortIcon('name')}
-                  </th>
-                  <th className="px-4 py-3 text-left cursor-pointer" onClick={() => requestSort('role')}>
-                    Role {getSortIcon('role')}
-                  </th>
-                  <th className="px-4 py-3 text-left cursor-pointer" onClick={() => requestSort('status')}>
-                    Status {getSortIcon('status')}
-                  </th>
-                  <th className="px-4 py-3 text-left cursor-pointer" onClick={() => requestSort('joinedDate')}>
-                    Joined {getSortIcon('joinedDate')}
-                  </th>
-                  <th className="px-4 py-3 text-left">Cart Items</th>
-                  <th className="px-4 py-3 text-left">Delivered Orders</th>
-                  <th className="px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {paginatedUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="px-4 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.includes(user._id)}
-                        onChange={() => handleSelectOne(user._id)}
-                        className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <div className="relative">
-                          {user?.avatar ? (
-                            <img
-                              src={user.avatar}
-                              alt={user.name || user.fullName}
-                              className="w-10 h-10 rounded-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
-                              }}
-                            />
-                          ) : (
-                            getInitialsFromUser(user) === '?' ? (
-                              <img
-                                src={DEFAULT_AVATAR}
-                                alt="Default Avatar"
-                                className="w-10 h-10 rounded-full"
-                              />
-                            ) : (
-                              <div className={`w-10 h-10 rounded-full ${bgClassForKey(user._id)} flex items-center justify-center text-white font-medium text-sm`}>
-                                {getInitialsFromUser(user)}
-                              </div>
-                            )
-                          )}
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {user.name || user.fullName}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <RoleBadge role={user.role} />
-                      {String(user.role || '').toLowerCase() === 'customer' && (
-                        <UserCheck className="w-4 h-4 inline ml-2 text-blue-500" />
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={getUserStatus(user)} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {new Date(user.joinedDate || user.createdAt).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <ShoppingCart className="w-4 h-4 text-pink-600 mr-2" />
-                        <span className="text-sm font-medium">{cartCounts[user._id] || 0}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <Package className="w-4 h-4 text-green-600 mr-2" />
-                        <span className="text-sm font-medium">{deliveredCountByUser[user._id] || 0}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <Menu as="div" className="relative inline-block text-left">
-                        <div>
-                          <Menu.Button className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                            <MoreVertical className="w-4 h-4" />
-                          </Menu.Button>
-                        </div>
-                        <Transition
-                          as={React.Fragment}
-                          enter="transition ease-out duration-100"
-                          enterFrom="transform opacity-0 scale-95"
-                          enterTo="transform opacity-100 scale-100"
-                          leave="transition ease-in duration-75"
-                          leaveFrom="transform opacity-100 scale-100"
-                          leaveTo="transform opacity-0 scale-95"
-                        >
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                            <div className="py-1">
-                              {getUserStatus(user) === 'Active' ? (
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => handleSuspendUser(user._id)}
-                                      className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
-                                    >
-                                      <ShieldOff className="w-4 h-4 mr-3 text-yellow-600" />
-                                      Suspend User
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              ) : (
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => handleUnsuspendUser(user._id)}
-                                      className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 w-full text-left`}
-                                    >
-                                      <UserCheck className="w-4 h-4 mr-3 text-green-600" />
-                                      Unsuspend User
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              )}
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() => handleDeleteUser(user._id)}
-                                    className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} flex items-center px-4 py-2 text-sm text-red-600 w-full text-left`}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-3" />
-                                    Delete User
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            </div>
-                          </Menu.Items>
-                        </Transition>
-                      </Menu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <img className="w-12 h-12 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
+          <div className="ml-3">
+            <p className="text-base font-semibold text-gray-900 dark:text-white">{user.name || user.fullName}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
           </div>
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <div className="flex items-center">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedUsers.length)} of {sortedUsers.length} users
-                </p>
+        </div>
+        <Menu as="div" className="relative inline-block text-left">
+          <Menu.Button className="p-2 text-gray-500 rounded-full hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700">
+            <MoreVertical className="w-5 h-5" />
+          </Menu.Button>
+          <Transition
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
+              <div className="py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                      <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
+                    </a>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                      <Trash2 className="w-4 h-4 mr-3" /> Delete Account
+                    </a>
+                  )}
+                </Menu.Item>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </button>
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                          currentPage === page
-                            ? 'bg-pink-600 text-white'
-                            : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
+            </Menu.Items>
+          </Transition>
+        </Menu>
+      </div>
+      <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center text-gray-600 dark:text-gray-300">
+            <UserCheck className="w-4 h-4 mr-2 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Role</p>
+              <RoleBadge role={user.role} />
+            </div>
+          </div>
+          <div className="flex items-center text-gray-600 dark:text-gray-300">
+            <UserCheck className="w-4 h-4 mr-2 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+              <StatusBadge status={getUserStatus(user)} />
+            </div>
+          </div>
+          <div className="flex items-center text-gray-600 dark:text-gray-300">
+            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Joined</p>
+              <p className="font-medium">{new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+        {String(user.role || '').toLowerCase() === 'customer' && (
+          <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Activity</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center">
+                <ShoppingCart className="w-4 h-4 mr-2 text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Cart Items</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{cartCounts[user._id] || 0}</p>
                 </div>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </button>
+              </div>
+              <div className="flex items-center">
+                <Package className="w-4 h-4 mr-2 text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Delivered Orders</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{deliveredCountByUser[user._id] || 0}</p>
+                </div>
               </div>
             </div>
-          )}
-        </>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+
+  return (
+    <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-900" data-dark={isDarkMode ? '1' : '0'}>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+        <p className="mt-1 text-gray-600 dark:text-gray-400">Manage and monitor all user accounts.</p>
+      </div>
+
+
+      {/* Toolbar */}
+      <div className="flex flex-col items-center justify-between mb-6 space-y-3 md:flex-row md:space-y-0 md:space-x-4">
+        <div className="w-full md:w-1/2">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-pink-500 dark:focus:border-pink-500"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col items-stretch justify-end flex-shrink-0 w-full space-y-2 md:w-auto md:flex-row md:space-y-0 md:items-center md:space-x-3">
+          <div className="flex items-center w-full space-x-3 md:w-auto">
+            <button className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg md:w-auto focus:outline-none hover:bg-gray-100 hover:text-pink-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </button>
+            {selectedUsers.length > 0 && (
+              <button className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-700 bg-white border border-gray-200 rounded-lg md:w-auto focus:outline-none hover:bg-gray-100 hover:text-red-900 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-red-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete ({selectedUsers.length})
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+
+      {/* User Table */}
+      {loading ? (
+        <div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 text-pink-500 animate-spin" /></div>
+      ) : users.length === 0 ? (
+        <div className="py-16 text-center bg-white rounded-lg dark:bg-gray-800">
+          <AlertTriangle className="w-12 h-12 mx-auto text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Users Found</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">There are no users in the system yet.</p>
+        </div>
+      ) : isMobile ? (
+        paginatedUsers.length > 0 ? (
+          paginatedUsers.map(renderUserCard)
+        ) : (
+          <div className="py-16 text-center">No users match your search.</div>
+        )
+      ) : (
+      <div className="relative overflow-hidden bg-white shadow-md dark:bg-gray-800 sm:rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+              <tr>
+                <th scope="col" className="p-4">
+                  <div className="flex items-center">
+                    <input id="checkbox-all" type="checkbox" onChange={handleSelectAll} checked={selectedUsers.length === users.length} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                    <label htmlFor="checkbox-all" className="sr-only">checkbox</label>
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('name')}>
+                  <div className="flex items-center">User {getSortIcon('name')}</div>
+                </th>
+                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('role')}>
+                  <div className="flex items-center">Role {getSortIcon('role')}</div>
+                </th>
+                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('status')}>
+                  <div className="flex items-center">Status {getSortIcon('status')}</div>
+                </th>
+                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('joinedDate')}>
+                  <div className="flex items-center">Joined {getSortIcon('joinedDate')}</div>
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedUsers.map((user) => (
+                <tr key={user._id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                  <td className="w-4 p-4">
+                    <div className="flex items-center">
+                      <input id={`checkbox-${user._id}`} type="checkbox" checked={selectedUsers.includes(user._id)} onChange={() => handleSelectOne(user._id)} className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                      <label htmlFor={`checkbox-${user._id}`} className="sr-only">checkbox</label>
+                    </div>
+                  </td>
+                  <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
+                    <img className="w-10 h-10 rounded-full" src={user.avatar || DEFAULT_AVATAR} alt={`${user.name} avatar`} />
+                    <div className="pl-3">
+                      <div className="text-base font-semibold">{user.name || user.fullName}</div>
+                      <div className="font-normal text-gray-500">{user.email}</div>
+                      {String(user.role || '').toLowerCase() === 'customer' && (
+                        <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center">
+                            <ShoppingCart className="w-3 h-3 mr-1.5" />
+                            <span>{cartCounts[user._id] || 0} items</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Package className="w-3 h-3 mr-1.5" />
+                            <span>{deliveredCountByUser[user._id] || 0} orders</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </th>
+                  <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
+                  <td className="px-6 py-4"><StatusBadge status={getUserStatus(user)} /></td>
+                  <td className="px-6 py-4">{new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-right">
+                    <Menu as="div" className="relative inline-block text-left">
+                      <Menu.Button className="inline-flex justify-center w-full p-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                        <MoreVertical className="w-5 h-5" />
+                      </Menu.Button>
+                      <Transition
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className="absolute right-0 z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
+                          <div className="py-1">
+                            <Menu.Item>
+                              {({ active }) => (
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleSuspend(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400`}>
+                                  <ShieldOff className="w-4 h-4 mr-3" /> Suspend Account
+                                </a>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(user._id); }} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400`}>
+                                  <Trash2 className="w-4 h-4 mr-3" /> Delete Account
+                                </a>
+                              )}
+                            </Menu.Item>
+                          </div>
+                        </Menu.Items>
+                      </Transition>
+                    </Menu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination */}
+        <nav className="flex flex-col items-start justify-between p-4 space-y-3 md:flex-row md:items-center md:space-y-0" aria-label="Table navigation">
+          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+            Showing <span className="font-semibold text-gray-900 dark:text-white">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sortedUsers.length)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{sortedUsers.length}</span>
+          </span>
+          <ul className="inline-flex items-stretch -space-x-px">
+            <li>
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50">
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </li>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <li key={page}>
+                <button onClick={() => setCurrentPage(page)} className={`flex items-center justify-center text-sm py-2 px-3 leading-tight ${currentPage === page ? 'text-pink-600 bg-pink-50 border-pink-300 dark:bg-gray-700 dark:text-white' : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'} `}>
+                  {page}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50">
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
       )}
     </div>
   );
