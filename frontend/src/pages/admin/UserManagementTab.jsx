@@ -1,3 +1,5 @@
+console.log('🟢 UserManagementTab v3.0 - FINAL VERSION LOADED');
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Search, MoreVertical, Trash2, ShieldOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Filter, ShoppingCart, Package, Calendar, UserCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
@@ -5,9 +7,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { SERVER_BASE_URL } from '../../utils/product.js';
 
-
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
-
 
 const RoleBadge = ({ role }) => {
   const roleClasses = {
@@ -20,7 +20,6 @@ const RoleBadge = ({ role }) => {
   return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClasses[key] || 'bg-gray-100 text-gray-800'}`}>{label}</span>;
 };
 
-
 const StatusBadge = ({ status }) => {
   const statusClasses = {
     Active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -30,7 +29,6 @@ const StatusBadge = ({ status }) => {
   };
   return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status]}`}>{status}</span>;
 };
-
 
 export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const [users, setUsers] = useState([]);
@@ -43,7 +41,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
   const [cartCounts, setCartCounts] = useState({});
 
-
   const getUserStatus = useCallback((user) => {
     if (user && user.suspendedUntil) {
       const until = new Date(user.suspendedUntil);
@@ -51,7 +48,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
     return 'Active';
   }, []);
-
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -81,11 +77,13 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       }
       const data = await response.json();
       
+      console.log('✅ Fetched users, normalizing IDs...');
       // ✅ NORMALIZE IDs: Ensure all users have _id (for both localhost and deployment)
       const normalized = Array.isArray(data)
         ? data.map(u => ({ ...u, _id: u._id || u.id }))
         : [];
       
+      console.log('✅ First user after normalization:', normalized[0]);
       setUsers(normalized);
     } catch (error) {
       toast.error(error.message);
@@ -95,11 +93,9 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
   }, []);
 
-
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
 
   // ✅ Map of delivered orders per user (derived, no state updates)
   const deliveredCountByUser = useMemo(() => {
@@ -116,14 +112,12 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return map;
   }, [orders]);
 
-
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
       (user.name || user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [users, searchQuery]);
-
 
   const sortedUsers = useMemo(() => {
     const sortableUsers = [...filteredUsers];
@@ -158,17 +152,14 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return sortableUsers;
   }, [filteredUsers, sortConfig, getUserStatus]);
 
-
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return sortedUsers.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedUsers, currentPage, itemsPerPage]);
 
-
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
 
-
-  // ✅ FETCH CART ITEMS COUNT PER USER FOR CURRENT PAGE ONLY (stores in cartCounts, not users)
+  // ✅ FETCH CART ITEMS COUNT PER USER FOR CURRENT PAGE ONLY
   useEffect(() => {
     if (!paginatedUsers || paginatedUsers.length === 0) return;
     let cancelled = false;
@@ -206,7 +197,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     return () => { cancelled = true; };
   }, [paginatedUsers]);
 
-
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedUsers(users.map(user => user._id));
@@ -214,7 +204,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       setSelectedUsers([]);
     }
   };
-
 
   const handleSelectOne = (id) => {
     if (selectedUsers.includes(id)) {
@@ -224,7 +213,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     }
   };
 
-
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -233,16 +221,17 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     setSortConfig({ key, direction });
   };
 
-
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return null;
     if (sortConfig.direction === 'ascending') return <ArrowUp className="w-4 h-4 ml-1" />;
     return <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
-
   const handleSuspend = async (userId) => {
+    console.log('🔵 handleSuspend called with:', userId);
+    
     if (!userId || userId === 'undefined' || userId === undefined) {
+      console.error('❌ Invalid userId in handleSuspend:', userId);
       toast.error('Cannot suspend user: Invalid user ID');
       return;
     }
@@ -255,6 +244,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       const days = parseInt(input, 10);
       if (Number.isNaN(days) || days < 0) return toast.error('Please enter a valid non-negative number');
       
+      console.log('✅ Calling suspend API with userId:', userId);
       const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}/suspend`, {
         method: 'PATCH',
         headers: {
@@ -268,13 +258,16 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       toast.success(data.message || 'Updated');
       fetchUsers();
     } catch (e) {
+      console.error('❌ Suspend error:', e);
       toast.error(e.message || 'Action failed');
     }
   };
 
-
   const handleDelete = async (userId) => {
+    console.log('🔵 handleDelete called with:', userId);
+    
     if (!userId || userId === 'undefined' || userId === undefined) {
+      console.error('❌ Invalid userId in handleDelete:', userId);
       toast.error('Cannot delete user: Invalid user ID');
       return;
     }
@@ -285,6 +278,7 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       const ok = window.confirm('Are you sure you want to delete this account? This action cannot be undone.');
       if (!ok) return;
       
+      console.log('✅ Calling delete API with userId:', userId);
       const res = await fetch(`${SERVER_BASE_URL}/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
@@ -297,10 +291,10 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
       toast.success('User deleted');
       fetchUsers();
     } catch (e) {
+      console.error('❌ Delete error:', e);
       toast.error(e.message || 'Delete failed');
     }
   };
-
 
   const renderUserCard = (user) => (
     <div key={user._id} className="p-4 mb-4 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -401,14 +395,12 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
     </div>
   );
 
-
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-900" data-dark={isDarkMode ? '1' : '0'}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">Manage and monitor all user accounts.</p>
       </div>
-
 
       {/* Toolbar */}
       <div className="flex flex-col items-center justify-between mb-6 space-y-3 md:flex-row md:space-y-0 md:space-x-4">
@@ -441,7 +433,6 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
           </div>
         </div>
       </div>
-
 
       {/* User Table */}
       {loading ? (
