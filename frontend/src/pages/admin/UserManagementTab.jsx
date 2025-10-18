@@ -177,15 +177,15 @@ export default function UserManagementTab({ isDarkMode, orders = [] }) {
         const results = await Promise.all(
           paginatedUsers.map(async (u) => {
             try {
-              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u._id}`, {
+              const res = await fetch(`${SERVER_BASE_URL}/api/v1/cart?userId=${u.id}`, {
                 headers: { 'Content-Type': 'application/json' }
               });
               const data = await res.json();
               const items = Array.isArray(data?.items) ? data.items : [];
               const cartItems = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
-              return { id: u._id, cartItems };
+              return { id: u.id, cartItems };
             } catch {
-              return { id: u._id, cartItems: 0 };
+              return { id: u.id, cartItems: 0 };
             }
           })
         );
